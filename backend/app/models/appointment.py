@@ -12,7 +12,7 @@ class Appointment(Base):
     client_email = Column(String, nullable=False)
     appointment_time = Column(DateTime, nullable=False)
     service_id = Column(Integer, ForeignKey("services.id"))
-    tenant_id = Column(Integer, ForeignKey("tenants.id"))  # You can keep this for the foreign key
+    tenant_id = Column(Integer, ForeignKey("tenants.id"))  # Foreign Key to tenants
 
-    tenant = relationship("Tenant", back_populates="appointments")  # This is the correct relationship to Tenant
-    service = relationship("Service", back_populates="appointments")  # This is the correct relationship to Service
+    tenant = relationship("Tenant", back_populates="appointments")  # Relationship with Tenant
+    service = relationship("Service", back_populates="appointments")  # Relationship with Service

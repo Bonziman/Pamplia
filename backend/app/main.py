@@ -1,6 +1,6 @@
 # app/main.py
 from fastapi import FastAPI
-from app.routers import auth, tenants, appointments, services
+from app.routers import tenants, appointments, services, auth 
 from app.database import Base, engine
 from app.models import tenant, user, service, appointment
 
@@ -9,10 +9,10 @@ app = FastAPI()
 
 
 
-app.include_router(auth.router)
-app.include_router(tenants.router)
-app.include_router(appointments.router)
-app.include_router(services.router)
+app.include_router(tenants)
+app.include_router(appointments)
+app.include_router(services)
+app.include_router(auth)
 
 @app.get("/")
 def root():
