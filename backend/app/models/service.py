@@ -1,3 +1,4 @@
+# app/models/service.py
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -12,3 +13,4 @@ class Service(Base):
     tenant_id = Column(Integer, ForeignKey("tenants.id"))
 
     tenant = relationship("Tenant", back_populates="services")
+    appointments = relationship("Appointment", back_populates="service")  # Added this line for back_populates

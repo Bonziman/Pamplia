@@ -1,3 +1,4 @@
+# app/models/appointment.py
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -11,5 +12,7 @@ class Appointment(Base):
     client_email = Column(String, nullable=False)
     appointment_time = Column(DateTime, nullable=False)
     service_id = Column(Integer, ForeignKey("services.id"))
+    tenant_id = Column(Integer, ForeignKey("tenants.id"))  # You can keep this for the foreign key
 
-    service = relationship("Service", back_populates="appointments")
+    tenant = relationship("Tenant", back_populates="appointments")  # This is the correct relationship to Tenant
+    service = relationship("Service", back_populates="appointments")  # This is the correct relationship to Service
