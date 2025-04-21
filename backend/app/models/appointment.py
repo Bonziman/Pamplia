@@ -1,0 +1,15 @@
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
+from app.database import Base
+import datetime
+
+class Appointment(Base):
+    __tablename__ = "appointments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    client_name = Column(String, nullable=False)
+    client_email = Column(String, nullable=False)
+    appointment_time = Column(DateTime, nullable=False)
+    service_id = Column(Integer, ForeignKey("services.id"))
+
+    service = relationship("Service", back_populates="appointments")
