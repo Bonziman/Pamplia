@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
 class UserBase(BaseModel):
+    name: str
     email: EmailStr 
     password: str = Field(..., exclude=True)  # This will exclude password from the base schema
     role: Optional[str] = "admin"  # Default to 'admin' for the first user.

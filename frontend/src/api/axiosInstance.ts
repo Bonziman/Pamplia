@@ -1,17 +1,19 @@
 // src/api/axiosInstance.ts
-
 import axios from "axios";
 
 const axiosInstance = axios.create({
+  // No baseURL needed if using dynamic URLs
   headers: {
-    'Content-Type': 'application/json',  
+    'Content-Type': 'application/json',
   },
+  withCredentials: true, // <-- Add this to send cookies
 });
 
-// Add Authorization header if token exists
+// Remove the interceptor that manually added the Authorization header
+/*
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token"); // No longer using localStorage
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
@@ -21,5 +23,6 @@ axiosInstance.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+*/
 
 export default axiosInstance;

@@ -1,100 +1,110 @@
 // src/pages/Login.tsx
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react"; // Add useEffect
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios from "axios"; // Keep using axios directly for login call if preferred
 import { useAuth } from "../auth/authContext";
 
 const Login: React.FC = () => {
-  const { login } = useAuth(); // Get the login function from context
+  // Get auth status and loading state
+  const { isAuthenticated, isLoading, checkAuthStatus } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false); // Prevent double submit
+
+  // --- Redirect if already logged in ---
+  useEffect(() => {
+    // Only redirect if auth is not loading and user is authenticated
+    if (!isLoading && isAuthenticated) {
+      console.log("[Login Page] User already authenticated. Redirecting to dashboard...");
+      // Optional: Show a brief message
+      // alert("You are already logged in. Redirecting...");
+      navigate("/dashboard", { replace: true }); // Replace history entry
+    }
+  }, [isLoading, isAuthenticated, navigate]);
+
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(""); // Clear previous errors
+    setError("");
+    setIsSubmitting(true); // Disable button
 
     try {
-      // 1. Construct the dynamic API URL (works for base or subdomain)
-      const currentHostname = window.location.hostname; // e.g., "localhost" or "exampletenant.localhost"
-      const apiUrl = `http://${currentHostname}:8000/auth/login`; // Use backend port
-      console.log("Attempting login to:", apiUrl);
+      const currentHostname = window.location.hostname;
+      const apiUrl = `http://${currentHostname}:8000/auth/login`;
+      console.log("[Login Page] Attempting login to:", apiUrl);
 
-      // 2. Make the API call
+      // Make API call - cookies are handled automatically by browser + backend response
       const response = await axios.post(apiUrl, {
         email,
         password,
-      });
+      }, { withCredentials: true }); // Ensure credentials are sent if using axios directly
 
-      // 3. Get data from response (check BOTH token and potential redirect)
-      const accessToken = response.data.access_token;
+      // Check response data for redirect signal
       const redirectToSubdomain = response.data.redirect_to_subdomain;
 
-      if (!accessToken) {
-         throw new Error("Access token not found in response");
-      }
+      // IMPORTANT: Re-check auth status AFTER successful login API call
+      // This allows AuthProvider to fetch profile using the NEW cookie
+      await checkAuthStatus(); // Wait for profile fetch to complete
 
-      // 4. IMPORTANT: Update Auth Context and Local Storage FIRST
-      login(accessToken);
-
-      // 5. Handle navigation/redirection
+      // Now perform navigation/redirect based on API response
       if (redirectToSubdomain) {
-          // --- Redirect to Tenant Subdomain ---
-          console.log(`Redirecting to subdomain: ${redirectToSubdomain}`);
+        console.log(`[Login Page] Redirecting to subdomain: ${redirectToSubdomain}`);
 
-          const protocol = window.location.protocol; // "http:" or "https:"
-          const port = window.location.port; // e.g., "3000" (frontend port)
-          const portString = port ? `:${port}` : "";
+        const protocol = window.location.protocol; // "http:" or "https:"
+        const port = window.location.port; // "3000" (frontend port)
+        const portString = port ? `:${port}` : "";
+        // --- Define the known base domain for development ---
+        const devBaseDomain = "localtest.me"; // Use the correct base domain
 
-          // Extract base domain (e.g., ".localhost", ".app.com")
-          // This assumes at least one dot exists if it's not just "localhost"
-          const parts = currentHostname.split('.');
-          let baseDomain = "localhost"; // Default for simple localhost
-          if (parts.length > 1) {
-              baseDomain = parts.slice(1).join('.'); // e.g., "localhost" from "app.localhost"
-          }
+        // Construct the new URL using the known base domain
+        const newUrl = `${protocol}//${redirectToSubdomain}.${devBaseDomain}${portString}/dashboard`;
 
-          // Construct the new URL targeting the frontend on the correct subdomain
-          const newUrl = `${protocol}//${redirectToSubdomain}.${baseDomain}${portString}/dashboard`; // Redirect to dashboard path
-
-          console.log("Redirecting browser to:", newUrl);
-          // Perform full browser redirect
-          window.location.href = newUrl;
+        console.log("[Login Page] Redirecting browser to:", newUrl);
+        window.location.href = newUrl; // Perform full browser redirect
 
       } else {
-          // --- Navigate Client-Side (Already on correct subdomain) ---
-          console.log("Login successful on correct subdomain. Navigating to dashboard.");
-          navigate("/dashboard");
+        // Login successful on correct subdomain
+        console.log("[Login Page] Login successful on correct subdomain. Navigating to dashboard.");
+        navigate("/dashboard"); // Client-side navigation
       }
 
     } catch (err: any) {
-      console.error("Login failed:", err.response || err);
+      console.error("[Login Page] Login failed:", err.response || err);
       if (err.response) {
         const status = err.response.status;
         const detail = err.response.data?.detail || "An unexpected error occurred.";
-        // Backend now uses 401 for all credential/tenant errors from user perspective
         if (status === 401) {
           setError("Login failed. Please check your credentials.");
         } else if (status === 500) {
-          // Handle the internal configuration error
           setError("Login failed due to a server configuration issue.");
         } else {
-           // Handle other potential errors (like the old 400 if needed, though less likely now)
           setError(`Login failed: ${detail}`);
         }
       } else {
         setError("Login failed. Could not connect to server.");
       }
+      setIsSubmitting(false); // Re-enable button on error
     }
+    // No finally block for setIsSubmitting=false, because success causes navigation/redirect
   };
 
+  // Render loading or null while checking auth state initially
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+  // If already authenticated, the useEffect above will handle the redirect.
+  // We might render null briefly before the redirect happens.
+  if (isAuthenticated) {
+      return null; // Or a minimal "Redirecting..." message
+  }
+
+  // Render login form only if not loading and not authenticated
   return (
     <div>
       <h2>Login</h2>
       <form onSubmit={handleLogin}>
-        {/* Form inputs remain the same */}
         <div>
           <label>Email</label>
           <input
@@ -102,6 +112,7 @@ const Login: React.FC = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            disabled={isSubmitting}
           />
         </div>
         <div>
@@ -111,10 +122,13 @@ const Login: React.FC = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            disabled={isSubmitting}
           />
         </div>
         {error && <div style={{ color: "red", marginTop: '10px' }}>{error}</div>}
-        <button type="submit">Login</button>
+        <button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Logging in..." : "Login"}
+        </button>
       </form>
     </div>
   );

@@ -1,0 +1,108 @@
+/* src/pages/Dashboard.css */
+
+.dashboard-container {
+  padding: 20px;
+  font-family: sans-serif;
+  max-width: 1200px; /* Limit width for better readability */
+  margin: 20px auto; /* Center the container */
+  border: 1px solid #eee;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  background-color: #fff;
+}
+
+.dashboard-header {
+  display: flex; /* Use flexbox for layout */
+  justify-content: space-between; /* Push items to ends */
+  align-items: center; /* Align items vertically */
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.dashboard-header .welcome-info h1 {
+  margin: 0 0 5px 0;
+  font-size: 1.8em;
+  color: #333;
+}
+
+.dashboard-header .welcome-info p {
+  margin: 0;
+  color: #666;
+  font-size: 0.9em;
+}
+
+.dashboard-header button {
+  padding: 8px 16px;
+  background-color: #f44336; /* Red for logout */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.2s ease;
+}
+
+.dashboard-header button:hover {
+  background-color: #d32f2f;
+}
+
+.dashboard-section {
+  margin-top: 30px;
+}
+
+.dashboard-section h2 {
+  margin-bottom: 15px;
+  color: #444;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+}
+
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  font-size: 0.9em;
+}
+
+.dashboard-table th,
+.dashboard-table td {
+  border: 1px solid #ddd;
+  padding: 10px 12px; /* More padding */
+  text-align: left;
+  vertical-align: middle;
+}
+
+.dashboard-table th {
+  background-color: #f8f8f8; /* Lighter header */
+  font-weight: 600; /* Slightly bolder */
+  color: #555;
+}
+
+.dashboard-table tbody tr:nth-child(even) {
+  background-color: #fdfdfd; /* Very subtle striping */
+}
+
+.dashboard-table tbody tr:hover {
+  background-color: #f1f1f1; /* Hover effect */
+}
+
+.loading-message,
+.permission-message {
+  text-align: center;
+  padding: 20px;
+  color: #777;
+  font-style: italic;
+}
+
+/* Add spacing below tables if needed */
+.dashboard-table + .dashboard-section {
+  margin-top: 40px;
+}
+
+/* Add horizontal rule styling if default isn't enough */
+hr {
+  border: none;
+  border-top: 1px solid #eee;
+  margin: 25px 0;
+}

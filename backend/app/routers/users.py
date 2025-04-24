@@ -37,6 +37,7 @@ def create_user(
 
     hashed_password = hash_password(user.password)
     db_user = User(
+        name=user.name,
         email=user.email,
         password=hashed_password,
         tenant_id=user.tenant_id,

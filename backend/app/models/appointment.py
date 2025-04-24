@@ -6,6 +6,7 @@ import datetime
 import enum
 from sqlalchemy import Enum as SQLAlchemyEnum
 from app.schemas.enums import AppointmentStatus
+from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM 
 
     
 class Appointment(Base):
@@ -17,6 +18,17 @@ class Appointment(Base):
     appointment_time = Column(DateTime, nullable=False)
     service_id = Column(Integer, ForeignKey("services.id"))
     tenant_id = Column(Integer, ForeignKey("tenants.id"))
-    status = Column(SQLAlchemyEnum(AppointmentStatus, values_callable=lambda x: [e.value for e in x]), default=AppointmentStatus.PENDING.value)
+    status = Column(
+        PG_ENUM(
+            AppointmentStatus,
+            name='appointmentstatus',  # The exact name of the type in PostgreSQL
+            create_type=False,        # We already created/altered it
+            values_callable=lambda obj: [e.value for e in obj] # Optional: Helps Alembic sometimes
+        ),
+        nullable=False,
+        default=AppointmentStatus.PENDING, # Use Enum member for Python default
+        # Use the string VALUE for server default, matching DB enum values
+        server_default=AppointmentStatus.PENDING.value
+    )
     tenant = relationship("Tenant", back_populates="appointments")
     service = relationship("Service", back_populates="appointments")

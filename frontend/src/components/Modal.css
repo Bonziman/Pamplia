@@ -1,0 +1,125 @@
+/* src/components/Modal.css */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6); /* Darker overlay */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000; /* Ensure it's on top */
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: 25px 30px; /* More padding */
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  min-width: 350px; /* Minimum width */
+  max-width: 600px; /* Maximum width */
+  position: relative;
+  max-height: 80vh; /* Limit height */
+  overflow-y: auto; /* Allow scrolling if content too long */
+}
+
+.modal-close-button {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 1.8rem; /* Larger close icon */
+  font-weight: bold;
+  color: #888;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+.modal-close-button:hover {
+  color: #333;
+}
+
+.modal-title {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.4em;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+/* Basic form styling within modal */
+.modal-form label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  font-size: 0.9em;
+  color: #555;
+}
+
+.modal-form input,
+.modal-form select,
+.modal-form textarea {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box; /* Include padding in width */
+  font-size: 1em;
+}
+
+.modal-form input:focus,
+.modal-form select:focus,
+.modal-form textarea:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+
+.modal-actions {
+  margin-top: 25px;
+  display: flex;
+  justify-content: flex-end; /* Align buttons to the right */
+  gap: 10px; /* Space between buttons */
+}
+
+.modal-actions button {
+  padding: 10px 20px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.95em;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.modal-button-confirm {
+  background-color: #28a745; /* Green */
+  color: white;
+}
+.modal-button-confirm:hover {
+  background-color: #218838;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+
+.modal-button-delete {
+  background-color: #dc3545; /* Red */
+  color: white;
+}
+.modal-button-delete:hover {
+  background-color: #c82333;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+
+.modal-button-cancel {
+  background-color: #f8f9fa; /* Light grey */
+  color: #333;
+  border: 1px solid #ccc;
+}
+.modal-button-cancel:hover {
+  background-color: #e2e6ea;
+}

@@ -5,20 +5,24 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/authContext";
 
 const ProtectedRoute: React.FC = () => {
-  const { user, isLoading } = useAuth(); // <-- Get isLoading state
+  // Get isAuthenticated and isLoading from context
+  const { isAuthenticated, isLoading } = useAuth();
 
-  // 1. If still loading the initial auth state, wait.
-  //    You can render null, a loading spinner, or a skeleton screen.
+  // 1. Still loading authentication status? Wait.
   if (isLoading) {
-    return <div>Loading authentication...</div>; // Or return null;
+    // Render nothing or a minimal loading indicator
+    return <div>Loading...</div>; // Or return null;
   }
 
-  // 2. If loading is finished and there's no user, redirect to login.
-  if (!user) {
-    return <Navigate to="/login" replace />; // Added 'replace' for better history management
+  // 2. Loading finished. Is the user authenticated?
+  if (!isAuthenticated) {
+    // If not authenticated, redirect to login
+    console.log("[ProtectedRoute] User not authenticated. Redirecting to /login.");
+    return <Navigate to="/login" replace />;
   }
 
-  // 3. If loading is finished and there is a user, allow access.
+  // 3. Loading finished and user is authenticated. Render the nested route.
+  console.log("[ProtectedRoute] User authenticated. Rendering outlet.");
   return <Outlet />;
 };
 
