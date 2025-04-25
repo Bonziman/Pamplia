@@ -1,0 +1,198 @@
+/* src/pages/BookingPage.css */
+.booking-page-container {
+  padding: 20px 15px 100px 15px; /* Add bottom padding to avoid overlap with sticky footer */
+  max-width: 600px;
+  margin: 20px auto;
+  font-family: sans-serif;
+}
+
+.booking-section {
+  margin-bottom: 30px;
+}
+
+.booking-section h2 {
+  font-size: 1.2em;
+  color: #333;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 5px;
+}
+
+/* Form Inputs */
+.booking-form-group {
+  margin-bottom: 15px;
+}
+
+.booking-form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  font-size: 0.9em;
+  color: #555;
+}
+
+.booking-form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 1em;
+}
+.booking-form-group input:focus {
+   border-color: #845ef7; /* Accent color */
+   outline: none;
+   box-shadow: 0 0 0 2px rgba(132, 94, 247, 0.25);
+}
+
+/* Calendar Styling (Basic Overrides for react-calendar) */
+.react-calendar {
+  width: 100% !important; /* Ensure full width */
+  border: 1px solid #eee !important;
+  border-radius: 8px;
+  font-family: sans-serif;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.react-calendar__tile--active {
+  background: #845ef7 !important; /* Accent color */
+  color: white !important;
+}
+.react-calendar__tile--now {
+    background: #e6e6fa !important; /* Light purple for today */
+}
+/* Add more specific overrides as needed */
+
+
+/* Time Slots */
+.time-slots-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* Responsive grid */
+  gap: 10px;
+}
+
+.time-slot-button {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  cursor: pointer;
+  text-align: center;
+  font-size: 0.95em;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.time-slot-button:hover {
+  background-color: #f0f0f0;
+  border-color: #bbb;
+}
+
+.time-slot-button.selected {
+  background-color: #845ef7; /* Accent color */
+  color: white;
+  border-color: #845ef7;
+  font-weight: bold;
+}
+
+.time-slot-button:disabled {
+    background-color: #eee;
+    cursor: not-allowed;
+    color: #aaa;
+    border-color: #ddd;
+}
+
+/* Service Selection */
+.service-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.service-tag {
+  padding: 10px 15px;
+  border: 1px solid #ccc;
+  border-radius: 20px; /* Pill shape */
+  background-color: #f8f9fa; /* Dimmed background */
+  color: #666; /* Dimmed text */
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.service-tag:hover {
+  border-color: #bbb;
+  background-color: #eee;
+}
+
+.service-tag.selected {
+  background-color: #845ef7; /* Accent color */
+  color: white;
+  border-color: #845ef7;
+  font-weight: bold;
+}
+
+.service-tag .details {
+  display: block;
+  font-size: 0.8em;
+  margin-top: 3px;
+  opacity: 0.8;
+}
+
+/* Sticky Footer Button */
+.booking-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: #fff;
+  padding: 15px;
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  box-sizing: border-box;
+}
+
+.booking-confirm-button {
+  width: 100%;
+  padding: 15px;
+  font-size: 1.1em;
+  font-weight: bold;
+  color: white;
+  background-color: #845ef7; /* Accent color */
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.booking-confirm-button:hover:not(:disabled) {
+  background-color: #7048e8;
+}
+
+.booking-confirm-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Messages */
+.booking-message {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    text-align: center;
+}
+.booking-message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+.booking-message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+/* Desktop Adjustments (Example) */
+@media (min-width: 768px) {
+  .booking-page-container {
+      padding: 30px 30px 100px 30px;
+  }
+  /* Potentially make layout two-column */
+}

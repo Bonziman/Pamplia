@@ -1,8 +1,9 @@
 from pydantic import BaseModel, EmailStr, validator, Field
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 from .enums import AppointmentStatus
+from .service import ServiceOut
 
 class AppointmentBase(BaseModel):
     client_name: str
@@ -20,11 +21,11 @@ class AppointmentBase(BaseModel):
 
 
 class AppointmentCreate(AppointmentBase):
-    service_id: int
+    service_ids: List[int]
 
 class AppointmentOut(AppointmentBase):
     id: int
-    service_id: int
+    services: List[ServiceOut]
 
     class Config:
         orm_mode = True

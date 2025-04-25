@@ -6,7 +6,8 @@ import datetime
 import enum
 from sqlalchemy import Enum as SQLAlchemyEnum
 from app.schemas.enums import AppointmentStatus
-from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM 
+from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
+from .association_tables import appointment_services_table
 
     
 class Appointment(Base):
@@ -16,8 +17,7 @@ class Appointment(Base):
     client_name = Column(String, nullable=False)
     client_email = Column(String, nullable=False)
     appointment_time = Column(DateTime, nullable=False)
-    service_id = Column(Integer, ForeignKey("services.id"))
-    tenant_id = Column(Integer, ForeignKey("tenants.id"))
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
     status = Column(
         PG_ENUM(
             AppointmentStatus,
@@ -31,4 +31,8 @@ class Appointment(Base):
         server_default=AppointmentStatus.PENDING.value
     )
     tenant = relationship("Tenant", back_populates="appointments")
-    service = relationship("Service", back_populates="appointments")
+    services = relationship(
+        "Service",
+        secondary=appointment_services_table, # Use the association table object
+        back_populates="appointments"
+    )

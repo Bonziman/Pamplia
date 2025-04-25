@@ -2,6 +2,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
+from .association_tables import appointment_services_table
 
 class Service(Base):
     __tablename__ = "services"
@@ -13,4 +14,8 @@ class Service(Base):
     tenant_id = Column(Integer, ForeignKey("tenants.id"))
 
     tenant = relationship("Tenant", back_populates="services")
-    appointments = relationship("Appointment", back_populates="service")  # Added this line for back_populates
+    appointments = relationship(
+         "Appointment",
+         secondary=appointment_services_table,
+         back_populates="services"
+     )

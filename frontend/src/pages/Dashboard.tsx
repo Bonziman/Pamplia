@@ -338,7 +338,7 @@ const Dashboard: React.FC = () => {
                 type="datetime-local"
                 id="appointment_time"
                 name="appointment_time"
-                // Value is now set by handleOpenUpdateModal using formatForDateTimeLocalInput
+                // Use the new formatter for the input field
                 value={updateFormData.appointment_time || ''}
                 onChange={handleUpdateFormChange}
                 required
