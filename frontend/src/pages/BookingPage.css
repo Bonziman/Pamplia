@@ -91,7 +91,7 @@
   color: white;
   border-color: #845ef7;
   font-weight: bold;
-}
+} */
 
 .time-slot-button:disabled {
     background-color: #eee;
@@ -117,17 +117,17 @@
   transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
 
-.service-tag:hover {
+/*.service-tag:hover {
   border-color: #bbb;
   background-color: #eee;
-}
+}*/
 
-.service-tag.selected {
+/*.service-tag.selected {
   background-color: #845ef7; /* Accent color */
-  color: white;
+  /*color: white;
   border-color: #845ef7;
   font-weight: bold;
-}
+}*/
 
 .service-tag .details {
   display: block;

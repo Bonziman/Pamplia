@@ -2,15 +2,15 @@
 import axios from "axios"; // <--- Import the main axios object
 import axiosInstance from "./axiosInstance"; // Keep your configured instance
 
-// Define or import the FetchedUser type
-interface FetchedUser {
+// Define the FetchedUser type
+export interface FetchedUser {
     id: number;
     name: string;
     email: string;
     role: string;
     tenant_id: number;
 }
-// import { FetchedUser } from '../types';
+
 
 export const fetchUsers = async (): Promise<FetchedUser[]> => {
   try {

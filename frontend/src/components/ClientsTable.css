@@ -1,0 +1,58 @@
+.clients-view .view-header { 
+    /* Add valid CSS properties here, for example: */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.clients-view .view-controls { display: flex; align-items: center; gap: 15px; }
+.clients-view .checkbox-label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.clients-view .table-container { overflow-x: auto; } 
+.clients-table th { cursor: pointer; user-select: none; } 
+.clients-table th .svg-inline--fa { margin-left: 5px; color: #aaa; } /* Sort icon style */
+.clients-table .deleted-row { background-color: #f8f8f8; color: #999; font-style: italic; }
+.clients-table .deleted-row .tag { background-color: #ccc !important; } /* Dim tags on deleted rows */
+.tag-cell { display: flex; flex-wrap: wrap; gap: 4px; max-width: 200px; } /* Limit tag width*/
+.tag { padding: 2px 6px; font-size: 0.8em; border-radius: 4px; color: white; white-space: nowrap; }
+.tag-more { font-size: 0.8em; color: #555; }
+.status-badge { padding: 3px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold; text-transform: capitalize; }
+.status-confirmed { background-color: #d4edda; color: #155724; } 
+.status-unconfirmed { background-color: #fff3cd; color: #856404; }
+.status-deleted-active { background-color: #f8d7da; color: #721c24; }
+.status-active { background-color: #d1ecf1; color: #0c5460; } 
+.action-menu-container { position: relative; display: inline-block; }
+.action-menu-toggle { background: none; border: none; cursor: pointer; padding: 5px; color: #555; }
+.action-menu-dropdown {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    z-index: 10;
+    min-width: 100px;
+    padding: 5px 0;
+}
+.action-menu-dropdown button, .action-menu-dropdown span {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9em;
+    white-space: nowrap;
+}
+.action-menu-dropdown button .svg-inline--fa { margin-right: 8px; }
+.action-menu-dropdown button:hover { background-color: #f5f5f5; }
+.action-menu-dropdown .action-delete { color: #dc3545; }
+.action-menu-dropdown .action-delete:hover { background-color: #f8d7da; }
+.action-menu-dropdown .action-deleted { padding: 8px 12px; font-size: 0.9em; color: #6c757d; font-style: italic; }
+
+.pagination-controls { display: flex; justify-content: center; align-items: center; gap: 5px; margin-top: 20px; }
+.pagination-controls button { padding: 5px 10px; border: 1px solid #ccc; background-color: #fff; cursor: pointer; border-radius: 4px; }
+.pagination-controls button:disabled { cursor: not-allowed; opacity: 0.5; }
+.pagination-controls button.active { background-color: #007bff; color: white; border-color: #007bff; }
+.pagination-controls span { padding: 0 5px; color: #aaa; }
+

@@ -12,7 +12,7 @@ class UserCreate(UserBase):
     tenant_id: int  # The tenant_id will be passed to associate the user.
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UserOut(UserBase):
     id: int
@@ -21,7 +21,7 @@ class UserOut(UserBase):
     name: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         
     # Override the default `__init__` to exclude password in the response
     def __init__(self, **kwargs):
@@ -34,4 +34,4 @@ class UserUpdate(BaseModel):
     role: Optional[str] = None  # Or you can use an Enum for roles if needed
 
     class Config:
-        orm_mode = True
+        from_attributes = True

@@ -6,7 +6,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from app.database import Base  # Assuming your Base is defined in database.py
-from app.models import appointment, service, tenant, user  # Import your models here
+from app.models import appointment, service, tenant, user, communications_log  # Import your models here
 
 
 
@@ -30,7 +30,7 @@ target_metadata = Base.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-
+print("Alembic sees tables:", target_metadata.tables.keys())
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 

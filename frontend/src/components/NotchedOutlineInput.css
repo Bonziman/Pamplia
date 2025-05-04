@@ -1,0 +1,174 @@
+/* --- Container and Variables --- */
+.notched-outline-input-container {
+  position: relative;
+  margin-bottom: 1rem;
+  font-family: inherit;
+  /* --- User's Preferred Values --- */
+  --input-padding-y: 0.625rem;
+  --input-padding-x: 0.75rem;
+  --label-scale: 0.75;
+  --label-offset-y: -1.7rem; /* User value */
+  --notch-padding-x: 0.2em;   /* Adjusted from user's -0.2em which might be too tight, fine-tune if needed */
+  --border-color: #ced4da;
+  --border-color-focus: #86b7fe;
+  --label-color: #6c757d;
+  --label-color-focus: #0d6efd;
+  --border-width: 1px;
+  --border-radius: 0.375rem;
+  /* --- New Variable for Icon Padding --- */
+  --icon-size: 1em; /* Approximate size of the icon */
+  --icon-padding: calc(var(--input-padding-x) * 2 + var(--icon-size)); /* Space needed for icon */
+}
+
+/* --- Input Element --- */
+.input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: calc(2 * var(--input-padding-y) + 1.5em);
+  padding: var(--input-padding-y) var(--input-padding-x);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #212529;
+  background-color: transparent;
+  background-clip: padding-box;
+  border: none;
+  appearance: none;
+  border-radius: var(--border-radius);
+  outline: none;
+  position: relative;
+  z-index: 1;
+}
+/* Add padding-right when the toggle icon is present */
+.notched-outline-input-container.has-toggle-icon .input {
+  padding-right: var(--icon-padding);
+}
+
+
+/* --- Label Styling and Animation --- */
+.label {
+  position: absolute;
+  top: var(--input-padding-y);
+  left: var(--input-padding-x);
+  transform-origin: top left;
+  transition: transform 0.2s ease-out, color 0.2s ease-out;
+  pointer-events: none;
+  transform: scale(1) translateY(0);
+  color: var(--label-color);
+  z-index: 3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - var(--input-padding-x) - var(--icon-padding)); /* Adjust max-width if icon present */
+  line-height: 1.5;
+}
+/* Don't adjust max width if no icon */
+.notched-outline-input-container:not(.has-toggle-icon) .label {
+    max-width: calc(100% - (2 * var(--input-padding-x)));
+}
+
+
+.notched-outline-input-container.is-floated .label {
+  transform: scale(var(--label-scale)) translateY(var(--label-offset-y));
+}
+
+.notched-outline-input-container.is-focused .label {
+  color: var(--label-color-focus);
+}
+
+/* --- Fieldset for Border and Notch --- */
+.fieldset {
+  position: absolute;
+  inset: -0.5em 0 0 0;
+  margin: 0;
+  padding: 0 var(--input-padding-x);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  pointer-events: none;
+  overflow: hidden;
+  transition: border-color 0.2s ease-out;
+  z-index: 2;
+}
+
+.notched-outline-input-container.is-focused .fieldset {
+  border-color: var(--border-color-focus);
+}
+
+/* --- Legend for the Notch --- */
+.legend {
+  float: unset;
+  width: auto;
+  display: block;
+  padding: 0;
+  margin: 0;
+  font-size: calc(1em * var(--label-scale));
+  line-height: 1.1;
+  text-align: left;
+  transition: max-width 0.15s cubic-bezier(0.0, 0, 0.2, 1) 50ms;
+  white-space: nowrap;
+  visibility: hidden;
+  max-width: 0.01px;
+}
+
+.legend span {
+  display: inline-block;
+  padding-left: var(--notch-padding-x);
+  padding-right: var(--notch-padding-x);
+  opacity: 0;
+  visibility: hidden;
+}
+
+.notched-outline-input-container.is-floated .legend {
+  max-width: 1000px;
+}
+
+
+/* --- Password Toggle Icon --- */
+.password-toggle-icon {
+  position: absolute;
+  top: 50%;
+  /* Position icon relative to the right padding area */
+  right: var(--input-padding-x);
+  transform: translateY(-50%);
+  /* Reset button styles */
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: #6c757d; /* Match muted label color */
+  z-index: 4; /* Above everything else inside */
+  line-height: 1; /* Prevent extra height */
+  font-size: var(--icon-size);
+}
+.password-toggle-icon:hover,
+.password-toggle-icon:focus {
+  color: #495057; /* Darker on hover/focus */
+  outline: none; /* Remove focus outline if desired */
+}
+
+
+/* --- Disabled/Readonly States --- */
+.input:disabled,
+.input[readonly] {
+  background-color: #e9ecef;
+  opacity: 1;
+}
+.notched-outline-input-container.is-disabled {
+    opacity: 0.7;
+}
+.notched-outline-input-container.is-disabled .label,
+.notched-outline-input-container.is-readonly .label {
+     color: #6c757d;
+}
+.notched-outline-input-container.is-disabled .fieldset,
+.notched-outline-input-container.is-readonly .fieldset {
+     background-color: #e9ecef;
+     border-color: #ced4da;
+}
+.notched-outline-input-container.is-disabled .password-toggle-icon,
+.notched-outline-input-container.is-readonly .password-toggle-icon {
+    cursor: default;
+    opacity: 0.5;
+}

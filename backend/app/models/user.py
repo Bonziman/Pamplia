@@ -14,8 +14,8 @@ class User(Base):
     password = Column(String, nullable=False)
     tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
     role = Column(String, default="admin")  # default role is admin for first user
-
     tenant = relationship("Tenant", back_populates="users")
+    communication_logs = relationship("CommunicationsLog", back_populates="user")
     
     @validates('email')
     def validate_email(self, key, email):

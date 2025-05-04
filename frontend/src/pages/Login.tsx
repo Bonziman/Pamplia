@@ -1,136 +1,178 @@
 // src/pages/Login.tsx
-import React, { useState, useEffect } from "react"; // Add useEffect
+import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios"; // Keep using axios directly for login call if preferred
+import axios from "axios";
 import { useAuth } from "../auth/authContext";
 
+// Import the custom input component
+import NotchedOutlineInput from '../components/NotchedOutlineInput';
+
+// Keep React Bootstrap components for Button, Spinner if desired (Alert removed)
+import Button from 'react-bootstrap/Button';
+import Spinner from 'react-bootstrap/Spinner';
+// import Alert from 'react-bootstrap/Alert'; // No longer needed
+
+
 const Login: React.FC = () => {
-  // Get auth status and loading state
   const { isAuthenticated, isLoading, checkAuthStatus } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false); // Prevent double submit
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- Redirect if already logged in ---
-  useEffect(() => {
-    // Only redirect if auth is not loading and user is authenticated
-    if (!isLoading && isAuthenticated) {
-      console.log("[Login Page] User already authenticated. Redirecting to dashboard...");
-      // Optional: Show a brief message
-      // alert("You are already logged in. Redirecting...");
-      navigate("/dashboard", { replace: true }); // Replace history entry
-    }
-  }, [isLoading, isAuthenticated, navigate]);
-
-
-  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError("");
-    setIsSubmitting(true); // Disable button
-
-    try {
-      const currentHostname = window.location.hostname;
-      const apiUrl = `http://${currentHostname}:8000/auth/login`;
-      console.log("[Login Page] Attempting login to:", apiUrl);
-
-      // Make API call - cookies are handled automatically by browser + backend response
-      const response = await axios.post(apiUrl, {
-        email,
-        password,
-      }, { withCredentials: true }); // Ensure credentials are sent if using axios directly
-
-      // Check response data for redirect signal
-      const redirectToSubdomain = response.data.redirect_to_subdomain;
-
-      // IMPORTANT: Re-check auth status AFTER successful login API call
-      // This allows AuthProvider to fetch profile using the NEW cookie
-      await checkAuthStatus(); // Wait for profile fetch to complete
-
-      // Now perform navigation/redirect based on API response
-      if (redirectToSubdomain) {
-        console.log(`[Login Page] Redirecting to subdomain: ${redirectToSubdomain}`);
-
-        const protocol = window.location.protocol; // "http:" or "https:"
-        const port = window.location.port; // "3000" (frontend port)
-        const portString = port ? `:${port}` : "";
-        // --- Define the known base domain for development ---
-        const devBaseDomain = "localtest.me"; // Use the correct base domain
-
-        // Construct the new URL using the known base domain
-        const newUrl = `${protocol}//${redirectToSubdomain}.${devBaseDomain}${portString}/dashboard`;
-
-        console.log("[Login Page] Redirecting browser to:", newUrl);
-        window.location.href = newUrl; // Perform full browser redirect
-
-      } else {
-        // Login successful on correct subdomain
-        console.log("[Login Page] Login successful on correct subdomain. Navigating to dashboard.");
-        navigate("/dashboard"); // Client-side navigation
-      }
-
-    } catch (err: any) {
-      console.error("[Login Page] Login failed:", err.response || err);
-      if (err.response) {
-        const status = err.response.status;
-        const detail = err.response.data?.detail || "An unexpected error occurred.";
-        if (status === 401) {
-          setError("Login failed. Please check your credentials.");
-        } else if (status === 500) {
-          setError("Login failed due to a server configuration issue.");
-        } else {
-          setError(`Login failed: ${detail}`);
+  // ... (useEffect and handleLogin logic remain the same) ...
+    useEffect(() => {
+        if (!isLoading && isAuthenticated) {
+            console.log("[Login Page] User already authenticated. Redirecting...");
+            navigate("/dashboard", { replace: true });
         }
-      } else {
-        setError("Login failed. Could not connect to server.");
-      }
-      setIsSubmitting(false); // Re-enable button on error
-    }
-    // No finally block for setIsSubmitting=false, because success causes navigation/redirect
-  };
+    }, [isLoading, isAuthenticated, navigate]);
 
-  // Render loading or null while checking auth state initially
+    const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setError("");
+        setIsSubmitting(true);
+
+        try {
+            const currentHostname = window.location.hostname;
+            const protocol = window.location.protocol;
+            const apiUrl = `${protocol}//${currentHostname}:8000/auth/login`;
+            console.log("[Login Page] Attempting login to:", apiUrl);
+
+            const response = await axios.post(apiUrl, { email, password }, { withCredentials: true });
+            const redirectToSubdomain = response.data.redirect_to_subdomain;
+            await checkAuthStatus();
+
+            if (redirectToSubdomain) {
+                console.log(`[Login Page] Redirecting to subdomain: ${redirectToSubdomain}`);
+                const currentProtocol = window.location.protocol;
+                const port = window.location.port;
+                const portString = port ? `:${port}` : "";
+                const devBaseDomain = "localtest.me";
+                const newUrl = `${currentProtocol}//${redirectToSubdomain}.${devBaseDomain}${portString}/dashboard`;
+                console.log("[Login Page] Redirecting browser to:", newUrl);
+                window.location.href = newUrl;
+            } else {
+                console.log("[Login Page] Login successful. Navigating to dashboard.");
+                navigate("/dashboard");
+            }
+        } catch (err: any) {
+            console.error("[Login Page] Login failed:", err.response || err);
+            if (err.response) {
+                const status = err.response.status;
+                const detail = err.response.data?.detail || "An unexpected error occurred.";
+                setError(status === 401 ? "Login failed. Check credentials." : `Login failed: ${detail}`);
+            } else if (err.request) {
+                setError("Login failed. No response from server.");
+            } else {
+                setError("Login failed. Setup error.");
+            }
+            setIsSubmitting(false);
+        }
+    };
+
+
   if (isLoading) {
-    return <div>Loading...</div>;
-  }
-  // If already authenticated, the useEffect above will handle the redirect.
-  // We might render null briefly before the redirect happens.
-  if (isAuthenticated) {
-      return null; // Or a minimal "Redirecting..." message
+    return (
+      <div className="d-flex justify-content-center align-items-center vh-100">
+        <Spinner animation="border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </Spinner>
+      </div>
+    );
   }
 
-  // Render login form only if not loading and not authenticated
+  if (isAuthenticated) { return null; }
+
   return (
-    <div>
-      <h2>Login</h2>
-      <form onSubmit={handleLogin}>
-        <div>
-          <label>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={isSubmitting}
-          />
+    
+    <section className="vh-100">
+      
+      <div className="container-fluid">
+        <div className="row">
+          <div className="col-sm-6 text-black">
+             <div className="px-5 ms-xl-4">
+                <i className="fas fa-crow fa-2x me-3 pt-5 mt-xl-4" style={{ color: '#709085' }}></i>
+                <span className="h1 fw-bold mb-0">Logo</span>
+             </div>
+
+            <div className="d-flex align-items-center h-custom-2 px-5 ms-xl-4 mt-5 pt-5 pt-xl-0 mt-xl-n5">
+              <form style={{ width: '23rem' }} onSubmit={handleLogin}>
+                <h3 className="fw-normal mb-3 pb-3" style={{ letterSpacing: '1px' }}>Log in</h3>
+
+                {/* --- Error Display: Simple Red Text --- */}
+                {error && (
+                  <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.875em' }}>
+                    {error}
+                  </div>
+                )}
+
+                {/* Email Input */}
+                <NotchedOutlineInput
+                  id="loginEmail"
+                  label="Email address"
+                  type="email"
+                  name="email"
+                  value={email}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                  required
+                  disabled={isSubmitting}
+                  autoComplete="email" // Good practice for login
+                  autoFocus // Optional: Focus email field on load
+                />
+
+                {/* Password Input - Type set to password triggers toggle */}
+                <NotchedOutlineInput
+                  id="loginPassword"
+                  label="Password"
+                  type="password" // This enables the toggle feature
+                  name="password"
+                  value={password}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                  required
+                  disabled={isSubmitting}
+                  autoComplete="current-password" // Good practice
+                />
+
+                {/* Submit Button */}
+                <div className="pt-1 mb-4 d-grid">
+                  <Button
+                    variant="info"
+                    size="lg"
+                    type="submit"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                        Logging in...
+                      </>
+                    ) : (
+                      "Login"
+                    )}
+                  </Button>
+                </div>
+
+                {/* Static Links */}
+                <p className="small mb-5 pb-lg-2"><a className="text-muted" href="#!">Forgot password?</a></p>
+                
+
+              </form>
+            </div>
+          </div>
+          {/* Image column */}
+          <div className="col-sm-6 px-0 d-none d-sm-block">
+            <img
+              src="https://mir-s3-cdn-cf.behance.net/project_modules/source/52ba5a172513857.6480ea0699e71.jpg"
+              alt="Login visual"
+              className="w-100 vh-100"
+              style={{ objectFit: 'cover', objectPosition: 'left' }}
+            />
+          </div>
         </div>
-        <div>
-          <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={isSubmitting}
-          />
-        </div>
-        {error && <div style={{ color: "red", marginTop: '10px' }}>{error}</div>}
-        <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Logging in..." : "Login"}
-        </button>
-      </form>
-    </div>
+      </div>
+    </section>
   );
 };
 

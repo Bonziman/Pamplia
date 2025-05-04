@@ -1,0 +1,66 @@
+/* src/pages/DashboardOverviewPage.css */
+
+.dashboard-overview-page {
+  /* Uses view-section styles */
+}
+
+.dashboard-overview-header {
+  margin-bottom: 1.5rem;
+  /* Add specific header styles if needed */
+}
+
+.dashboard-section {
+  margin-bottom: 2.5rem;
+}
+
+.dashboard-section h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--input-text-color);
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--input-border-color);
+}
+
+.widgets-container {
+  display: grid;
+  /* Adjust columns based on screen size */
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* Responsive grid */
+  gap: 1.5rem; /* Gap between widgets */
+}
+
+.period-selector-section {
+  margin-top: -1rem; /* Pull selector closer to section below */
+  margin-bottom: 2rem;
+}
+
+.period-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 350px; /* Limit width */
+}
+
+.period-selector label {
+  font-weight: 500;
+  color: var(--label-color);
+  white-space: nowrap;
+}
+
+.period-selector .form-select {
+  /* Inherits from FormStyles.css */
+  flex-grow: 1; /* Allow select to grow */
+   font-size: 0.9rem; /* Slightly smaller select */
+   padding: 0.5rem 2rem 0.5rem 0.75rem; /* Adjust padding */
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+  .widgets-container {
+       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Smaller min width */
+      gap: 1rem;
+  }
+   .period-selector {
+       max-width: 100%;
+  }
+}

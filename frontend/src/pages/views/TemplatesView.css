@@ -1,0 +1,121 @@
+/* src/pages/views/TemplatesView.css */
+
+.templates-view .view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.templates-view .view-header h1 {
+  margin: 0;
+}
+
+/* Placeholders Section */
+.placeholders-info-section {
+  background-color: var(--background-secondary, #f8f9fa);
+  border: 1px solid var(--border-color-light, #e9ecef);
+  border-radius: var(--border-radius, 0.375rem);
+  padding: 1rem 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.placeholders-info-section h3 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+  color: var(--text-secondary, #6c757d);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.placeholders-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.placeholder-tag {
+  background-color: var(--background-paper, #fff);
+  border: 1px solid var(--border-color, #ccc);
+  padding: 0.25rem 0.6rem;
+  border-radius: 1rem; /* Pill shape */
+  font-size: 0.8rem;
+  font-family: monospace;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  color: var(--primary-dark, #0056b3);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.placeholder-tag:hover {
+  background-color: var(--primary-light, #e0eaff);
+  border-color: var(--primary-color, #0d6efd);
+}
+.placeholder-tag svg {
+  opacity: 0.6;
+}
+
+
+/* Templates Table */
+.templates-table th {
+  text-align: left;
+}
+
+.templates-table td {
+  vertical-align: middle;
+}
+
+.templates-table .inactive-row td {
+   opacity: 0.6;
+   font-style: italic;
+}
+
+.toggle-button {
+  background: none;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  border-radius: var(--border-radius);
+  font-size: 0.9em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: background-color 0.2s ease;
+}
+
+.toggle-button.active {
+  color: #198754; /* Green for active */
+}
+.toggle-button.active:hover {
+  background-color: rgba(25, 135, 84, 0.1);
+}
+
+.toggle-button.inactive {
+  color: var(--text-muted, #6c757d); /* Grey for inactive */
+}
+.toggle-button.inactive:hover {
+   background-color: rgba(108, 117, 125, 0.1);
+}
+
+.toggle-button svg {
+  font-size: 1.3em;
+  margin-bottom: -2px; /* Alignment */
+}
+
+/* Placeholder for modals */
+.modal-placeholder {
+position: fixed;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+background-color: white;
+padding: 2rem;
+border: 1px solid #ccc;
+box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+z-index: 1050; /* Ensure it's above other content */
+}

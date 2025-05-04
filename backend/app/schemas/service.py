@@ -5,13 +5,22 @@ class ServiceBase(BaseModel):
     name: str
     description: Optional[str] = None
     duration_minutes: int
+    price: float
 
 class ServiceCreate(ServiceBase):
-    tenant_id: int
+    pass
+
+class ServiceUpdate(ServiceBase): # Or inherit ServiceBase if needed
+    name: Optional[str] = None
+    description: Optional[str] = None
+    duration_minutes: Optional[int] = None
+    price: Optional[float] = None
 
 class ServiceOut(ServiceBase):
     id: int
     tenant_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+

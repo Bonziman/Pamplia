@@ -1,0 +1,189 @@
+/* src/components/AppointmentCalendar.css */
+/* Final CSS for JS-controlled tooltip positioning & Day Click Create */
+
+/* --- General Container & Font --- */
+.appointment-calendar-container {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  border: 1px solid #e1e4e8;
+  border-radius: 8px;
+  background-color: #fff;
+  margin-bottom: 25px;
+  box-shadow: 0 6px 18px rgba(100, 100, 100, 0.08);
+  position: relative;
+}
+
+/* --- Calendar Header --- */
+.calendar-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 22px;
+  background-color: #f6f8fa;
+  border-bottom: 1px solid #e1e4e8;
+  border-top-left-radius: 8px; /* Match container rounding */
+  border-top-right-radius: 8px;
+}
+.calendar-header h2 { margin: 0; font-size: 1.35em; font-weight: 500; color: #24292e; }
+.nav-button {
+  background-color: #fff; border: 1px solid #d1d5da; border-radius: 6px; padding: 7px 13px;
+  cursor: pointer; font-size: 1.1em; color: #586069; transition: all 0.2s ease; line-height: 1;
+}
+.nav-button:hover { background-color: #f3f4f6; border-color: #b7bfc6; color: #24292e; }
+.nav-button:active { background-color: #e1e4e8; }
+
+/* --- Calendar Grid & Cells --- */
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e1e4e8; border-top: 1px solid #e1e4e8; }
+.weekday {
+  font-weight: 600; text-align: center; padding: 12px 5px; background-color: #f6f8fa; min-height: auto;
+  font-size: 0.8em; color: #586069; text-transform: uppercase; letter-spacing: 0.6px;
+}
+.calendar-day {
+  background-color: #fff;
+  padding: 0; /* Use wrapper for padding */
+  min-height: 130px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.15s ease-in-out;
+  overflow: visible !important; /* Essential for tooltips */
+  cursor: pointer; /* Indicate clickable for create */
+}
+.calendar-day:focus-visible {
+  outline: 2px solid #0366d6; /* Accessibility focus */
+  outline-offset: -1px;
+}
+.calendar-day:hover:not(.empty) {
+  /*background-color: #f0f7ff;  Highlight non-empty days */
+}
+.calendar-day.empty {
+  background-color: #ffffff; /* Or your calendar's main background */
+  background-image: linear-gradient(
+    45deg,
+    #f0f0f0 25%, /* Stripe color - make it very light */
+    transparent 25%,
+    transparent 50%,
+    #f0f0f0 50%,
+    #f0f0f0 75%,
+    transparent 75%,
+    transparent 100%
+  );
+  background-size: 6px 6px; /* Adjust size for desired density */
+  color: #cccccc;             /* Keep text light */
+  cursor: default;
+}
+.calendar-day.empty:hover {
+  background-color: #fcfcfc;
+}
+
+/* Wrapper inside day cell for content and overlay */
+.day-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  padding: 8px;
+  position: relative; /* Anchor for overlay */
+  z-index: 1;
+}
+
+/* --- Day Header & Number --- */
+.day-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+.day-number {
+  font-size: 0.85em; color: #586069; font-weight: 500;
+  line-height: 1; padding: 4px;
+  z-index: 3; /* Above overlay */
+  position: relative;
+}
+.calendar-day.today .day-number {
+  background-color: #0366d6; color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-flex;
+  align-items: center; justify-content: center; font-weight: 600; font-size: 0.8em;
+}
+
+/* --- Appointments Container --- */
+.appointments-container {
+  display: flex; flex-direction: column; gap: 5px;
+  overflow: visible !important; /* Allow tooltips */
+  margin-top: 0; padding: 0;
+  min-height: auto;
+  z-index: 3; /* Above overlay */
+  position: relative;
+  margin-bottom: auto; /* Pushes itself and content above up */
+}
+
+/* --- Individual Appointment Item --- */
+.appointment-item {
+  border-left: 4px solid #d1d5da; background-color: #f6f8fa; border-radius: 5px; padding: 7px 11px;
+  font-size: 0.8em; cursor: pointer; position: relative; overflow: visible;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  line-height: 1.4; z-index: 4; /* Above day number & overlay */
+}
+.appointment-item:hover {
+  background-color: #f0f2f5; box-shadow: 0 3px 8px rgba(100, 100, 100, 0.08);
+  transform: translateY(-1px); z-index: 5;
+}
+.appointment-item.status-pending { border-left-color: #dbab0a; background-color: #fffbdd; }
+.appointment-item.status-confirmed { border-left-color: #2da44e; background-color: #ddf4e4; }
+.appointment-item.status-cancelled { border-left-color: #cf222e; background-color: #ffebe9; }
+.appointment-item.status-done { border-left-color: #6e7781; background-color: #f6f8fa; }
+.appointment-item.minimized { padding: 5px 9px; white-space: nowrap; text-overflow: ellipsis; }
+.appointment-item.minimized .appointment-services { display: none; }
+.appointment-time { font-weight: 600; margin-right: 7px; color: #24292e; }
+.appointment-client { color: #444c56; }
+.appointment-services { list-style: none; padding: 0; margin: 4px 0 0 0; font-size: 0.95em; color: #586069; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.appointment-services li { margin-left: 6px; position: relative; padding-left: 12px; }
+.appointment-services li::before { content: '•'; position: absolute; left: 0; top: 1px; color: #959da5; }
+.appointment-services li.more-services { font-style: italic; color: #959da5; }
+.appointment-services li.more-services::before { content: ''; }
+
+/* --- Add Appointment Overlay --- */
+.add-appointment-overlay {
+  align-self: anchor-center;
+  justify-self: anchor-center;
+  width: 90% !important;
+  height: 90% !important;
+  border-radius: 8px !important; /* Match container rounding */
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background-color: rgba(225, 239, 255, 0.8); /* Slightly different blue */
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+  pointer-events: none; /* Allows day click */
+  z-index: 2; /* Below day num & appointments */
+  border-radius: inherit; /* If parent day cell has rounding */
+}
+.calendar-day:hover:not(.empty) .add-appointment-overlay {
+  opacity: 1;
+}
+.add-appointment-button {
+  font-size: 3.5em; font-weight: 200; color: #0366d6;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* === SHARED TOOLTIP STYLES (for JS positioning) === */
+.shared-appointment-tooltip {
+  background-color: #2f363d; color: #c9d1d9; padding: 14px 18px; border-radius: 7px;
+  font-size: 0.9em; z-index: 1000; box-shadow: 0 8px 24px rgba(100, 100, 100, 0.25);
+  text-align: left; white-space: normal; pointer-events: none; line-height: 1.6;
+  width: max-content; max-width: 340px;
+  transition: opacity 0.15s ease-out;
+  /* Positioning styles are applied inline via JS */
+}
+.shared-appointment-tooltip strong { color: #8b949e; font-weight: 500; margin-right: 6px; display: inline-block; min-width: 55px; }
+.shared-appointment-tooltip ul { list-style: none; padding-left: 18px; margin: 8px 0 4px 0; }
+.shared-appointment-tooltip li { margin-bottom: 5px; position: relative; color: #c9d1d9; }
+.shared-appointment-tooltip li::before { content: '-'; position: absolute; left: -14px; top: 1px; color: #8b949e; }
+.shared-appointment-tooltip .tooltip-status {
+  font-weight: 600; text-transform: capitalize; padding: 3px 7px; border-radius: 5px;
+  font-size: 0.9em; display: inline-block; margin-left: 5px; color: #fff;
+}
+.shared-appointment-tooltip .tooltip-status.status-pending { background-color: #dbab0a; }
+.shared-appointment-tooltip .tooltip-status.status-confirmed { background-color: #2da44e; }
+.shared-appointment-tooltip .tooltip-status.status-cancelled { background-color: #cf222e; }
+.shared-appointment-tooltip .tooltip-status.status-done { background-color: #6e7781; }
+.shared-appointment-tooltip .tooltip-status.status-pending::before { content: 'Pending'; }
+.shared-appointment-tooltip .tooltip-status.status-confirmed::before { content: 'Confirmed'; }
+.shared-appointment-tooltip .tooltip-status.status-cancelled::before { content: 'Cancelled'; }
+.shared-appointment-tooltip .tooltip-status.status-done::before { content: 'Done'; }

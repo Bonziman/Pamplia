@@ -1,0 +1,43 @@
+/* src/layouts/DashboardLayout.css */
+
+.dashboard-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden; /* Prevent layout causing scrollbars */
+}
+
+/* Sidebar takes its own width */
+
+.main-content {
+  flex-grow: 1; /* Takes remaining width */
+  height: 100vh; /* Full height */
+  overflow-y: auto; /* Allow content to scroll */
+  padding-top: 60px; /* Height of the header */
+  padding-left: 240px; /* Initial expanded width of sidebar */
+  padding-right: 20px; /* Some spacing */
+  padding-bottom: 20px;
+  background-color: #f4f7fe; /* Light background for content area */
+  transition: padding-left 0.3s ease;
+  box-sizing: border-box;
+}
+
+.dashboard-layout.sidebar-collapsed .main-content {
+  padding-left: 75px; /* Collapsed width of sidebar */
+}
+
+/* Ensure Header has fixed position and z-index higher than sidebar */
+/* Add styles for Header if not already defined */
+/* Example: */
+/* .app-header { */
+/*   position: fixed; */
+/*   top: 0; */
+/*   left: 0; */
+/*   right: 0; */
+/*   height: 60px; */
+/*   z-index: 1000; */
+/*   background-color: #fff; */
+/*   box-shadow: 0 2px 4px rgba(0,0,0,0.1); */
+/*   display: flex; */
+/*   align-items: center; */
+/*   padding: 0 20px; */
+/* } */

@@ -1,0 +1,228 @@
+/* src/pages/TenantSettingsPage.css */
+
+.tenant-settings-page {
+  /* Uses view-section styles from Dashboard.css */
+}
+
+.tenant-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color, #e0e0e0); /* Use CSS variables */
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  gap: 1rem; /* Add gap between items */
+}
+
+.header-logo-name {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.tenant-logo-preview {
+  width: auto; /* Adjust size */
+  height: 60px;
+  object-fit: contain; /* Use contain to avoid distortion */
+  border-radius: 4px; /* Slightly rounded corners */
+  /* background-color: var(--background-secondary, #f8f9fa);  Light background for logos */
+  /* border: 1px solid var(--border-color, #e0e0e0);*/
+}
+
+.header-text h1 {
+  margin: 0;
+  font-size: 1.8rem; /* Adjust size */
+  color: var(--text-primary, #333);
+}
+.header-text .header-subtext {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #777);
+  font-weight: normal;
+}
+
+
+.header-slogan {
+  margin: 0.2rem 0 0 0;
+  font-style: italic;
+  color: var(--text-secondary, #666);
+  font-size: 0.95rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Settings Layout */
+.settings-content-layout {
+  display: flex;
+  gap: 2rem; /* Space between nav and form */
+  margin-top: 1.5rem;
+}
+
+/* Settings Navigation (Left Tabs) */
+.settings-nav {
+  flex: 0 0 200px; /* Fixed width for the nav */
+  border-right: 1px solid var(--border-color, #e0e0e0);
+  padding-right: 2rem;
+  min-width: 220px;
+}
+
+.settings-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.settings-nav li {
+  padding: 0.8rem 1rem;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  color: var(--text-secondary, #555);
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-weight: 500;
+  width: auto;
+}
+
+.settings-nav li:hover {
+  background-color: var(--background-hover, #f0f0f0);
+  color: var(--text-primary, #333);
+  width: auto;
+}
+
+.settings-nav li.active {
+  background-color: var(--primary-light, #e0eaff); /* Example active color */
+  color: var(--primary-dark, #0056b3); /* Example active text color */
+  font-weight: 600;
+  width: auto;
+}
+
+.settings-nav li svg { /* Style FontAwesome icons */
+  width: 18px;
+  height: 18px;
+  opacity: 0.8;
+}
+.settings-nav li.active svg {
+   opacity: 1;
+}
+
+
+/* Settings Form Area (Right Content) */
+.settings-form-area {
+  flex: 1; /* Take remaining space */
+  min-width: 0; /* Prevent flexbox overflow issues */
+}
+
+/* Form Section Styling */
+.form-section {
+  background-color: var(--background-paper, #fff); /* Optional: card-like background */
+  padding: 1.5rem;
+  border-radius: 6px;
+  /* box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); */ /* Optional: subtle shadow */
+  margin-bottom: 1.5rem; /* Space between sections if multiple are shown (not needed with tabs) */
+}
+
+.form-section-title {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: 1.2rem;
+  color: var(--text-primary, #333);
+  border-bottom: 1px solid var(--border-color-light, #eee);
+  padding-bottom: 0.5rem;
+}
+
+/* Use FormStyles.css for , input, label etc. */
+/* Add specific styles if needed */
+.form-grid-col-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+input, textarea{
+width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.9em;
+    box-sizing: border-box;
+}
+.input-disabled {
+  background-color: var(--background-disabled, #e9ecef);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.field-hint {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted, #888);
+  margin-top: 0.3rem;
+}
+
+.code-display {
+  font-family: monospace;
+  background-color: var(--background-code, #f1f1f1);
+  border: 1px solid var(--border-color, #ddd);
+  padding: 0.5rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #555);
+}
+
+
+/* Alerts */
+.alert {
+  padding: 0.8rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+.alert-success {
+  color: #155724;
+  background-color: #d4edda;
+  border-color: #c3e6cb;
+}
+.alert-danger {
+  color: #721c24;
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .settings-content-layout {
+      flex-direction: column;
+      gap: 1rem;
+  }
+  .settings-nav {
+      flex: 0 0 auto; /* Let width be auto */
+      border-right: none;
+      border-bottom: 1px solid var(--border-color, #e0e0e0);
+      padding-right: 0;
+      padding-bottom: 1rem;
+      margin-bottom: 1rem;
+      width: 100%;
+  }
+  .settings-nav ul {
+      display: flex;
+      overflow-x: auto; /* Allow horizontal scroll on small screens */
+      padding-bottom: 0.5rem; /* Space for scrollbar */
+  }
+   .settings-nav li {
+      white-space: nowrap; /* Prevent text wrapping */
+      margin-bottom: 0;
+      margin-right: 0.5rem; /* Space between horizontal tabs */
+  }
+
+  .form-grid-col-2 {
+      grid-template-columns: 1fr; /* Stack columns */
+      gap: 1rem;
+  }
+}

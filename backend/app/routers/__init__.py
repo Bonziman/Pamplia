@@ -3,3 +3,7 @@ from .appointments import router as appointments
 from .services import router as services
 from .auth import router as auth
 from .users import router as users
+from .clients import router as clients
+from .tags import router as tags
+from .dashboard import router as dashboard
+from .templates import router as templates

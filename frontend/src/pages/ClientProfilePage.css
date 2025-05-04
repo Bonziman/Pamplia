@@ -1,0 +1,283 @@
+/* src/pages/ClientProfilePage.css */
+
+.client-profile-page {
+  display: flex;
+  gap: 30px; /* Space between columns */
+  /*padding: 20px;  Padding around the content */
+}
+
+/* --- Left Column --- */
+.profile-left-column {
+  flex: 0 0 300px; /* Fixed width for the left column */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.client-info-card,
+.client-details-card {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+}
+
+.client-info-card {
+  align-items: center; /* Center items like avatar, name */
+}
+
+.profile-avatar-large {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  margin-bottom: 15px;
+  object-fit: cover;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.profile-avatar-placeholder {
+    font-size: 4em; /* Larger icon */
+    color: #cbd5e0;
+}
+
+.client-name-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.client-name-header h2 {
+  margin: 0;
+  font-size: 1.4em;
+  color: #1a202c; /* Darker heading */
+}
+
+.confirmation-badge {
+  display: inline-flex; /* Use inline-flex */
+  align-items: center;
+  justify-content: center;
+  padding: 3px 6px;
+  border-radius: 50%; /* Make it circular */
+  font-size: 0.8em;
+  width: 20px; /* Fixed size */
+  height: 20px;
+  cursor: default; /* Indicate it's not clickable */
+}
+.confirmation-badge .svg-inline--fa {
+    font-size: 0.9em; /* Icon size */
+}
+
+.confirmation-badge.confirmed {
+  background-color: #3182ce; /* Blue background */
+  color: white;
+}
+.confirmation-badge.unconfirmed {
+  background-color: #a0aec0; /* Gray background */
+  color: white;
+}
+
+.client-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+.client-tags-list .tag { /* Reuse tag style */
+  padding: 3px 10px;
+  font-size: 0.8em;
+  border-radius: 12px;
+  color: white;
+}
+
+.add-appointment-btn {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.client-details-card .detail-item {
+  margin-bottom: 12px;
+  font-size: 0.9em;
+}
+.client-details-card .detail-label {
+  display: block;
+  color: #718096; /* Gray label */
+  margin-bottom: 4px;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+.client-details-card .detail-value {
+  color: #2d3748;
+}
+.client-details-card .detail-value.read-only {
+    padding: 6px 0; /* Add some padding to mimic input */
+    min-height: 20px; /* Ensure height */
+    display: block;
+}
+
+.client-details-card .form-input,
+.client-details-card .form-textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.9em;
+    box-sizing: border-box; /* Include padding/border in width */
+}
+.client-details-card .form-textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.profile-edit-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+.profile-edit-actions .button-secondary {
+    margin-left: auto; /* Pushes cancel to the right */
+}
+
+
+/* --- Right Column --- */
+.profile-right-column {
+  flex: 1; /* Takes remaining space */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.stats-widgets-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive grid */
+  gap: 20px;
+}
+
+.stat-widget {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  text-align: center;
+}
+.stat-widget .stat-value {
+  font-size: 2em;
+  font-weight: 600;
+  color: #1a202c;
+  margin-bottom: 5px;
+}
+.stat-widget .stat-label {
+  font-size: 0.9em;
+  color: #718096;
+}
+/* Add simple graphic styles later if desired */
+
+
+.appointment-history-card {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.appointment-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+.appointment-history-header h3 {
+    margin: 0;
+    font-size: 1.2em;
+}
+.appointment-filter select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 0.9em;
+}
+
+.appointments-list {
+    /* Use table for better structure */
+}
+
+.appointments-history-table {
+    width: 100%;
+    border-collapse: separate; /* Use separate for spacing */
+    border-spacing: 0 10px; /* Vertical space between rows */
+}
+
+.appointments-history-table thead {
+    display: none; /* Hide header, info is in the row */
+}
+
+.appointments-history-table tbody tr {
+    background-color: #f9fafb; /* Light row background */
+    border-radius: 8px; /* Rounded rows */
+    transition: background-color 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+.appointments-history-table tbody tr:hover {
+    background-color: #f1f5f9;
+}
+
+.appointments-history-table td {
+    padding: 15px;
+    vertical-align: middle;
+    border: none; /* Remove default borders */
+    font-size: 0.9em;
+}
+.appointments-history-table td:first-child { border-radius: 8px 0 0 8px; }
+.appointments-history-table td:last-child { border-radius: 0 8px 8px 0; }
+
+.appt-date-col {
+    text-align: center;
+    font-weight: 500;
+    color: #4a5568;
+    width: 60px; /* Fixed width for date */
+}
+.appt-date-col .day {
+    display: block;
+    font-size: 1.3em;
+    font-weight: 600;
+    color: #1a202c;
+}
+.appt-date-col .month {
+    display: block;
+    font-size: 0.8em;
+    text-transform: uppercase;
+}
+
+.appt-details-col .service-name {
+    font-weight: 600;
+    color: #2d3748;
+    display: block;
+    margin-bottom: 3px;
+}
+.appt-details-col .time-range {
+    font-size: 0.9em;
+    color: #718096;
+}
+
+.appt-status-col {
+    text-align: right;
+}
+
+.appt-price-col {
+    text-align: right;
+    font-weight: 500;
+    color: #333;
+    min-width: 70px;
+}
+
+
+.appointments-history-table .status-badge {
+    /* Adjust styles if needed */
+}

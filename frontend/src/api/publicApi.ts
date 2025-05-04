@@ -33,7 +33,7 @@ export interface AppointmentCreatePayload {
 export const fetchTenantServices = async (): Promise<PublicService[]> => {
     try {
         const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/services/tenant`; // Target backend port & path
+        const apiUrl = `http://${currentHostname}:8000/services/tenant/`; // Target backend port & path
         console.log("Fetching services from:", apiUrl);
         const response = await axios.get<PublicService[]>(apiUrl);
         return response.data;

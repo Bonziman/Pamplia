@@ -14,3 +14,5 @@ backend/.env
 frontnd/node_modules
 frontnd/.env
 frontnd/.env.local
+.certs
+.env

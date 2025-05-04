@@ -1,0 +1,321 @@
+/* src/components/Sidebar.css */
+
+/* --- Main Sidebar Container --- */
+.app-sidebar {
+  width: 240px; /* Expanded width */
+  height: calc(100vh - 60px); /* Full height minus header */
+  padding-top: 20px;
+  background-color: #ffffff; /* White background */
+  color: #4a5568; /* Darker text color for contrast */
+  display: flex;
+  flex-direction: column; /* Stack top, spacer, bottom */
+  position: fixed;
+  top: 60px; /* Below header */
+  left: 0;
+  transition: width 0.3s ease;
+  border-right: 1px solid #e2e8f0; /* Subtle border */
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.03);
+  width: 240px; /* Expanded width */
+  z-index: 90; /* Below header */
+  overflow-x: hidden; /* Hide text when collapsing */
+  justify-content: space-between;
+ 
+}
+
+.app-sidebar.collapsed {
+  width: 75px; /* Slightly wider collapsed */
+}
+
+/* --- Top Section (Toggle + Nav) --- */
+.sidebar-top {
+  padding-top: 15px;
+}
+
+.sidebar-toggle-button {
+  background: none;
+  border: none;
+  color: #718096; /* Gray icon */
+  font-size: 1.4em;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  text-align: right; /* Align toggle icon right */
+  padding: 0 25px 15px 0; /* Padding for placement */
+  transition: color 0.2s ease;
+}
+.app-sidebar.collapsed .sidebar-toggle-button {
+    text-align: center; /* Center when collapsed */
+    padding: 0 0 15px 0;
+}
+.sidebar-toggle-button:hover {
+  color: #2d3748; /* Darker on hover */
+}
+
+/* --- Main Navigation --- */
+.sidebar-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-nav li button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 25px; /* Adjusted padding */
+  background: none;
+  border: none;
+  border-left: 3px solid transparent; /* For active indicator */
+  color: #4a5568; /* Default nav item color */
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.95em;
+  font-weight: 500; /* Medium weight */
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease, border-left-color 0.2s ease;
+}
+.app-sidebar.collapsed .sidebar-nav li button {
+    padding: 12px 0;
+    justify-content: center;
+    border-left: none; /* No border when collapsed */
+}
+
+.sidebar-nav li button:hover {
+  background-color: #f7fafc; /* Very light gray on hover */
+  color: #2d3748; /* Darker text on hover */
+}
+
+.sidebar-nav li.active button {
+  background-color: #ebf8ff; /* Light blue background for active */
+  color: #3182ce; /* Blue text for active */
+  border-left-color: #3182ce; /* Blue border for active */
+  font-weight: 600;
+}
+.app-sidebar.collapsed .sidebar-nav li.active button {
+    background-color: #3182ce; /* Solid blue when collapsed */
+    color: #ffffff; /* White icon when collapsed active */
+    border-left: none;
+}
+
+.nav-icon {
+  display: inline-block;
+  width: 30px; /* Fixed width for alignment */
+  font-size: 1.1em; /* Adjust icon size */
+  text-align: center;
+  margin-right: 12px; /* Space between icon and text */
+  color: #a0aec0; /* Slightly muted icon color */
+  transition: color 0.2s ease;
+}
+.sidebar-nav li button:hover .nav-icon,
+.sidebar-nav li.active button .nav-icon {
+    color: inherit; /* Icon color matches text color on hover/active */
+}
+.app-sidebar.collapsed .nav-icon {
+    margin-right: 0;
+    font-size: 1.4em; /* Larger icon when collapsed */
+}
+.app-sidebar.collapsed .sidebar-nav li.active button .nav-icon {
+     color: #ffffff; /* Ensure icon is white on active collapsed */
+}
+
+.nav-text {
+  opacity: 1;
+  transition: opacity 0.2s ease; /* Faster text fade */
+}
+.app-sidebar.collapsed .nav-text {
+  position: absolute; /* Prevent influencing layout */
+  opacity: 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none; /* Ignore for clicks */
+}
+
+/* --- Spacer --- */
+.sidebar-spacer {
+  flex-grow: 1; /* Pushes the bottom section down */
+}
+
+/* --- Bottom Section --- */
+.sidebar-bottom {
+    position: relative; /* Needed for positioning the absolute settings menu */
+    padding: 10px 0; /* Padding around bottom items */
+    border-top: 1px solid #e2e8f0; /* Separator line */
+}
+
+/* --- Settings Menu --- */
+.settings-menu {
+    position: absolute;
+    bottom: 100%; /* Position directly above the profile section */
+    left: 15px; /* Indent slightly */
+    right: 15px; /* Indent slightly */
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.08); /* Shadow upwards */
+    z-index: 110; /* Above profile section */
+    padding: 8px 0;
+    margin-bottom: 10px; /* Space between menu and profile trigger */
+    /* Add animation if desired */
+    animation: slideUpFadeIn 0.3s ease-out;
+}
+
+.settings-menu button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 15px;
+    background: none;
+    border: none;
+    text-align: left;
+    font-size: 0.9em;
+    color: #4a5568;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.settings-menu button:hover {
+    background-color: #f7fafc;
+}
+.settings-menu button .svg-inline--fa {
+    width: 1.1em; /* Fixed width icon */
+    text-align: center;
+    color: #718096;
+}
+
+/* Optional animation for settings menu */
+@keyframes slideUpFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- Profile Section --- */
+.sidebar-profile-section {
+    padding: 0 15px; /* Padding side to side */
+}
+
+.sidebar-profile-section .profile-button {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 10px; /* Padding inside the button */
+    background-color: transparent;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.2s ease;
+}
+.sidebar-profile-section.collapsed .profile-button {
+    justify-content: center;
+    padding: 10px 0;
+}
+.sidebar-profile-section .profile-button:hover:not(:disabled) {
+    background-color: #f7fafc; /* Light hover */
+}
+.sidebar-profile-section .profile-button:disabled {
+    cursor: default;
+}
+
+
+.sidebar-profile-section.collapsed .profile-avatar {
+    margin-right: 0;
+    width: 45px; /* Slightly larger avatar when collapsed */
+    height: 45px;
+}
+
+.profile-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Ensure image covers the circle */
+}
+.profile-avatar-icon {
+    font-size: 1.8em; /* Size for FontAwesome fallback */
+}
+
+
+.profile-info {
+    flex-grow: 1; /* Takes remaining space */
+    overflow: hidden; /* Prevent long names breaking layout */
+}
+
+.profile-name {
+    display: block;
+    font-weight: 600;
+    color: #2d3748; /* Darker name color */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Add ellipsis for long names */
+    font-size: 0.95em;
+}
+
+.profile-toggle-icon {
+    margin-left: auto; /* Pushes icon to the right */
+    color: #a0aec0;
+    padding-left: 10px;
+}
+
+/* --- Logout Section --- */
+.sidebar-logout-section {
+    padding: 5px 15px 15px 15px; /* Padding around logout */
+}
+.sidebar-logout-button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 10px; /* Similar padding to nav items */
+  background: none;
+  border: none;
+  color: #718096; /* Muted color */
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.95em;
+  border-radius: 6px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.sidebar-logout-button:hover {
+  background-color: #fef2f2; /* Light red hover */
+  color: #ef4444; /* Red text on hover */
+}
+.app-sidebar.collapsed .sidebar-logout-button {
+    justify-content: center;
+    padding: 10px 0;
+}
+.sidebar-logout-button .nav-icon {
+    width: 30px;
+    font-size: 1.1em;
+    text-align: center;
+    margin-right: 12px;
+    color: #a0aec0; /* Match nav icon default */
+}
+.sidebar-logout-button:hover .nav-icon {
+    color: #ef4444; /* Red icon on hover */
+}
+.app-sidebar.collapsed .sidebar-logout-button .nav-icon {
+    margin-right: 0;
+}
+
+/* Add specific styles for Tag Management View */
+/* src/components/TagManagementView.css or TableStyles.css */
+.color-preview {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  border: 1px solid rgba(0,0,0,0.1);
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+.form-input-color {
+    padding: 2px !important; /* Make color input smaller */
+    height: 30px;
+    width: 50px;
+    vertical-align: middle;
+}

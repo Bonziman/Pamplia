@@ -7,7 +7,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware # Optional for 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response as StarletteResponse # For middleware typing
 
-from app.routers import tenants, appointments, services, auth, users
+from app.routers import tenants, appointments, services, auth, users, tags, clients, dashboard, templates
 from app.database import Base, engine, get_db # Import get_db
 from app.models import tenant, user, service, appointment # Import models
 from sqlalchemy.orm import Session
@@ -17,6 +17,7 @@ from app.dependencies import AUTH_COOKIE_NAME, credentials_exception # Use updat
 from app.utils.jwt_utils import verify_token
 from app.config import settings
 from jose import JWTError
+
 
 Base.metadata.create_all(bind=engine)
 app = FastAPI()
@@ -30,6 +31,14 @@ origins_dev = [
     "http://exampletenant.localtest.me:3000",
     "http://exampletenant2.localtest.me:3000",
     "http://string.localtest.me:3000",
+    
+    
+    "https://localtest.me",
+    "https://localtest.me:3000", # Default React port
+    # You might need to list specific subdomains or use regex if ports vary widely
+    "https://exampletenant.localtest.me:3000",
+    "https://exampletenant2.localtest.me:3000",
+    "https://string.localtest.me:3000",
 ]
 origins_prod = [
     f"https://{settings.base_domain}", # e.g., https://yourapp.com
@@ -123,6 +132,10 @@ app.include_router(users)
 app.include_router(tenants)
 app.include_router(appointments)
 app.include_router(services)
+app.include_router(tags)
+app.include_router(clients)
+app.include_router(dashboard)
+app.include_router(templates) 
 
 
 @app.get("/")

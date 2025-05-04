@@ -1,5 +1,5 @@
 # app/models/service.py
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Numeric
 from sqlalchemy.orm import relationship
 from app.database import Base
 from .association_tables import appointment_services_table
@@ -12,7 +12,7 @@ class Service(Base):
     description = Column(String)
     duration_minutes = Column(Integer, nullable=False)
     tenant_id = Column(Integer, ForeignKey("tenants.id"))
-
+    price = Column(Numeric(precision=10, scale=2), nullable=False)
     tenant = relationship("Tenant", back_populates="services")
     appointments = relationship(
          "Appointment",

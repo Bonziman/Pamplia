@@ -1,108 +1,122 @@
 /* src/pages/Dashboard.css */
 
-.dashboard-container {
-  padding: 20px;
-  font-family: sans-serif;
-  max-width: 1200px; /* Limit width for better readability */
-  margin: 20px auto; /* Center the container */
-  border: 1px solid #eee;
+/* Overall Layout */
+.dashboard-layout {
+  display: flex;
+  flex-direction: column; /* Stack header on top */
+  min-height: 100vh;
+  background-color: #f7fafc; /* Light background for content area */
+}
+
+/* Main content area positioning relative to sidebar */
+.main-content {
+  /* margin-top: 60px;  Match header height */
+  margin-left: 240px; /* Match expanded sidebar width */
+  padding: 25px 30px; /* Padding around content */
+  flex-grow: 1; /* Take remaining vertical space */
+  transition: margin-left 0.3s ease;
+  overflow-y: auto; /* Allow content scrolling if needed */
+}
+
+/* Adjust main content margin when sidebar is collapsed */
+.dashboard-layout.sidebar-collapsed .main-content {
+  margin-left: 70px; /* Match collapsed sidebar width */
+}
+
+/* Section styling within main content */
+.view-section {
+  background-color: #ffffff;
+  padding: 20px 25px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 25px; /* Space between sections if multiple */
 }
 
-.dashboard-header {
-  display: flex; /* Use flexbox for layout */
-  justify-content: space-between; /* Push items to ends */
-  align-items: center; /* Align items vertically */
-  margin-bottom: 15px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #eee;
+.view-section h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.5em;
+  color: #2d3748;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 10px;
 }
 
-.dashboard-header .welcome-info h1 {
-  margin: 0 0 5px 0;
-  font-size: 1.8em;
-  color: #333;
+/* Loading/Permission Messages (can be shared) */
+.loading-message,
+.permission-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #718096; /* Muted text color */
+  font-style: italic;
 }
 
-.dashboard-header .welcome-info p {
-  margin: 0;
-  color: #666;
-  font-size: 0.9em;
-}
-
-.dashboard-header button {
-  padding: 8px 16px;
-  background-color: #f44336; /* Red for logout */
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9em;
-  transition: background-color 0.2s ease;
-}
-
-.dashboard-header button:hover {
-  background-color: #d32f2f;
-}
-
-.dashboard-section {
-  margin-top: 30px;
-}
-
-.dashboard-section h2 {
-  margin-bottom: 15px;
-  color: #444;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 8px;
-}
-
+/* Table Styling (Example for Users Table) */
 .dashboard-table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 15px;
-  font-size: 0.9em;
 }
 
 .dashboard-table th,
 .dashboard-table td {
-  border: 1px solid #ddd;
-  padding: 10px 12px; /* More padding */
+  border: 1px solid #e2e8f0;
+  padding: 10px 12px;
   text-align: left;
   vertical-align: middle;
 }
 
 .dashboard-table th {
-  background-color: #f8f8f8; /* Lighter header */
-  font-weight: 600; /* Slightly bolder */
-  color: #555;
+  background-color: #f7fafc;
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.9em;
 }
 
 .dashboard-table tbody tr:nth-child(even) {
-  background-color: #fdfdfd; /* Very subtle striping */
+  background-color: #fdfdfe;
 }
 
 .dashboard-table tbody tr:hover {
-  background-color: #f1f1f1; /* Hover effect */
+  background-color: #f0f4f8;
 }
 
-.loading-message,
-.permission-message {
-  text-align: center;
-  padding: 20px;
-  color: #777;
-  font-style: italic;
+.dashboard-table td {
+  color: #2d3748;
+  font-size: 0.95em;
 }
 
-/* Add spacing below tables if needed */
-.dashboard-table + .dashboard-section {
-  margin-top: 40px;
+.dashboard-table .permission-message td {
+    text-align: center; /* Center text for empty table message */
 }
 
-/* Add horizontal rule styling if default isn't enough */
-hr {
-  border: none;
-  border-top: 1px solid #eee;
-  margin: 25px 0;
+
+/* Ensure Modals overlay correctly */
+/* Add styles for .modal and .modal-overlay if not already global */
+/* Example: */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050; /* High z-index */
 }
+
+.modal {
+  background: white;
+  padding: 25px 30px;
+  border-radius: 8px;
+  max-width: 700px; /* Adjust as needed */
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  outline: none; /* Remove default focus outline */
+}
+
+/* Add styles for your form-group, service-checkbox-group etc. within the modal */
+/* Ensure modal button styles (.modal-button-confirm, .modal-button-cancel) exist */

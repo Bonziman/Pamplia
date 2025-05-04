@@ -1,0 +1,117 @@
+/* src/components/settings/BusinessHoursEditor.css */
+
+.business-hours-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; /* Space between day rows */
+  position: relative; /* For overlay hint */
+}
+
+.day-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0; /* Vertical padding */
+  border-bottom: 1px solid var(--border-color-light, #eee);
+  transition: opacity 0.3s ease;
+}
+.day-row:last-child {
+  border-bottom: none;
+}
+
+.day-row.day-closed {
+  opacity: 0.6; /* Dim closed days slightly */
+}
+
+.day-label-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-basis: 150px; /* Give label/toggle consistent space */
+  flex-shrink: 0;
+}
+
+.day-name {
+  font-weight: 500;
+  color: var(--text-primary, #333);
+  width: 80px; /* Ensure alignment */
+}
+
+/* Assuming SwitchToggle.css provides styles for .switch-toggle */
+
+.day-time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* Space between From/Input/To/Input */
+  flex-grow: 1;
+  justify-content: flex-end; /* Align inputs to the right */
+}
+
+.time-label {
+  font-size: 0.9em;
+  color: var(--text-secondary, #666);
+}
+
+.time-input {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 4px;
+  font-size: 0.9em;
+  max-width: 100px; /* Limit width */
+  background-color: var(--input-background, #fff);
+}
+
+.time-input:disabled {
+  background-color: var(--background-disabled, #e9ecef);
+  cursor: not-allowed;
+  border-color: var(--border-color-light, #ddd);
+}
+
+.closed-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted, #888);
+  font-style: italic;
+  padding: 0.4rem 0.6rem; /* Match input padding */
+  /* Ensure it takes up space similar to inputs */
+  min-width: calc(100px + 100px + 0.75rem * 3 + 1.2rem); /* Approx width of 2 inputs + gaps + labels */
+  justify-content: center; /* Center text */
+}
+
+.closed-indicator svg {
+  opacity: 0.7;
+}
+
+/* Hint shown when not editing */
+.read-only-overlay-hint {
+  display: none; /* Hidden by default */
+  position: absolute;
+  bottom: -25px; /* Position below the editor */
+  left: 0;
+  font-size: 0.85em;
+  color: var(--text-muted, #888);
+}
+
+.read-only .read-only-overlay-hint {
+   display: block; /* Show only when read-only */
+}
+
+
+/* Responsive */
+@media (max-width: 600px) {
+  .day-row {
+      flex-direction: column;
+      align-items: flex-start; /* Align items to start */
+      gap: 0.75rem;
+  }
+  .day-time-inputs {
+      justify-content: flex-start; /* Align inputs to start */
+      width: 100%; /* Take full width */
+  }
+  .closed-indicator {
+       justify-content: flex-start; /* Align left */
+       min-width: auto;
+       width: 100%;
+  }
+}

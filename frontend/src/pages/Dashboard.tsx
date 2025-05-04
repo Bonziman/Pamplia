@@ -1,392 +1,320 @@
 // src/pages/Dashboard.tsx
-import React, { useEffect, useState, useCallback } from "react"; // Added useCallback
-import { useAuth } from "../auth/authContext";
-import { useNavigate } from "react-router-dom";
-import { fetchUsers } from "../api/userApi";
-import {
-  fetchAppointments,
-  updateAppointment,
-  deleteAppointment,
-  FetchedAppointment,
-  AppointmentUpdatePayload
-} from "../api/appointmentApi";
-import Modal from "../components/Modal";
-import './Dashboard.css';
-import { formatReadableDateTime, formatForDateTimeLocalInput } from "../utils/formatDate";
+// --- FULL REPLACEMENT ---
 
-// --- Interfaces ---
-interface FetchedUser {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
-    tenant_id: number;
-}
-const appointmentStatuses = ["pending", "confirmed", "cancelled", "done"];
+import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import axios from "axios"; // Import axios for error checking
+
+import { useAuth } from "../auth/authContext";
+
+// --- API Imports (KEEP ones needed for remaining Dashboard features: Appts, Clients, Tags) ---
+import {
+    fetchAppointments,
+    updateAppointment,
+    deleteAppointment,
+    FetchedAppointment,
+    AppointmentUpdatePayload,
+} from "../api/appointmentApi";
+import {
+    createPublicAppointment,
+    fetchTenantServices,
+    PublicService,
+    AppointmentCreatePayload as PublicAppointmentCreatePayload
+} from '../api/publicApi';
+import {
+    fetchClients,
+    createClient,
+    updateClient,
+    deleteClient, // Soft delete
+    assignClientTag,
+    removeClientTag,
+    FetchedClient,
+    ClientCreatePayload,
+    ClientUpdatePayload,
+} from '../api/clientApi';
+import {
+    fetchTags,
+    FetchedTag,
+} from '../api/tagApi';
+
+// --- Layout Components ---
+import Header from "../components/Header";
+import Sidebar from "../components/Sidebar";
+
+// --- View Components & Modals ---
+import DashboardOverviewPage from './DashboardOverviewPage'; // Import the new overview page
+import AppointmentCalendar from '../components/AppointmentCalendar';
+import ClientsTable from "../components/ClientsTable";
+import TagManagementView from "../components/TagManagementView";
+import ClientProfilePage from "./ClientProfilePage";
+import UsersView from "./views/UsersView";
+import ServicesView from "./views/ServicesView";
+import TenantSettingsPage from "./TenantSettingsPage";
+
+// Modals (KEEP ones needed for remaining Dashboard features: Appts, Clients)
+import UpdateAppointmentModal from "../components/modals/UpdateAppointmentModal";
+import DeleteAppointmentModal from "../components/modals/DeleteAppointmentModal";
+import CreateAppointmentModal from "../components/modals/CreateAppointmentModal";
+import CreateClientModal from "../components/modals/CreateClientModal";
+import UpdateClientModal from "../components/modals/UpdateClientModal";
+import DeleteClientModal from "../components/modals/DeleteClientModal";
+// Service modals are now in ServicesView
+// Tag Modals are rendered within TagManagementView
+
+// --- Styles ---
+import './Dashboard.css';
+import '../components/TableStyles.css';
+import TemplatesView from "./views/TemplatesView";
+
+// --- Interfaces (KEEP ones needed for remaining Dashboard features) ---
+
 // --- Dashboard Component ---
 const Dashboard: React.FC = () => {
-  const { isAuthenticated, userProfile, logout, isLoading: authIsLoading } = useAuth();
+    const { isAuthenticated, userProfile, logout, isLoading: authIsLoading } = useAuth();
+    const navigate = useNavigate();
+    const location = useLocation(); // Hook to get current path
 
-  const [users, setUsers] = useState<FetchedUser[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
-  const [appointments, setAppointments] = useState<FetchedAppointment[]>([]);
-  const [loadingAppointments, setLoadingAppointments] = useState<boolean>(true);
-  const navigate = useNavigate();
+    // --- State (KEEP only state NOT moved to views) ---
+    const [appointments, setAppointments] = useState<FetchedAppointment[]>([]);
+    const [publicTenantServices, setPublicTenantServices] = useState<PublicService[]>([]);
+    const [clients, setClients] = useState<FetchedClient[]>([]);
+    const [availableTenantTags, setAvailableTenantTags] = useState<FetchedTag[]>([]);
 
-  // --- State for Modals ---
-  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<FetchedAppointment | null>(null);
-  const [updateFormData, setUpdateFormData] = useState<AppointmentUpdatePayload>({});
-  const [modalError, setModalError] = useState<string | null>(null);
-  const [isSubmittingModal, setIsSubmittingModal] = useState(false);
+    // Loading State (KEEP only state NOT moved to views)
+    const [loadingAppointments, setLoadingAppointments] = useState<boolean>(false);
+    const [loadingPublicServices, setLoadingPublicServices] = useState(false);
+    const [loadingClients, setLoadingClients] = useState(false);
+    const [loadingAvailableTags, setLoadingAvailableTags] = useState<boolean>(false);
 
-  // --- NEW: State for inline status update ---
-  const [isSubmittingStatusChange, setIsSubmittingStatusChange] = useState<number | null>(null); // Store ID of appt being updated, or null
+    // Modal State (KEEP only state NOT moved to views)
+    const [isUpdateApptModalOpen, setIsUpdateApptModalOpen] = useState(false);
+    const [isDeleteApptModalOpen, setIsDeleteApptModalOpen] = useState(false);
+    const [isCreateApptModalOpen, setIsCreateApptModalOpen] = useState(false);
+    const [selectedAppointment, setSelectedAppointment] = useState<FetchedAppointment | null>(null);
+    const [selectedDateForApptCreation, setSelectedDateForApptCreation] = useState<Date | null>(null);
+    const [isCreateClientModalOpen, setIsCreateClientModalOpen] = useState(false);
+    const [isUpdateClientModalOpen, setIsUpdateClientModalOpen] = useState(false);
+    const [isDeleteClientModalOpen, setIsDeleteClientModalOpen] = useState(false);
+    const [selectedClient, setSelectedClient] = useState<FetchedClient | null>(null);
 
+    // UI State
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null); // Keep global error reporting possible
+    const [showDeletedClients, setShowDeletedClients] = useState<boolean>(false);
+    const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
 
-  // --- Derived Permissions ---
-  // Use optional chaining for safety before userProfile is guaranteed
-  const canViewUsers = userProfile?.role === "super_admin" || userProfile?.role === "admin";
-  const canDeleteAppointments = userProfile?.role === "super_admin" || userProfile?.role === "admin";
+    // --- Permissions (Some can be derived within views, but keeping relevant ones here is fine) ---
+    const canManageClients = userProfile?.role === "super_admin" || userProfile?.role === "admin" || userProfile?.role === "staff";
+    const canDeleteAppointments = userProfile?.role === "super_admin" || userProfile?.role === "admin";
+    const canDeleteClients = userProfile?.role === "super_admin" || userProfile?.role === "admin";
+    const canManageTagDefinitions = userProfile?.role === "super_admin" || userProfile?.role === "admin" || userProfile?.role === "staff";
+    const canAssignClientTags = userProfile?.role === "super_admin" || userProfile?.role === "admin" || userProfile?.role === "staff";
+    // Permissions for settings views
+    const isAdminOrSuper = userProfile?.role === 'admin' || userProfile?.role === 'super_admin';
 
-  // --- Handlers ---
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login");
-  };
+    // --- Utility function to extract error message ---
+    const getErrorMessage = (err: any, defaultMessage: string): string => {
+        console.error("API Error:", err.response || err);
+        let errorMessage = defaultMessage;
+        if (axios.isAxiosError(err) && err.response?.data?.detail) {
+            const detail = err.response.data.detail;
+            if (typeof detail === 'string') { errorMessage = detail; }
+            else if (Array.isArray(detail) && detail[0]?.msg) { errorMessage = `${detail[0].loc.join(' -> ')}: ${detail[0].msg}`; }
+            else { errorMessage = JSON.stringify(detail); }
+        } else if (err instanceof Error) { errorMessage = err.message; }
+        return errorMessage;
+    };
 
-  const handleOpenUpdateModal = useCallback((appointment: FetchedAppointment) => {
-    setSelectedAppointment(appointment);
-    // Use the new formatter for the input field
-    const formattedTimeForInput = formatForDateTimeLocalInput(appointment.appointment_time);
-    setUpdateFormData({
-      client_name: appointment.client_name,
-      client_email: appointment.client_email,
-      appointment_time: formattedTimeForInput, // Use formatted time for input
-      status: appointment.status,
-    });
-    setModalError(null);
-    setIsUpdateModalOpen(true);
-  }, []); // Dependency array is empty // Empty dependency array: function itself doesn't change
+    // --- Data Fetching Callbacks (KEEP only ones NOT moved) ---
+    // NOTE: Appointments might be needed less often here if overview shows upcoming count
+    // Consider only loading Appointments when navigating to '/calendar'
+    const loadAppointments = useCallback(() => { setLoadingAppointments(true); setError(null); console.log("LoadAppointments: Fetching..."); fetchAppointments().then(data => { console.log("LoadAppointments: Success", data); setAppointments(data); }).catch(err => { console.error("LoadAppointments: Error", err); setError(getErrorMessage(err,"Could not load appointments.")); }).finally(() => setLoadingAppointments(false)); }, []);
+    const loadPublicServices = useCallback(() => { setLoadingPublicServices(true); setError(null); console.log("LoadPublicServices: Fetching..."); fetchTenantServices().then(data => { console.log("LoadPublicServices: Success", data); setPublicTenantServices(data);}).catch(err => { console.error("LoadPublicServices: Error", err); setError(getErrorMessage(err,"Could not load available services.")); }).finally(() => setLoadingPublicServices(false)); }, []);
+    const loadClients = useCallback((includeDeleted = showDeletedClients) => { if (!canManageClients) { setLoadingClients(false); return; } setLoadingClients(true); setError(null); console.log("LoadClients: Fetching...", { includeDeleted }); fetchClients(includeDeleted).then(data => { console.log("LoadClients: Success", data); setClients(data); }).catch(err => { console.error("LoadClients: Error", err); setError(getErrorMessage(err,"Could not load clients list.")); }).finally(() => setLoadingClients(false)); }, [canManageClients, showDeletedClients]);
+    const loadAvailableTags = useCallback(() => { if (!canAssignClientTags) { setLoadingAvailableTags(false); return; } setLoadingAvailableTags(true); setError(null); console.log("LoadAvailableTags: Fetching..."); fetchTags().then(data => { console.log("LoadAvailableTags: Success", data); setAvailableTenantTags(data); }).catch(err => { console.error("LoadAvailableTags: Error", err); setError(getErrorMessage(err, "Failed to load available tags")); }).finally(() => setLoadingAvailableTags(false)); }, [canAssignClientTags]);
 
-  const handleCloseUpdateModal = useCallback(() => {
-    setIsUpdateModalOpen(false);
-    setSelectedAppointment(null);
-    setUpdateFormData({});
-    setModalError(null); // Also clear error on close
-  }, []);
+    // --- Handlers (KEEP only handlers NOT moved) ---
+    const handleLogout = () => { logout(); navigate('/login'); };
+    const toggleSidebar = () => { setIsSidebarCollapsed(prev => !prev); };
+    const handleNavigation = (path: string) => { setError(null); navigate(path); setIsSettingsMenuOpen(false); };
+    const toggleSettingsMenu = () => { setIsSettingsMenuOpen(prev => !prev); };
 
-  const handleUpdateFormChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setUpdateFormData(prev => ({ ...prev, [name]: value }));
-  }, []);
+    // -- Appointment Handlers --
+    const handleUpdateAppointment = useCallback(async (id: number, data: AppointmentUpdatePayload) => { try { setError(null); await updateAppointment(id, data); loadAppointments(); setIsUpdateApptModalOpen(false); setSelectedAppointment(null); } catch (err: any) { setError(getErrorMessage(err, "Failed to update appointment.")); throw err; } }, [loadAppointments]);
+    const handleDeleteAppointment = useCallback(async (id: number) => { try { setError(null); await deleteAppointment(id); loadAppointments(); setIsDeleteApptModalOpen(false); setSelectedAppointment(null); } catch (err: any) { setError(getErrorMessage(err, "Failed to delete appointment.")); throw err; } }, [loadAppointments]);
+    const handleCreateAppointment = useCallback(async (data: PublicAppointmentCreatePayload) => { try { setError(null); await createPublicAppointment(data); loadAppointments(); setIsCreateApptModalOpen(false); setSelectedDateForApptCreation(null); } catch (err: any) { setError(getErrorMessage(err, "Failed to create appointment.")); throw err; } }, [loadAppointments]);
+    const handleCalendarAppointmentClick = (appointment: FetchedAppointment) => { setSelectedAppointment(appointment); setIsUpdateApptModalOpen(true); };
+    const handleCalendarDayClick = (date: Date) => { setSelectedDateForApptCreation(date); setIsCreateApptModalOpen(true); };
 
-  const handleUpdateSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!selectedAppointment) return;
-    setIsSubmittingModal(true);
-    setModalError(null);
+    // -- Client Handlers --
+    const handleCreateClient = useCallback(async (data: ClientCreatePayload) => { try { setError(null); await createClient(data); loadClients(); setIsCreateClientModalOpen(false); } catch (err: any) { setError(getErrorMessage(err, "Failed to create client.")); throw err; } }, [loadClients]);
+    const handleUpdateClient = useCallback(async (id: number, data: ClientUpdatePayload) => { try { setError(null); await updateClient(id, data); loadClients(); setIsUpdateClientModalOpen(false); setSelectedClient(null); } catch (err: any) { setError(getErrorMessage(err, "Failed to update client.")); throw err; } }, [loadClients]);
+    const handleDeleteClient = useCallback(async (id: number) => { try { setError(null); await deleteClient(id); loadClients(); setIsDeleteClientModalOpen(false); setSelectedClient(null); } catch (err: any) { setError(getErrorMessage(err, "Failed to delete client.")); throw err; } }, [loadClients]);
+    const handleOpenCreateClientModal = () => { setIsCreateClientModalOpen(true); };
+    const handleClientRowEditClick = (client: FetchedClient) => { setSelectedClient(client); setIsUpdateClientModalOpen(true); };
+    const handleClientRowDeleteClick = (client: FetchedClient) => { setSelectedClient(client); setIsDeleteClientModalOpen(true); };
+    const handleToggleShowDeleted = () => { setShowDeletedClients(prev => !prev); };
 
-    try {
-      const payload: AppointmentUpdatePayload = {
-          ...updateFormData,
-          appointment_time: updateFormData.appointment_time ? new Date(updateFormData.appointment_time).toISOString() : undefined
-      };
-      const updatedAppt = await updateAppointment(selectedAppointment.id, payload);
-      setAppointments(prev => prev.map(appt => appt.id === updatedAppt.id ? updatedAppt : appt));
-      handleCloseUpdateModal();
-    } catch (error: any) {
-      console.error("Update failed:", error);
-      setModalError(error.response?.data?.detail || "Failed to update appointment.");
-    } finally {
-       setIsSubmittingModal(false);
-    }
-  };
-
-  const handleOpenDeleteModal = useCallback((appointment: FetchedAppointment) => {
-    setSelectedAppointment(appointment);
-    setModalError(null);
-    setIsDeleteModalOpen(true);
-  }, []);
-
-  const handleCloseDeleteModal = useCallback(() => {
-    setIsDeleteModalOpen(false);
-    setSelectedAppointment(null);
-     setModalError(null); // Also clear error on close
-  }, []);
-
-  const handleConfirmDelete = async () => {
-    if (!selectedAppointment) return;
-     setIsSubmittingModal(true);
-     setModalError(null);
-    try {
-      await deleteAppointment(selectedAppointment.id);
-      setAppointments(prev => prev.filter(appt => appt.id !== selectedAppointment.id));
-      handleCloseDeleteModal();
-    } catch (error: any) {
-      console.error("Delete failed:", error);
-      setModalError(error.response?.data?.detail || "Failed to delete appointment.");
-    } finally {
-        setIsSubmittingModal(false);
-    }
-  };
-
-   // --- NEW: Handler for inline status change ---
-   const handleStatusChange = async (event: React.ChangeEvent<HTMLSelectElement>, appointmentId: number) => {
-    const newStatus = event.target.value;
-    console.log(`[handleStatusChange] Dropdown selected value for ID ${appointmentId}: '${newStatus}' (Type: ${typeof newStatus})`);
-    // Optional: Find original status to prevent update if unchanged
-    const originalAppointment = appointments.find(a => a.id === appointmentId);
-    if (!originalAppointment || originalAppointment.status === newStatus) {
-        console.log(`Status for ${appointmentId} already ${newStatus} or appointment not found.`);
-        return; // No change needed
-    }
-
-    setIsSubmittingStatusChange(appointmentId); // Indicate which appointment is updating
-    try {
-      console.log(`Attempting to update status for appointment ${appointmentId} to ${newStatus}`);
-      const updatedAppt = await updateAppointment(appointmentId, { status: newStatus });
-      // Update local state
-      setAppointments(prev => prev.map(appt => appt.id === updatedAppt.id ? updatedAppt : appt));
-      console.log(`Successfully updated status for appointment ${appointmentId}`);
-    } catch (error) {
-      console.error(`Failed to update status for appointment ${appointmentId}:`, error);
-      // TODO: Consider showing a temporary error to the user (e.g., toast notification)
-      // Reverting dropdown visually is complex, often better to just log and let user retry
-    } finally {
-      setIsSubmittingStatusChange(null); // Clear loading state
-    }
-  };
-
-  // --- Fetch Data Effect ---
-  useEffect(() => {
-    if (!authIsLoading && isAuthenticated && userProfile) {
-      // Fetch Appointments
-      setLoadingAppointments(true); // Set loading true before fetch
-      fetchAppointments()
-        .then(data => setAppointments(data))
-        .catch(error => console.error("Failed to load appointments", error))
-        .finally(() => setLoadingAppointments(false));
-
-      // Fetch Users if allowed
-      if (canViewUsers) {
-        setLoadingUsers(true); // Set loading true before fetch
-        fetchUsers()
-          .then(data => setUsers(data))
-          .catch(error => console.error("Failed to load users", error))
-          .finally(() => setLoadingUsers(false));
-      } else {
-        setLoadingUsers(false);
-      }
-    } else if (!authIsLoading) {
-      setLoadingUsers(false);
-      setLoadingAppointments(false);
-    }
-  }, [authIsLoading, isAuthenticated, userProfile, canViewUsers]); // Correct dependencies
+    // -- Client Tag Handlers --
+    const handleAssignTag = useCallback(async (clientId: number, tagId: number) => { try { setError(null); const updatedClient = await assignClientTag(clientId, tagId); setClients(prevClients => prevClients.map(c => c.id === clientId ? updatedClient : c)); } catch (err: any) { setError(getErrorMessage(err, "Failed to assign tag.")); } }, []);
+    const handleRemoveTag = useCallback(async (clientId: number, tagId: number) => { try { setError(null); await removeClientTag(clientId, tagId); setClients(prevClients => prevClients.map(c => c.id === clientId ? { ...c, tags: c.tags.filter(t => t.id !== tagId) } : c)); } catch (err: any) { setError(getErrorMessage(err, "Failed to remove tag.")); } }, []);
 
 
-  // --- Render Logic ---
+    // --- Effects ---
 
-  if (authIsLoading) {
-    return <div className="loading-message">Loading Authentication...</div>;
-  }
+    // Effect 1: Initial Auth Check & Core Data Load (Minimal: Public Services, Tags)
+    useEffect(() => {
+        if (!authIsLoading && !isAuthenticated) {
+            console.log("Dashboard Initial Effect: Not authenticated, navigating to login.");
+            navigate('/login');
+        } else if (!authIsLoading && isAuthenticated && userProfile) {
+            console.log("Dashboard Initial Effect: Authenticated. Loading core data (public services, tags).");
+            // loadAppointments(); // Only load appointments when needed (e.g., navigating to calendar)
+            loadPublicServices(); // Still needed for Create Appointment Modal
+            loadAvailableTags(); // Still needed for Client Modals/Table
+        }
+    }, [authIsLoading, isAuthenticated, userProfile, navigate, loadPublicServices, loadAvailableTags]);
 
-  // Now userProfile is guaranteed to exist if isAuthenticated is true after loading
-  if (!isAuthenticated || !userProfile) {
-     return <div className="permission-message">Not authenticated. Redirecting...</div>;
-  }
+    // Effect 2: Load CLIENT Data When Needed (Filter Changes or Navigating to clients page)
+     useEffect(() => {
+        if (location.pathname.startsWith('/dashboard/clients') && !authIsLoading && isAuthenticated) {
+           console.log("Dashboard Clients Effect: Triggering loadClients", { showDeletedClients });
+           loadClients();
+        }
+    }, [showDeletedClients, location.pathname, authIsLoading, isAuthenticated, loadClients]);
 
-  // *******************************************
-  // *** RECONSTRUCTED RETURN STATEMENT START ***
-  // *******************************************
-  return (
-    <div className="dashboard-container">
-      {/* Header Section */}
-      <div className="dashboard-header">
-        <div className="welcome-info">
-            <h1>Welcome, {userProfile.name}</h1>
-            <p>Your role: {userProfile.role}</p>
-        </div>
-        <button onClick={handleLogout}>Logout</button>
-      </div>
+    // Effect 3: Load APPOINTMENTS Data when navigating to the calendar
+     useEffect(() => {
+        if (location.pathname.startsWith('/dashboard/calendar') && !authIsLoading && isAuthenticated) {
+            console.log("Dashboard Calendar Effect: Triggering loadAppointments");
+            loadAppointments();
+        }
+    }, [location.pathname, authIsLoading, isAuthenticated, loadAppointments]);
 
-      {/* Appointments Section */}
-      <div className="dashboard-section">
-        <h2>My Appointments</h2>
-        {loadingAppointments ? (
-          <div className="loading-message">Loading appointments...</div>
-        ) : ( // This parenthesis closes the loading check
-          <table className="dashboard-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Client Name</th>
-                <th>Client Email</th>
-                <th>Time</th>
-                <th>Status</th>
-                <th>Service ID</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {appointments.length > 0 ? (
-                 appointments.map((appt) => ( // Ensure 'appt' has correct type implicitly or explicitly
-                  <tr key={appt.id}>
-                    <td>{appt.id}</td>
-                    <td>{appt.client_name}</td>
-                    <td>{appt.client_email}</td>
-                    <td>{formatReadableDateTime(appt.appointment_time)}</td>
-                    <td>{appt.status}</td>
-                    <td>{appt.service_id}</td>
-                    {/* --- Actions Cell --- */}
-                    <td style={{ display: 'flex', gap: '5px', alignItems: 'center', whiteSpace: 'nowrap' }}> {/* Use flex for inline layout */}
-                        {/* Status Dropdown */}
-                        <select
-                            value={appt.status}
-                            onChange={(e) => handleStatusChange(e, appt.id)}
-                            disabled={isSubmittingStatusChange === appt.id} // Disable only the one being updated
-                            style={{ padding: '2px 4px', fontSize: '0.85em' }} // Minimal styling
-                            title="Change Status"
-                        >
-                            {appointmentStatuses.map(status => (
-                                <option key={status} value={status}>
-                                    {status.charAt(0).toUpperCase() + status.slice(1)} {/* Capitalize */}
-                                </option>
-                            ))}
-                        </select>
 
-                        {/* Edit Button */}
-                        <button onClick={() => handleOpenUpdateModal(appt)} title="Edit Appointment Details" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2em', padding: '0 5px' }}>
-                           ✏️
-                        </button>
+    // --- Render ---
+    if (authIsLoading) return <div className="loading-message">Authenticating...</div>;
+    if (!isAuthenticated || !userProfile) return null; // Should be redirected by effect
 
-                        {/* Delete Button (Conditional) */}
-                        {canDeleteAppointments && (
-                             <button onClick={() => handleOpenDeleteModal(appt)} title="Delete Appointment" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2em', color: 'red', padding: '0 5px' }}>
-                                🗑️
-                             </button>
-                        )}
-                    </td>
-                  </tr>
-                 )) // This parenthesis closes the map function's callback
-              ) : ( // This parenthesis opens the "else" part of appointments.length > 0
-                  <tr>
-                      <td colSpan={7} className="permission-message">No appointments found.</td> {/* Adjusted colSpan */}
-                  </tr>
-              )} {/* This curly brace closes the "else" part */}
-            </tbody>
-          </table>
-        )} {/* This curly brace closes the "else" part of loadingAppointments */}
-      </div>
+    console.log("--- Rendering Dashboard ---");
+    // console.log("User:", userProfile?.email, "Role:", userProfile?.role); // Reduced logging
 
-      <hr />
+    // Determine active path for Sidebar highlighting more accurately
+    const pathSegments = location.pathname.split('/').filter(Boolean); // e.g., ['dashboard', 'clients'] or ['dashboard', 'settings-tenant']
+    const currentView = pathSegments[1] || 'overview'; // Default to overview if path is just '/dashboard'
 
-      {/* Users Section (Conditionally Rendered) */}
-      {canViewUsers && ( // Check if user can view users
-        <div className="dashboard-section"> {/* Wrap in div */}
-          <h2>Users Dashboard</h2>
-          {loadingUsers ? (
-            <div className="loading-message">Loading users list...</div>
-          ) : ( // This parenthesis closes loadingUsers check
-            <table className="dashboard-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>ID</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Tenant ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => ( // Ensure 'u' has correct type implicitly or explicitly
-                  <tr key={u.id}>
-                    <td>{u.name}</td>
-                    <td>{u.id}</td>
-                    <td>{u.email}</td>
-                    <td>{u.role}</td>
-                    <td>{u.tenant_id}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )} {/* This curly brace closes the "else" part of loadingUsers */}
-        </div> // Close the wrapping div
-      )} {/* This curly brace closes the canViewUsers check */}
 
-      {/* --- Modals --- */}
-      <Modal
-        isOpen={isUpdateModalOpen}
-        onClose={handleCloseUpdateModal}
-        title={`Update Appointment #${selectedAppointment?.id}`}
-      >
-         {/* Update Form Content */}
-         {selectedAppointment && (
-           <form onSubmit={handleUpdateSubmit} className="modal-form">
-            <div>
-              <label htmlFor="client_name">Client Name</label>
-              <input type="text" id="client_name" name="client_name" value={updateFormData.client_name || ''} onChange={handleUpdateFormChange} required disabled={isSubmittingModal}/>
-            </div>
-            <div>
-              <label htmlFor="client_email">Client Email</label>
-              <input type="email" id="client_email" name="client_email" value={updateFormData.client_email || ''} onChange={handleUpdateFormChange} required disabled={isSubmittingModal}/>
-            </div>
-            <div>
-            <label htmlFor="appointment_time">Appointment Time</label>
-              <input
-                type="datetime-local"
-                id="appointment_time"
-                name="appointment_time"
-                // Use the new formatter for the input field
-                value={updateFormData.appointment_time || ''}
-                onChange={handleUpdateFormChange}
-                required
-                disabled={isSubmittingModal}
-              />
-            </div>
-             <div>
-                <label htmlFor="status">Status</label>
-                <select id="status" name="status" value={updateFormData.status || ''} onChange={handleUpdateFormChange} required disabled={isSubmittingModal}>
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="cancelled">Cancelled</option>
-                    <option value="completed">Done</option>
-                </select>
-            </div>
-            {modalError && <p style={{ color: 'red' }}>{modalError}</p>}
-            <div className="modal-actions">
-              <button type="button" className="modal-button-cancel" onClick={handleCloseUpdateModal} disabled={isSubmittingModal}>Cancel</button>
-              <button type="submit" className="modal-button-confirm" disabled={isSubmittingModal}>
-                {isSubmittingModal ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-           </form>
-         )}
-      </Modal>
+    return (
+        <div className={`dashboard-layout ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+            <Header userName={userProfile.name ?? userProfile.email} onLogout={handleLogout} />
+            <Sidebar
+                isCollapsed={isSidebarCollapsed}
+                toggleSidebar={toggleSidebar}
+                userRole={userProfile.role}
+                activeView={currentView} // Use derived view for highlighting
+                onNavigate={handleNavigation}
+                userName={userProfile.name ?? userProfile.email}
+                isSettingsMenuOpen={isSettingsMenuOpen}
+                toggleSettingsMenu={toggleSettingsMenu}
+                onLogout={handleLogout}
+            />
+            <main className="main-content">
+                {/* Display global errors if any */}
+                {error && (
+                    <div className="error-message global-error">
+                        Error: {error}
+                        <button onClick={() => setError(null)} style={{ marginLeft: '10px', cursor: 'pointer' }}>×</button>
+                    </div>
+                )}
 
-      <Modal
-        isOpen={isDeleteModalOpen}
-        onClose={handleCloseDeleteModal}
-        title={`Confirm Deletion`}
-      >
-          {/* Delete Confirmation Content */}
-         {selectedAppointment && (
-            <div>
-                 <p>Are you sure you want to delete the appointment for <strong>{selectedAppointment.client_name}</strong> at {new Date(selectedAppointment.appointment_time).toLocaleString()}?</p>
-                 {modalError && <p style={{ color: 'red' }}>{modalError}</p>}
-                 <div className="modal-actions">
-                    <button type="button" className="modal-button-cancel" onClick={handleCloseDeleteModal} disabled={isSubmittingModal}>Cancel</button>
-                    <button type="button" className="modal-button-delete" onClick={handleConfirmDelete} disabled={isSubmittingModal}>
-                        {isSubmittingModal ? "Deleting..." : "Delete"}
-                    </button>
-                </div>
-            </div>
-         )}
-      </Modal>
+                {/* --- Nested Routes --- */}
+                <Routes>
+                    {/* --- NEW: Render Overview at root --- */}
+                    <Route index element={<DashboardOverviewPage />} />
+                    {/* Optional: Explicit path if needed, but index handles '/dashboard' */}
+                    {/* <Route path="/" element={<DashboardOverviewPage />} /> */}
 
-    </div> // End dashboard-container
-  );
+                    {/* Calendar Route */}
+                    <Route path="calendar" element={
+                        <div className="view-section">
+                            <h2>Appointments Schedule</h2>
+                            {/* Consider moving loading logic into AppointmentCalendar */}
+                            {loadingAppointments ? <div className="loading-message">Loading appointments...</div> : <AppointmentCalendar appointments={appointments} onAppointmentClick={handleCalendarAppointmentClick} onDayClick={handleCalendarDayClick} />}
+                        </div>
+                    } />
+
+                    {/* Clients List Route */}
+                    <Route path="clients" element={
+                        canManageClients ? (
+                            <ClientsTable // Consider moving loading logic into ClientsTable
+                                clients={clients} isLoading={loadingClients} userProfile={userProfile}
+                                showDeletedClients={showDeletedClients} canDeleteClients={canDeleteClients}
+                                onAddClient={handleOpenCreateClientModal} onEditClient={handleClientRowEditClick}
+                                onDeleteClient={handleClientRowDeleteClick} onToggleShowDeleted={handleToggleShowDeleted}
+                                availableTags={availableTenantTags} onAssignTag={handleAssignTag}
+                                onRemoveTag={handleRemoveTag} canAssignTags={canAssignClientTags}
+                            />
+                        ) : <div className="permission-message">You do not have permission to manage clients.</div>
+                    } />
+
+                    {/* Client Profile Route */}
+                    <Route path="clients/:clientId" element={
+                        canManageClients ? <ClientProfilePage /> : <div className="permission-message">You do not have permission to view client profiles.</div>
+                    } />
+
+                    {/* Services Route - Renders ServicesView */}
+                    <Route path="services" element={<ServicesView userProfile={userProfile} />} />
+
+                    {/* Users Route - Renders UsersView */}
+                    <Route path="users" element={<UsersView userProfile={userProfile} />} />
+
+                    {/* Settings Routes */}
+                    <Route path="settings-tags" element={
+                        canManageTagDefinitions ? <TagManagementView /> : <Navigate to="/dashboard" replace />
+                    } />
+                     <Route path="settings-business" element={
+                         isAdminOrSuper ? <TenantSettingsPage /> : <Navigate to="/dashboard" replace />
+                     } />
+                     <Route path="settings-templates" element={
+                         isAdminOrSuper ? <TemplatesView /> : <Navigate to="/dashboard" replace />
+                     } />
+                     {/* <Route path="settings-appearance" element={...} /> */}
+
+                    {/* Fallback - Redirect to new dashboard root */}
+                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                </Routes>
+            </main> {/* End main-content */}
+
+            {/* --- Modals --- */}
+            {/* Appointment Modals (Could potentially be moved into Calendar view if complex) */}
+            <UpdateAppointmentModal isOpen={isUpdateApptModalOpen} onClose={() => { setIsUpdateApptModalOpen(false); setSelectedAppointment(null); }} onSubmit={handleUpdateAppointment} appointment={selectedAppointment} />
+            <DeleteAppointmentModal isOpen={isDeleteApptModalOpen} onClose={() => { setIsDeleteApptModalOpen(false); setSelectedAppointment(null); }} onConfirm={handleDeleteAppointment} appointment={selectedAppointment} />
+            {/* Create Appt Modal might be triggered from multiple places (Calendar, Client Profile) so keep here? */}
+            <CreateAppointmentModal isOpen={isCreateApptModalOpen} onClose={() => { setIsCreateApptModalOpen(false); setSelectedDateForApptCreation(null); }} onSubmit={handleCreateAppointment} tenantServices={publicTenantServices} isLoadingServices={loadingPublicServices} initialDate={selectedDateForApptCreation} />
+
+            {/* Client Modals (Could potentially be moved into ClientsTable view) */}
+            {canManageClients && userProfile && (
+                <>
+                    <CreateClientModal isOpen={isCreateClientModalOpen} onClose={() => setIsCreateClientModalOpen(false)} onSubmit={handleCreateClient} />
+                    <UpdateClientModal
+                        isOpen={isUpdateClientModalOpen}
+                        onClose={() => { setIsUpdateClientModalOpen(false); setSelectedClient(null); }}
+                        onSubmit={handleUpdateClient}
+                        client={selectedClient}
+                        availableTags={availableTenantTags}
+                        onAssignTag={handleAssignTag}
+                        onRemoveTag={handleRemoveTag}
+                        canAssignTags={canAssignClientTags}
+                    />
+                    <DeleteClientModal isOpen={isDeleteClientModalOpen} onClose={() => { setIsDeleteClientModalOpen(false); setSelectedClient(null); }} onConfirm={handleDeleteClient} client={selectedClient} />
+                </>
+            )}
+
+            {/* Service Modals are inside ServicesView */}
+            {/* Tag Modals are inside TagManagementView */}
+
+        </div> // End dashboard-layout
+    );
 };
 
 export default Dashboard;

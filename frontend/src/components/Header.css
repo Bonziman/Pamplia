@@ -1,0 +1,67 @@
+/* src/components/Header.css */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 25px;
+  height: 60px; /* Standard header height */
+  background-color: #ffffff; /* White background */
+  border-bottom: 1px solid #e0e0e0; /* Subtle separator */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  color: #333;
+  position: sticky; /* Keep header visible on scroll */
+  top: 0;
+  z-index: 100; /* Ensure header is above sidebar content */
+}
+
+.header-logo {
+  font-size: 1.5em;
+  font-weight: 600;
+  color: #2d3748; /* Darker color for logo text */
+  /* Add styles for an actual image logo if needed */
+}
+
+.header-user-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px; /* Space between name and button */
+}
+
+.user-name {
+  font-weight: 500;
+  color: #4a5568; /* Medium gray */
+}
+
+.logout-button {
+  background-color: #e53e3e; /* Red background */
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.logout-button:hover {
+  background-color: #c53030; /* Darker red on hover */
+}
+
+.logout-button:focus {
+  outline: 2px solid #f56565;
+  outline-offset: 2px;
+}
+
+.profile-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #e2e8f0; /* Fallback background */
+  color: #718096; /* Fallback icon color */
+  overflow: hidden; /* Clip image */
+  margin-right: 10px; /* Space between avatar and info */
+}
