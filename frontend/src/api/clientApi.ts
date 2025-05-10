@@ -2,6 +2,7 @@
 // --- NEW FILE ---
 
 import axios from './axiosInstance'; // Use your configured axios instance
+import { FetchedAppointment } from './appointmentApi';
 
 // --- Type Definitions ---
 
@@ -194,3 +195,17 @@ export const removeClientTag = async (clientId: number, tagId: number): Promise<
         throw error;
     }
 };
+
+export const fetchClientAppointments = async (clientId: number): Promise<FetchedAppointment[]> => {
+    try {
+        const currentHostname = window.location.hostname;
+        // Ensure this backend endpoint exists and returns the correct structure
+        const apiUrl = `http://${currentHostname}:8000/clients/${clientId}/appointments/`;
+        console.log(`Fetching appointments for client ${clientId} via ${apiUrl}`);
+        const response = await axios.get<FetchedAppointment[]>(apiUrl); // Expect an array
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching appointments for client ${clientId}:`, error);
+        throw error;
+    }
+}

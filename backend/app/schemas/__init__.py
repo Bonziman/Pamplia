@@ -11,7 +11,7 @@ from .client import (
 )
 from .tag import TagCreate, TagOut
 from .communications_log import (
-    CommunicationsLogBase,
     CommunicationsLogOut,
-    CommunicationsLogCreateManual
+    ManualLogCreate,
 )
+

@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     database_url: str  # Automatically maps to DATABASE_URL from .env
@@ -14,7 +14,16 @@ class Settings(BaseSettings):
     mail_from_address: str
     mail_from_name: str = "Pamplia" # Default name
 
-    class Config:
-        env_file = ".env"
-
+    # Celery Settings
+    celery_broker_url: str 
+    celery_result_backend: str
+    timezone: str = "UTC"  # Default timezone
+    
+    model_config = SettingsConfigDict(
+        env_file='.env',    # Specify the .env file
+        env_file_encoding='utf-8', # Specify encoding
+        extra='ignore'      # Allow other env vars without causing errors
+                            # Alternatively, keep 'forbid' and only define needed vars
+    )
+    
 settings = Settings()  #  This line makes the instance available for import

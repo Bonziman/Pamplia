@@ -3,7 +3,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, Query
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import exc as SQLAlchemyExceptions, select, update
+from sqlalchemy import desc, exc as SQLAlchemyExceptions, select, update
 from typing import List, Optional
 from datetime import datetime as dt # Alias to avoid confusion with schema datetime
 import logging  # Import logging module
@@ -20,6 +20,12 @@ router = APIRouter(
     prefix="/clients",
     tags=["Clients"]
 )
+from app.models.communications_log import CommunicationsLog as CommunicationsLogModel
+from app.schemas.communications_log import CommunicationsLogOut
+from app.schemas.pagination import PaginatedResponse
+from app.models.appointment import Appointment as AppointmentModel
+from app.schemas.appointment import AppointmentOut
+from sqlalchemy.orm import selectinload
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -418,3 +424,104 @@ def remove_tag_from_client(
         db.rollback()
         logger.error(f"[Remove Tag] Error removing tag: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not remove tag from client.")
+
+
+@router.get(
+    "/{client_id}/appointments/",
+    response_model=List[AppointmentOut], # Return a list of appointments
+    summary="List Appointments for a Specific Client"
+)
+def list_client_appointments(
+    client_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: User = Depends(get_current_user) # Requires authentication
+):
+    """
+    Retrieves a list of all appointments associated with a specific client.
+    Ensures the client belongs to the current user's tenant (unless super_admin).
+    Used for populating dropdowns or lists where client context is primary.
+    Note: Does not include pagination by default, adjust if needed for large histories.
+    """
+    logger.info(f"User {current_user.email} requesting appointments for Client ID: {client_id}")
+
+    # 1. Fetch Client and check permissions (ensure active client)
+    # We don't need include_deleted=True here usually
+    client = get_client_or_404(db, client_id, include_deleted=False)
+    check_client_permission(current_user, client, action="view appointments for") # Use specific action string
+
+    # 2. Query appointments for this client
+    # Eagerly load necessary relationships for the AppointmentOut schema
+    query = db.query(AppointmentModel).filter(
+        AppointmentModel.client_id == client_id
+    ).options(
+        selectinload(AppointmentModel.services), # Load services efficiently
+        # Client is already loaded via get_client_or_404 or implicitly through relationship
+        # selectinload(AppointmentModel.client).selectinload(ClientModel.tags) # If you need client tags in ApptOut
+    ).order_by(
+        desc(AppointmentModel.appointment_time) # Order by most recent first
+    )
+
+    # Consider adding pagination here if a client could have thousands of appointments
+    # query = query.offset(skip).limit(limit)
+
+    appointments = query.all()
+
+    logger.info(f"Found {len(appointments)} appointments for Client ID: {client_id}")
+
+    # The AppointmentOut schema will handle serialization
+    return appointments
+
+
+@router.get(
+    "/{client_id}/communications/",
+    response_model=PaginatedResponse[CommunicationsLogOut] # Use generic pagination schema
+)
+def list_client_communications(
+    client_id: int,
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(6, ge=1, le=50, description="Items per page"), # Default to 6 per requirement
+    db: Session = Depends(database.get_db),
+    current_user: User = Depends(get_current_user) # All roles can view
+):
+    """
+    Retrieves a paginated list of communication logs for a specific client,
+    ensuring the client belongs to the user's tenant.
+    """
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not associated with a tenant.")
+
+    tenant_id = current_user.tenant_id
+    logger.info(f"User {current_user.email} listing communications for Client ID: {client_id} (Tenant: {tenant_id}), Page: {page}, Limit: {limit}")
+
+
+    client = db.query(ClientModel).filter(
+        ClientModel.id == client_id,
+        ClientModel.tenant_id == tenant_id
+    ).first()
+    if not client:
+        logger.warning(f"Communications list rejected: Client ID {client_id} not found or doesn't belong to Tenant ID {tenant_id}.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found or access denied.")
+
+    offset = (page - 1) * limit
+    base_query = db.query(CommunicationsLogModel).filter(
+        CommunicationsLogModel.client_id == client_id,
+        CommunicationsLogModel.tenant_id == tenant_id
+    )
+
+    try:
+        total_count = base_query.count() # Get total count before pagination
+        logs = base_query.order_by(
+            desc(CommunicationsLogModel.timestamp) # Order by most recent first
+        ).offset(offset).limit(limit).all()
+
+        logger.info(f"Found {len(logs)} communication logs (Total: {total_count}) for Client ID: {client_id} on page {page}.")
+
+        return PaginatedResponse(
+            total=total_count,
+            page=page,
+            limit=limit,
+            items=logs # Pydantic will convert model instances using CommunicationsLogOut schema
+        )
+    except Exception as e:
+         logger.error(f"Error querying communications for Client ID {client_id}: {e}", exc_info=True)
+         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not retrieve communication logs.")

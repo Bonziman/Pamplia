@@ -1,0 +1,135 @@
+/* src/components/activity/ActivityFeed.css */
+
+.activity-feed h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  border-bottom: 1px solid var(--border-color-light, #eee);
+  padding-bottom: 0.5rem;
+}
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.log-entry {
+  display: flex;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--border-color-light, #eee);
+}
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-icon-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start; /* Align icons to top */
+  gap: 0.3rem;
+  flex-basis: 30px; /* Fixed width for icon area */
+  flex-shrink: 0;
+  padding-top: 0.1rem;
+}
+
+.log-channel-icon {
+  font-size: 1.2rem;
+  color: var(--primary-color, #0d6efd); /* Default color */
+  opacity: 0.8;
+}
+/* Optional: Specific colors per channel */
+.channel-email .log-channel-icon { color: #0d6efd; }
+.channel-phone .log-channel-icon { color: #198754; }
+.channel-sms .log-channel-icon { color: #ffc107; }
+.channel-in_person .log-channel-icon { color: #6f42c1; }
+.channel-virtual_meeting .log-channel-icon { color: #0dcaf0; }
+.channel-other .log-channel-icon { color: #adb5bd; }
+
+
+.log-direction-icon {
+  font-size: 0.8rem;
+  color: var(--text-muted, #6c757d);
+}
+.direction-outbound .log-direction-icon { color: #dc3545; } /* Example: Red for outbound */
+.direction-inbound .log-direction-icon { color: #198754; } /* Example: Green for inbound */
+
+
+.log-details-col {
+  flex-grow: 1;
+  min-width: 0; /* Prevent overflow */
+}
+
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.3rem;
+  flex-wrap: wrap; /* Wrap on small screens */
+  gap: 0.5rem;
+}
+
+.log-subject {
+  font-weight: 600;
+  color: var(--input-text-color, #212529);
+  font-size: 0.95rem;
+  margin-right: 1rem; /* Space before timestamp */
+}
+
+.log-timestamp {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6c757d);
+  white-space: nowrap;
+  flex-shrink: 0; /* Prevent timestamp from wrapping too easily */
+}
+
+.log-notes {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #495057);
+  line-height: 1.5;
+  white-space: pre-wrap; /* Preserve whitespace/newlines in notes */
+  word-break: break-word; /* Break long words */
+  margin-bottom: 0.5rem;
+}
+
+.log-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem; /* Row and column gap */
+  font-size: 0.75rem;
+  color: var(--text-muted, #888);
+  align-items: center;
+}
+
+.log-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.log-footer svg {
+  opacity: 0.7;
+}
+
+.log-status {
+  font-weight: 500;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  background-color: #e9ecef;
+  color: #495057;
+  border: 1px solid #dee2e6;
+}
+.status-sent { background-color: #d1e7dd; color: #0f5132; border-color: #badbcc;}
+.status-failed { background-color: #f8d7da; color: #842029; border-color: #f5c2c7;}
+.status-logged { background-color: #cfe2ff; color: #084298; border-color: #b6d4fe;}
+/* Add other status styles */
+
+
+.activity-pagination {
+  margin-top: 1.5rem;
+  justify-content: center; /* Center pagination */
+}
+/* Use styles from ClientProfilePage or define pagination controls */

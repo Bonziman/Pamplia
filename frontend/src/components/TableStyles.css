@@ -364,3 +364,29 @@
     border-radius: 4px;
     margin-bottom: 15px; /* Space below error */
 }
+
+
+
+
+
+/* Example: Add to LogInteractionModal.css or FormStyles.css */
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem; /* Row and column gap */
+  margin-top: 0.25rem;
+}
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  margin-bottom: 0.25rem; /* Add spacing if they wrap */
+}
+.radio-label input[type="radio"] {
+  margin-right: 0.1rem; /* Adjust spacing */
+  cursor: pointer;
+  /* Consider vertical alignment if needed */
+  vertical-align: middle;
+  margin-top: -1px; /* Fine-tune alignment */
+}

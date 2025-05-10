@@ -39,6 +39,15 @@ class CommunicationStatus(PyEnum):
     OPENED = "opened"         # Email opened confirmation (requires webhook/tracking)
     CLICKED = "clicked"       # Link clicked confirmation (requires webhook/tracking)
 
+class CommunicationDirection(PyEnum):
+    OUTBOUND = "OUTBOUND"
+    INBOUND = "INBOUND"
+    SYSTEM = "SYSTEM"   # Internal system messages or logs
+    PHONE = "PHONE"
+    IN_PERSON = "IN_PERSON"
+    VIRTUAL_MEETING = "VIRTUAL_MEETING"
+    OTHER = "OTHER"
+
 # --- Model Definition ---
 class CommunicationsLog(Base):
     __tablename__ = "communications_log"
@@ -66,6 +75,13 @@ class CommunicationsLog(Base):
         ),
         nullable=False, index=True
     )
+    direction = Column(
+        PG_ENUM(CommunicationDirection, name='communicationdirection', create_type=True), # Create this DB type
+        nullable=False, # Make non-nullable now
+        server_default=CommunicationDirection.SYSTEM.value, # Default to SYSTEM
+        default=CommunicationDirection.SYSTEM,
+        index=True
+    )
     status = Column(
         PG_ENUM(
             CommunicationStatus, name='communicationstatus', create_type=True,
@@ -77,8 +93,9 @@ class CommunicationsLog(Base):
     # Timestamp of when the log entry was created (approximates sending time initially)
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    # Optional details field (e.g., error message from provider, subject line, content summary)
-    details = Column(Text, nullable=True)
+
+    notes = Column(Text, nullable=True, comment="Main content/notes of the communication")
+    
 
     # --- Relationships (Optional but useful) ---
     tenant = relationship("Tenant", back_populates="communication_logs")
@@ -90,9 +107,11 @@ class CommunicationsLog(Base):
     __table_args__ = (
         Index("ix_comm_log_tenant_type_channel", "tenant_id", "type", "channel"),
         Index("ix_comm_log_timestamp", "timestamp"), # Useful for time-based queries
+         Index("ix_comm_log_tenant_direction", "tenant_id", "direction"), # For filtering by direction
     )
 
     def __repr__(self):
         return (f"<CommunicationsLog(id={self.id}, tenant={self.tenant_id}, client={self.client_id}, "
-                f"appt={self.appointment_id}, type='{self.type.value}', channel='{self.channel.value}', "
+                f"appt={self.appointment_id}, user={self.user_id}, type='{self.type.value}', "
+                f"channel='{self.channel.value}', dir='{self.direction.value}', " # No longer nullable
                 f"status='{self.status.value}')>")

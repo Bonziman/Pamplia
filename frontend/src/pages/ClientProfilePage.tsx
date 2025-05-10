@@ -20,6 +20,13 @@ import CreateAppointmentModal from '../components/modals/CreateAppointmentModal'
 import './ClientProfilePage.css';
 import '../components/TableStyles.css';
 
+// Communications imports
+import LogInteractionModal from '../components/modals/LogInteractionModal';
+import ActivityFeed from '../components/activity/ActivityFeed';
+import { createManualLog } from '../api/communicationsApi'; // API function
+import { ManualLogCreatePayload } from '../types/Communication'; // Type for payload
+import { faPlusCircle } from '@fortawesome/free-solid-svg-icons'; // Icon for button
+
 // Default Avatar
 const DEFAULT_AVATAR = '/defaults/icons8-male-user-94.png'; // Adjust path as needed
 
@@ -84,12 +91,15 @@ const ClientProfilePage: React.FC = () => {
     const { userProfile } = useAuth();
     const navigate = useNavigate();
 
-    // --- State ---
+    // --- States ---
     const [client, setClient] = useState<FetchedClient | null>(null);
     const [appointments, setAppointments] = useState<FetchedAppointment[]>([]);
     const [isLoadingClient, setIsLoadingClient] = useState(true);
     const [isLoadingAppointments, setIsLoadingAppointments] = useState(false);
     const [error, setError] = useState<string | null>(null); // Combined error state
+
+    // State for Communication Log Modal 
+    const [isLogModalOpen, setIsLogModalOpen] = useState(false);
 
     // Appointment List State
     const [appointmentPage, setAppointmentPage] = useState(1);
@@ -190,6 +200,35 @@ const ClientProfilePage: React.FC = () => {
         setError(null); // Clear errors when toggling mode
     };
 
+    // --- Handlers for Manual Log Modal ---
+    const handleOpenLogModal = () => {
+        if (!client) return; // Ensure client is loaded
+        setIsLogModalOpen(true);
+    };
+
+    const handleCloseLogModal = () => {
+        setIsLogModalOpen(false);
+    };
+
+    const handleSaveManualLog = useCallback(async (payload: ManualLogCreatePayload) => {
+        console.log("ClientProfilePage: Saving manual log...", payload);
+        setError(null); // Clear page error before save
+        try {
+            await createManualLog(payload);
+            console.log("ClientProfilePage: Manual log creation success.");
+            handleCloseLogModal(); // Close modal on success
+            // TODO: Trigger refresh of ActivityFeed component
+            // This might happen automatically if ActivityFeed refetches on prop change,
+            // or we might need a more explicit refresh mechanism (e.g., passing a refresh counter prop).
+            // For now, closing modal is the main action. Activity feed might refetch on next load.
+        } catch (apiError: any) {
+            console.error("ClientProfilePage: Manual log creation failed:", apiError);
+            // Re-throw the error so the modal's catch block can handle displaying it
+            throw apiError;
+        }
+    }, []); // No direct dependencies here, relies on modal payload
+
+    
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setEditedClientData(prev => ({ ...prev, [name]: value }));
@@ -308,7 +347,7 @@ const ClientProfilePage: React.FC = () => {
     if (isLoadingClient) return <div className="loading-message">Loading Client Profile... <FontAwesomeIcon icon={faSpinner} spin /></div>;
     if (error && !client && !isLoadingClient) return <div className="error-message global-error">Error: {error} <FontAwesomeIcon icon={faExclamationTriangle} /> <button onClick={loadClientDetails}>Retry</button></div>;
     if (!client) return <div className="loading-message">Client not found or could not be loaded.</div>;
-
+    const clientIdNum = parseInt(clientId || '0', 10); // Get client ID as number
     const fullName = `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Unnamed Client';
 
     return (
@@ -345,6 +384,13 @@ const ClientProfilePage: React.FC = () => {
                                  Add New Appointment
                              </button>
                          )}
+                         <button
+                             onClick={handleOpenLogModal}
+                             className="button button-secondary add-log-btn" // Style as needed
+                             style={{ marginTop: '1rem', width: '100%' }} // Example inline style
+                         >
+                             <FontAwesomeIcon icon={faPlusCircle} /> Log Interaction
+                         </button>
                     </div>
 
                     <div className="client-details-card">
@@ -404,6 +450,11 @@ const ClientProfilePage: React.FC = () => {
 
                 {/* --- Right Column --- */}
                 <div className="profile-right-column">
+                {clientIdNum > 0 && ( // Render only if clientId is valid
+                        <div className="activity-feed-container card"> {/* Wrap in card style? */}
+                            <ActivityFeed clientId={clientIdNum} />
+                        </div>
+                    )}
                     <div className="stats-widgets-container">
                          <div className="stat-widget"><div className="stat-value">{appointmentTotalItems ?? '?'}</div><div className="stat-label">Total Bookings</div></div>
                          <div className="stat-widget"><div className="stat-value">{appointments.filter(appt => (appt.status === 'pending' || appt.status === 'confirmed') && new Date(appt.appointment_time) > new Date()).length}</div><div className="stat-label">Upcoming</div></div>
@@ -508,6 +559,12 @@ const ClientProfilePage: React.FC = () => {
                     email: client.email || null,
                     phone: client.phone_number || null
                 } : undefined}
+            />
+            <LogInteractionModal
+                 isOpen={isLogModalOpen}
+                 onClose={handleCloseLogModal}
+                 onSave={handleSaveManualLog}
+                 clientId={clientIdNum || null} // Pass client ID
             />
         </>
     );
