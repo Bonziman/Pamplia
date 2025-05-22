@@ -12,8 +12,20 @@ import {
 } from '@fortawesome/free-solid-svg-icons'; // Example icons
 
 import './DashboardOverviewPage.css'; // Create this CSS file
-
-const DashboardOverviewPage: React.FC = () => {
+import {
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
+  StatArrow,
+  StatGroup,
+  Button,
+  Heading
+} from '@chakra-ui/react'
+type DashboardOverviewPageProps = {
+    userName?: string;
+};
+const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({ userName }) => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -58,11 +70,7 @@ const DashboardOverviewPage: React.FC = () => {
 
     return (
         <div className="view-section dashboard-overview-page">
-            {/* Page Header */}
-            <div className="view-header dashboard-overview-header">
-                <h1>Dashboard Overview</h1>
-                 {/* Add other header elements if needed */}
-            </div>
+            
 
             {/* Display loading or error state */}
             {isLoading && !stats && ( // Show initial loading state
@@ -73,8 +81,52 @@ const DashboardOverviewPage: React.FC = () => {
             )}
 
             {/* --- Fixed Stats Section --- */}
+            <Heading as="h1" size="xl" mb={4} color="#18181b">
+                Hello {userName ? userName.split(' ')[0] : 'there'}, welcome back!
+            </Heading>
             <section className="dashboard-section fixed-stats">
-                <h2>Today & Immediate Actions</h2>
+
+                
+                <StatGroup  h="150px" gap="20px">
+                    <Stat bg="#CCFBF7" w="auto" h="auto" borderRadius="12px" paddingLeft="15px" paddingTop="10px" color="#18181b" >
+                        <StatLabel color="gray.500">Today's Expected Revenue</StatLabel>
+                        <StatNumber fontSize="32px">{formatCurrency(stats?.expected_revenue_today)}</StatNumber>
+                        <StatHelpText>
+                            <StatArrow type='increase' />
+                            {stats?.revenue_change !== undefined && stats?.revenue_change !== null
+                                ? stats.revenue_change.toFixed(2)
+                                : '-'}%
+                        </StatHelpText>
+                    </Stat>
+                    <Stat bg="#CCFBF7" w="auto" h="auto" borderRadius="12px" paddingLeft="15px" paddingTop="10px" color="#18181b" >
+                        <StatLabel color="gray.500">Appointments Today</StatLabel>
+                        <StatNumber fontSize="32px">{stats?.appointments_today}</StatNumber>
+                        <StatHelpText>
+                            <StatArrow type={stats?.appointments_change && stats.appointments_change < 0 ? 'decrease' : 'increase'} />
+                            {stats?.appointments_change !== undefined && stats?.appointments_change !== null
+                                ? stats.appointments_change.toFixed(2)
+                                : '-'}%
+                        </StatHelpText>
+                    </Stat>
+
+                    <Stat bg="#CCFBF7" w="auto" h="auto" borderRadius="12px" paddingLeft="15px" paddingTop="10px" color="#18181b" >
+                        <StatLabel color="gray.500">Pending Appointments</StatLabel>
+                        <StatNumber fontSize="32px">{stats?.pending_appointments_total}</StatNumber>
+                        <StatHelpText>
+                            <StatArrow type='increase' />
+                            23.36%
+                        </StatHelpText>
+                        
+                    </Stat>
+                    <Stat bg="#CCFBF7" w="auto" h="auto" borderRadius="12px" paddingLeft="15px" paddingTop="10px" color="#18181b">
+                        <StatLabel color="gray.500">Unconfirmed clients</StatLabel>
+                        <StatNumber fontSize="32px">{stats?.unconfirmed_clients_total}</StatNumber>
+                        <StatHelpText>
+                            <StatArrow type='increase' />
+                            23.36%
+                        </StatHelpText>
+                    </Stat>
+                </StatGroup>
                 <div className="widgets-container">
                     <StatWidget
                         label="Appointments Today"

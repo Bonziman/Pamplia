@@ -96,6 +96,23 @@ def get_dashboard_stats(
             AppointmentModel.appointment_time >= today_start,
             AppointmentModel.appointment_time < tomorrow_start
         ).scalar() or 0
+        
+        # Appointments Yesterday Count
+        yesterday_start = today_start - timedelta(days=1)
+        appts_yesterday_count = db.query(func.count(AppointmentModel.id)).filter(
+            AppointmentModel.tenant_id == tenant_id,
+            AppointmentModel.appointment_time >= yesterday_start,
+            AppointmentModel.appointment_time < today_start
+        ).scalar() or 0
+        
+        # Calculate percentage change (handle division by zero)
+        if appts_yesterday_count == 0:
+            if appts_today_count == 0:
+                appts_today_vs_yesterday_pct = 0.0
+            else:
+                appts_today_vs_yesterday_pct = 100.0
+        else:
+            appts_today_vs_yesterday_pct = ((appts_today_count - appts_yesterday_count) / appts_yesterday_count) * 100
 
         # 2. Expected Revenue Today (Non-cancelled appointments today)
         expected_revenue_today_query = db.query(func.sum(ServiceModel.price)).join(
@@ -109,6 +126,29 @@ def get_dashboard_stats(
             AppointmentModel.status.in_([AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED])
         )
         expected_revenue_today = expected_revenue_today_query.scalar() or 0.0
+        
+        # 2b. Yesterday's Revenue (DONE appointments)
+        revenue_yesterday_query = db.query(func.sum(ServiceModel.price)).join(
+            appointment_services_table, ServiceModel.id == appointment_services_table.c.service_id
+        ).join(
+            AppointmentModel, AppointmentModel.id == appointment_services_table.c.appointment_id
+        ).filter(
+            AppointmentModel.tenant_id == tenant_id,
+            AppointmentModel.appointment_time >= yesterday_start,
+            AppointmentModel.appointment_time < today_start,
+            AppointmentModel.status == AppointmentStatus.DONE
+        )
+        revenue_yesterday = revenue_yesterday_query.scalar() or 0.0
+
+        # Calculate percentage difference between today's expected revenue and yesterday's revenue
+        if revenue_yesterday == 0:
+            if expected_revenue_today == 0:
+                revenue_today_vs_yesterday_pct = 0.0
+            else:
+                revenue_today_vs_yesterday_pct = 100.0
+        else:
+            revenue_today_vs_yesterday_pct = ((expected_revenue_today - revenue_yesterday) / revenue_yesterday) * 100
+
 
         # 3. Pending Appointments Total Count
         pending_appts_count = db.query(func.count(AppointmentModel.id)).filter(
@@ -183,6 +223,8 @@ def get_dashboard_stats(
         completed_appointments_period=completed_appts_period_count,
         revenue_period=float(revenue_period), # Cast Decimal if needed
         new_clients_period=new_clients_period_count,
+        appointments_change=appts_today_vs_yesterday_pct,
+        revenue_change=revenue_today_vs_yesterday_pct,
     )
 
     logger.info(f"Successfully fetched dashboard stats for Tenant ID: {tenant_id}, Period: {period}")

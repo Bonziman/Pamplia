@@ -1,24 +1,104 @@
 // src/components/Sidebar.tsx
-// --- FULL REPLACEMENT ---
+// --- REFACTORED WITH CHAKRA UI ---
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom'; // Import Link for navigation
-import './Sidebar.css';
+import React, { useRef, useEffect } from 'react';
+// Removed Link from react-router-dom as we are using onNavigate prop with Chakra Buttons
+import {
+    Box,
+    Flex,
+    VStack,
+    Button,
+    Text,
+    IconButton,
+    Image,
+    Icon as ChakraIcon, // To wrap FontAwesomeIcon or use Chakra icons
+    Collapse, // For the settings menu
+    useTheme, // To access theme values directly if needed
+    useColorModeValue,
+    Divider,
+} from '@chakra-ui/react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
     faCalendarDays, faUsers, faTags, faArrowLeft, faArrowRight,
-    faAddressBook, faUserCircle, faChevronDown, faChevronUp, faCog,
-    faSignOutAlt, faIdBadge, faPalette, faThLarge, faFileInvoice // Ensure these icons are available in the solid set
-} from '@fortawesome/free-solid-svg-icons';
+    faAddressBook, faCog, faSignOutAlt, faPalette, faThLarge, faFileInvoice,
+    faChevronUp, faChevronDown
+} from '@fortawesome/free-solid-svg-icons'; // Your existing icons
+
+// Helper component for Nav items to reduce repetition
+interface NavItemProps {
+    icon: any; // FontAwesome icon definition
+    label: string;
+    isActive: boolean;
+    isCollapsed: boolean;
+    onClick: () => void;
+    title?: string;
+}
+
+const NavItem: React.FC<NavItemProps> = ({ icon, label, isActive, isCollapsed, onClick, title }) => {
+    // Directly use theme values for clarity
+    const activeColor = useColorModeValue('brand.500', 'brand.300'); 
+    const inactiveTextColor = useColorModeValue('ui.sidebarText', 'ui.sidebarText'); // Will resolve to #FFFFFF
+    const inactiveIconColor = useColorModeValue('ui.sidebarIcon', 'ui.sidebarText'); // Will resolve to brand.500
+
+    return (
+        <Button
+            onClick={onClick}
+            variant="ghost" 
+            justifyContent="flex-start"
+            alignItems="center"
+            w="100%"
+            h="48px"
+            px={isCollapsed ? "0" : "4"} 
+            bg={isActive ? 'ui.sidebarActiveBg' : 'transparent'}
+            _hover={{
+                bg: 'ui.sidebarActiveBg', 
+                '.navitem-icon': { color: activeColor }, 
+                '.navitem-text': { color: activeColor }, 
+            }}
+            title={isCollapsed ? title || label : undefined}
+            aria-current={isActive ? 'page' : undefined}
+            display="flex"
+        >
+            <Flex
+                align="center"
+                justifyContent={isCollapsed ? "center" : "flex-start"}
+                w="100%"
+            >
+                <ChakraIcon
+                    className="navitem-icon" 
+                    as={FontAwesomeIcon}
+                    icon={icon}
+                    boxSize="20px"
+                    color={isActive ? activeColor : "white"} 
+                    mr={isCollapsed ? "0" : "3"}
+                    transition="margin 0.2s ease-in-out, color 0.2s ease-in-out"
+                />
+                {!isCollapsed && (
+                    <Text
+                        marginBottom="0px"
+                        className="navitem-text" 
+                        fontSize="md"
+                        fontWeight="medium"
+                        color={isActive ? activeColor : inactiveTextColor} // This should make it white
+                        transition="color 0.2s ease-in-out"
+                    >
+                        {label}
+                    </Text>
+                )}
+            </Flex>
+        </Button>
+    );
+};
+
 
 interface SidebarProps {
     isCollapsed: boolean;
     toggleSidebar: () => void;
     userRole: string | undefined;
-    activeView: string; // Base path like 'clients', 'calendar'
-    onNavigate: (path: string) => void; // Function to trigger router navigation
-    userName: string;
-    userAvatarUrl?: string | null;
+    activeView: string;
+    onNavigate: (path: string) => void;
+    // userName: string; // userName from Figma seems to be in Header, not sidebar bottom
+    // userAvatarUrl?: string | null; // Ditto
     isSettingsMenuOpen: boolean;
     toggleSettingsMenu: () => void;
     onLogout: () => void;
@@ -28,182 +108,171 @@ const Sidebar: React.FC<SidebarProps> = ({
     isCollapsed,
     toggleSidebar,
     userRole,
-    activeView, // Now represents the base path (e.g., 'clients')
+    activeView,
     onNavigate,
-    userName,
-    userAvatarUrl,
     isSettingsMenuOpen,
     toggleSettingsMenu,
     onLogout
 }) => {
-    const profileSectionRef = useRef<HTMLDivElement>(null);
+    const settingsMenuRef = useRef<HTMLDivElement>(null); // For click outside settings menu
 
-    // Permissions
+    // Permissions (can be memoized if complex)
     const canViewUsers = userRole === "super_admin" || userRole === "admin";
     const canManageServices = userRole === "super_admin" || userRole === "admin";
     const canManageClients = userRole === "super_admin" || userRole === "admin" || userRole === "staff";
-    const canManageTagDefinitions = userRole === "super_admin" || userRole === "admin" || userRole === "staff";
+    const canManageTagDefinitions = userRole === "super_admin" || userRole === "admin"; // Typically admin+
     const canAccessTenantSettings = userRole === "super_admin" || userRole === "admin";
 
-    // Icons
-    const menuIcon = isCollapsed ? <FontAwesomeIcon icon={faArrowRight} /> : <FontAwesomeIcon icon={faArrowLeft} />;
-    const calendarIcon = <FontAwesomeIcon icon={faCalendarDays} />;
-    const clientsIcon = <FontAwesomeIcon icon={faAddressBook} />;
-    const servicesIcon = <FontAwesomeIcon icon={faTags} />;
-    const usersIcon = <FontAwesomeIcon icon={faUsers} />;
-    const tagsIcon = <FontAwesomeIcon icon={faTags} />;
-    const settingsIcon = <FontAwesomeIcon icon={faCog} />;
-    const profileSettingsIcon = <FontAwesomeIcon icon={faIdBadge} />;
-    const themeIcon = <FontAwesomeIcon icon={faPalette} />;
-    const logoutIcon = <FontAwesomeIcon icon={faSignOutAlt} />;
-    const profileToggleIcon = isSettingsMenuOpen ? faChevronUp : faChevronDown;
-    const dashboardIcon = <FontAwesomeIcon icon={faThLarge} />;
-    const templateIcon = <FontAwesomeIcon icon={faFileInvoice} />;
-
-    // Handler for navigating from settings menu
-    const handleSettingsNavigation = (viewPath: string) => {
-        onNavigate(viewPath); // Use the navigation function passed from Dashboard
-        // No need to toggle menu here, parent Dashboard handles closing on navigate
-    };
-
-     // Close settings menu if clicking outside of it
+    // UseEffect for settings menu click outside (similar to your logic)
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (profileSectionRef.current && !profileSectionRef.current.contains(event.target as Node)) {
-                // Check if the menu is currently open before trying to close it
-                if(isSettingsMenuOpen) {
-                    toggleSettingsMenu(); // Call the toggle function from props
+            if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
+                if (isSettingsMenuOpen) {
+                    toggleSettingsMenu();
                 }
             }
         };
-        // Only add listener if menu is open
-        if (isSettingsMenuOpen) {
+        if (isSettingsMenuOpen && !isCollapsed) { // Only enable when menu is open and sidebar not collapsed
             document.addEventListener('mousedown', handleClickOutside);
-        } else {
-            document.removeEventListener('mousedown', handleClickOutside);
         }
-        // Cleanup listener on unmount or when menu closes
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [isSettingsMenuOpen, toggleSettingsMenu]); // Depend on state and toggle function
+    }, [isSettingsMenuOpen, toggleSettingsMenu, isCollapsed]);
 
+    const sidebarWidth = isCollapsed ? "80px" : "260px";
+    const sidebarBg = useColorModeValue('ui.sidebarBg', 'gray.800');
 
     return (
-        <aside className={`app-sidebar ${isCollapsed ? 'collapsed' : ''}`}>
-            <div className="sidebar-top">
-                <button className="sidebar-toggle-button" onClick={toggleSidebar} aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
-                    {menuIcon}
-                </button>
-                <nav className="sidebar-nav">
-                    <ul>
-                        {/* Use Link component for standard navigation, or button with onNavigate */}
-                        <li className={activeView === 'dashboard' ? 'active' : ''} title={isCollapsed ? "Calendar" : ""}>
-                            {/* Using button + onNavigate handler */}
-                            <button onClick={() => onNavigate('dashboard')}>
-                                <span className="nav-icon">{dashboardIcon}</span>
-                                {!isCollapsed && <span className="nav-text">Dashboard</span>}
-                            </button>
-                            {/* Alternative using Link:
-                            <Link to="/dashboard/calendar">
-                                <span className="nav-icon">{calendarIcon}</span>
-                                {!isCollapsed && <span className="nav-text">Calendar</span>}
-                            </Link> */}
-                        </li>
-                        <li className={activeView === 'calendar' ? 'active' : ''} title={isCollapsed ? "Calendar" : ""}>
-                            {/* Using button + onNavigate handler */}
-                            <button onClick={() => onNavigate('calendar')}>
-                                <span className="nav-icon">{calendarIcon}</span>
-                                {!isCollapsed && <span className="nav-text">Calendar</span>}
-                            </button>
-                            {/* Alternative using Link:
-                            <Link to="/dashboard/calendar">
-                                <span className="nav-icon">{calendarIcon}</span>
-                                {!isCollapsed && <span className="nav-text">Calendar</span>}
-                            </Link> */}
-                        </li>
-                        {canManageClients && (
-                            <li className={activeView === 'clients' ? 'active' : ''} title={isCollapsed ? "Clients" : ""}>
-                                <button onClick={() => onNavigate('clients')}>
-                                    <span className="nav-icon">{clientsIcon}</span>
-                                    {!isCollapsed && <span className="nav-text">Clients</span>}
-                                </button>
-                            </li>
-                        )}
-                        {canManageServices && (
-                             <li className={activeView === 'services' ? 'active' : ''} title={isCollapsed ? "Services" : ""}>
-                                <button onClick={() => onNavigate('services')}>
-                                    <span className="nav-icon">{servicesIcon}</span>
-                                    {!isCollapsed && <span className="nav-text">Services</span>}
-                                </button>
-                             </li>
-                        )}
-                        {canViewUsers && (
-                            <li className={activeView === 'users' ? 'active' : ''} title={isCollapsed ? "Users" : ""}>
-                                <button onClick={() => onNavigate('users')}>
-                                    <span className="nav-icon">{usersIcon}</span>
-                                    {!isCollapsed && <span className="nav-text">Users</span>}
-                                </button>
-                            </li>
-                        )}
+        <Box
+            borderRadius={'0px 18px 18px 0'}
+            as="aside"
+            bg={sidebarBg}
+            color="gray.100"
+            w={sidebarWidth}
+            minH="100vh" // Full height
+            transition="width 0.2s ease-in-out"
+            marginRight="28px"
+            position="fixed" // Or "sticky" if parent layout supports it
+            top="0"
+            left="0"
+            zIndex="sticky" // Ensure it's above content but below modals typically
+            overflowY="auto" // Allow scrolling if content exceeds height
+            boxShadow="md" // Subtle shadow
+            css={{ // For custom scrollbar styling (optional)
+                '&::-webkit-scrollbar': { width: '6px' },
+                '&::-webkit-scrollbar-thumb': { bg: 'gray.600', borderRadius: '0px 18px 18px 0' },
+            }}
+        >
+            <VStack spacing={0} align="stretch" h="100%"> {/* Main vertical stack */}
+                {/* Top Section: Logo & Toggle */}
+                <Flex
+                    paddingInline="20px"
+                    align="center"
+                    justify={isCollapsed ? "center" : "space-between"}
+                    h="92px" // Match header height
+                    
+                    borderBottomWidth="1px"
+                    borderColor="gray.700" // Darker border for dark bg
+                >
+                    {!isCollapsed && (
+                        <Image src="/logo_light.png" alt="Pamplia Logo" h="65%" />
                         
-                    </ul>
-                </nav>
-            </div>
+                    )}
+                    
+                </Flex>
 
-            <div className="sidebar-spacer"></div>
+                {/* Navigation Section */}
+                <VStack as="nav" spacing="1" p={isCollapsed ? "2" : "4"} flex="1" overflowY="auto" color={"ui.sidebarText"}>
+                    {/* Nav items here, use NavItem component */}
+                    <NavItem icon={faThLarge} label="Dashboard" isActive={activeView === 'overview' || activeView === 'dashboard'} isCollapsed={isCollapsed} onClick={() => onNavigate('/dashboard')} />
+                    <NavItem icon={faCalendarDays} label="Calendar" isActive={activeView === 'calendar'} isCollapsed={isCollapsed} onClick={() => onNavigate('calendar')} />
+                    {canManageClients && <NavItem icon={faAddressBook} label="Clients" isActive={activeView === 'clients'} isCollapsed={isCollapsed} onClick={() => onNavigate('clients')} />}
+                    {/* For "Staff", use the Users icon or a dedicated staff icon */}
+                    {canViewUsers && <NavItem icon={faUsers} label="Staff" isActive={activeView === 'users' || activeView === 'staff'} isCollapsed={isCollapsed} onClick={() => onNavigate('users')} title="Staff Management"/>}
+                    {canManageServices && <NavItem icon={faTags} label="Services" isActive={activeView === 'services'} isCollapsed={isCollapsed} onClick={() => onNavigate('services')} />}
+                    {/* Remove duplicate Dashboard from screenshot */}
+                </VStack>
+                
 
-            <div className="sidebar-bottom" ref={profileSectionRef}>
-                {!isCollapsed && isSettingsMenuOpen && (
-                    <div className="settings-menu">
-                         {canManageTagDefinitions && (
-                             <button onClick={() => handleSettingsNavigation('settings-tags')}>
-                                 <FontAwesomeIcon icon={faTags} fixedWidth /> Manage Tags
-                             </button>
-                         )}
-                         {canAccessTenantSettings && (
-                             <button onClick={() => onNavigate('/dashboard/settings-business')}>
-                                 <FontAwesomeIcon icon={faCog} fixedWidth /> Tenant Settings
-                             </button>
-                         )}
-                         {canAccessTenantSettings && (
-                             <button onClick={() => onNavigate('/dashboard/settings-templates')}>
-                                 <FontAwesomeIcon icon={faFileInvoice} fixedWidth /> Manage Templates
-                             </button>
-                         )}
-                         <button onClick={() => alert("Theme switcher not implemented yet!")}>
-                             <FontAwesomeIcon icon={faPalette} fixedWidth /> Appearance
-                         </button>
-                    </div>
-                )}
+                {/* Bottom Section: Settings & Logout */}
+                <Box mt="auto" p={isCollapsed ? "2" : "4"} borderTopWidth="1px" borderColor="gray.700" bottom="0px" position="absolute" width="100%">
+                    <Box ref={settingsMenuRef}> {/* Ref for click-outside */}
+                        <Collapse in={isSettingsMenuOpen && !isCollapsed} animateOpacity>
+                            <VStack spacing="1" py="2" align="stretch">
+                                {canManageTagDefinitions && (
+                                    <Button variant="ghost" color="ui.sidebarText" justifyContent="flex-start" w="100%" onClick={() => onNavigate('settings-tags')} leftIcon={<ChakraIcon as={FontAwesomeIcon} icon={faTags} color="ui.sidebarIcon" />}>
+                                        Manage Tags
+                                    </Button>
+                                )}
+                                {canAccessTenantSettings && (
+                                    <Button variant="ghost" color="ui.sidebarText" justifyContent="flex-start" w="100%" onClick={() => onNavigate('settings-business')} leftIcon={<ChakraIcon as={FontAwesomeIcon} icon={faCog} color="ui.sidebarIcon" />}>
+                                        Business Settings
+                                    </Button>
+                                )}
+                                 {canAccessTenantSettings && (
+                                    <Button variant="ghost" color="ui.sidebarText" justifyContent="flex-start" w="100%" onClick={() => onNavigate('settings-templates')} leftIcon={<ChakraIcon as={FontAwesomeIcon} icon={faFileInvoice} color="ui.sidebarIcon" />}>
+                                        Templates
+                                    </Button>
+                                )}
+                                <Button variant="ghost" color="ui.sidebarText" justifyContent="flex-start" w="100%" onClick={() => alert("Appearance settings clicked")} leftIcon={<ChakraIcon as={FontAwesomeIcon} icon={faPalette} color="ui.sidebarIcon" />}>
+                                    Appearance
+                                </Button>
+                                {/* Add other settings items here */}
+                            </VStack>
+                        </Collapse>
 
-                <div className={`sidebar-profile-section ${isCollapsed ? 'collapsed' : ''} ${isSettingsMenuOpen ? 'menu-open' : ''}`}>
-                    <button
-                        className="profile-button"
-                        onClick={toggleSettingsMenu} // Use the passed toggle function
-                        disabled={isCollapsed}
-                        aria-haspopup="true"
-                        aria-expanded={isSettingsMenuOpen}
+                        <Button
+                            onClick={toggleSettingsMenu}
+                            isDisabled={isCollapsed}
+                            variant="ghost"
+                            w="100%"
+                            justifyContent={isCollapsed ? "center" : "flex-start"}
+                            alignItems="center"
+                            color="ui.sidebarText"
+                            _hover={{ bg: 'ui.sidebarActiveBg', color: 'brand.500' }}
+                            h="48px"
+                            mt="1" // Margin top if settings menu is above
+                        >
+                            <Flex align="center" w="100%" justify={isCollapsed ? "center" : "space-between"}>
+                                <Flex align="center">
+                                    <ChakraIcon as={FontAwesomeIcon} icon={faCog} boxSize="20px" color="ui.sidebarIcon" mr={isCollapsed ? "0" : "3"} />
+                                    {!isCollapsed && <Text fontSize="md" fontWeight="medium" color="ui.sidebarText">Settings</Text>}
+                                </Flex>
+                                {!isCollapsed && <ChakraIcon as={FontAwesomeIcon} icon={isSettingsMenuOpen ? faChevronUp : faChevronDown} />}
+                            </Flex>
+                        </Button>
+                    </Box>
+
+                    <Button
+                        onClick={onLogout}
+                        variant="ghost"
+                        w="100%"
+                        justifyContent={isCollapsed ? "center" : "flex-start"}
+                        alignItems="center"
+                        color="ui.sidebarText"
+                        _hover={{ bg: 'ui.sidebarActiveBg', color: 'brand.500' }} // Or a different color for logout hover
+                        h="48px"
+                        mt="1"
                     >
-                        
-                        {!isCollapsed && (
-                            <>
-                                <span className="nav-icon">{settingsIcon}</span>
-                                <span className="profile-info"><span className="profile-name">Settings</span></span>
-                                <span className="profile-toggle-icon"><FontAwesomeIcon icon={profileToggleIcon} /></span>
-                            </>
-                        )}
-                    </button>
-                </div>
-
-                 <div className={`sidebar-logout-section ${isCollapsed ? 'collapsed' : ''}`}>
-                     <button className="sidebar-logout-button" onClick={onLogout} title={isCollapsed ? "Log out" : ""}>
-                         <span className="nav-icon">{logoutIcon}</span>
-                         {!isCollapsed && <span className="nav-text">Log out</span>}
-                     </button>
-                 </div>
-            </div>
-        </aside>
+                        <Flex align="center">
+                            <ChakraIcon as={FontAwesomeIcon} icon={faSignOutAlt} boxSize="20px" color="ui.sidebarIcon" mr={isCollapsed ? "0" : "3"} />
+                            {!isCollapsed && <Text fontSize="md" fontWeight="medium" color="ui.sidebarText">Log out</Text>}
+                        </Flex>
+                    </Button>
+                </Box>
+                <IconButton
+                        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                        icon={<ChakraIcon as={FontAwesomeIcon} icon={isCollapsed ? faArrowRight : faArrowLeft} />}
+                        onClick={toggleSidebar}
+                        variant="ghost"
+                        color="ui.sidebarText"
+                        _hover={{ bg: 'ui.sidebarActiveBg', color: 'brand.500' }}
+                        size="md"
+                        ml={isCollapsed ? 0 : "auto"} // Push to right when expanded
+                    />
+            </VStack>
+        </Box>
     );
 };
 

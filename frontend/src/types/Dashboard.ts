@@ -14,7 +14,8 @@ export interface DashboardStats {
   completed_appointments_period: number;
   revenue_period: number; // Assuming backend sends number
   new_clients_period: number;
-
+  appointments_change: number; // Percentage change from yesterday to today
+  revenue_change: number; // Percentage change from yesterday to today
   // Add any other stats the backend might provide
 }
 

@@ -4,7 +4,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 //import 'mdb-ui-kit/css/mdb.min.css';
-import 'bootstrap/dist/css/bootstrap.min.css';
+
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 const root = ReactDOM.createRoot(

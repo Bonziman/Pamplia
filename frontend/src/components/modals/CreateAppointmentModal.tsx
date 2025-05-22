@@ -203,6 +203,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
              <h3 className="modal-section-title">Select Date & Time *</h3>
              <div className="date-time-container">
                 <div className="calendar-container">
+                  
                    <Calendar
                        onChange={handleDateChange}
                        value={selectedDate}

@@ -108,7 +108,16 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ clientId }) => {
                                 </div>
                                 <div className="log-notes">{log.notes || <span className="text-muted">-</span>}</div>
                                 <div className="log-footer">
-                                     {log.user_id && <span className="log-user" title={`Logged by User ID: ${log.user_id}`}><FontAwesomeIcon icon={faUser} size="xs"/> Logged by User {log.user_id}</span>}
+                                     {log.user ? (
+                                         <span className="log-user" title={`Logged by: ${log.user.email}`}>
+                                             <FontAwesomeIcon icon={faUser} size="xs"/>
+                                             Logged by {log.user.name || log.user.email} {/* Display name or fallback to email */}
+                                         </span>
+                                     ) : log.user_id ? ( // Fallback if user object isn't present for some reason
+                                         <span className="log-user" title={`Logged by User ID: ${log.user_id}`}>
+                                             <FontAwesomeIcon icon={faUser} size="xs"/> Logged by User {log.user_id}
+                                         </span>
+                                     ) : null}
                                      {log.appointment_id && <span className="log-appointment-link" title={`Related to Appointment ID: ${log.appointment_id}`}><FontAwesomeIcon icon={faCalendarAlt} size="xs"/> Appt. #{log.appointment_id}</span>}
                                      <span className={`log-status status-${log.status.toLowerCase()}`}>{log.status}</span>
                                 </div>

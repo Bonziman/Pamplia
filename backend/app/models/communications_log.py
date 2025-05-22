@@ -2,7 +2,7 @@
 # --- NEW FILE ---
 
 from sqlalchemy import (
-    Column, Integer, DateTime, ForeignKey, Text, Index, func
+    Column, Integer, DateTime, ForeignKey, Text, Index, func, String
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM # Assuming PostgreSQL
@@ -17,19 +17,27 @@ from app.database import Base
 # --- Enums for Type and Channel ---
 # Define these outside the model for potential use in schemas etc.
 class CommunicationType(PyEnum):
-    CONFIRMATION = "confirmation"       # Initial booking confirmation
-    REMINDER = "reminder"               # Upcoming appointment reminder
-    CANCELLATION = "cancellation"       # Appointment cancelled
-    UPDATE = "update"                   # Appointment details changed (e.g., time)
-    MANUAL_EMAIL = "manual_email"       # Email sent manually by staff
-    MANUAL_SMS = "manual_sms"           # SMS sent manually by staff
-    SYSTEM_ALERT = "system_alert"       # Internal system notifications
+    CONFIRMATION = "CONFIRMATION"       # Initial booking confirmation
+    REMINDER = "REMINDER"               # Upcoming appointment reminder
+    CANCELLATION = "CANCELLATION"       # Appointment cancelled
+    UPDATE = "UPDATE"                   # Appointment details changed (e.g., time)
+    MANUAL_EMAIL = "MANUAL_EMAIL"       # Email sent manually by staff
+    MANUAL_SMS = "MANUAL_SMS"           # SMS sent manually by staff
+    SYSTEM_ALERT = "SYSTEM_ALERT"       # Internal system notifications
+    MANUAL_PHONE = "MANUAL_PHONE"         # Phone call logged manually
+    MANUAL_IN_PERSON = "MANUAL_IN_PERSON" # In-person interaction logged manually
+    MANUAL_VIRTUAL_MEETING = "MANUAL_VIRTUAL_MEETING" # Virtual meeting logged manually
+    MANUAL_OTHER = "OTHER"                    # Other types of communication
     # Add more types as needed
 
 class CommunicationChannel(PyEnum):
-    EMAIL = "email"
-    SMS = "sms"
-    SYSTEM = "system" # For internal logs or future in-app notifications
+    EMAIL = "EMAIL"
+    SMS = "SMS"
+    SYSTEM = "SYSTEM" # For internal logs or future in-app notifications
+    IN_PERSON = "IN_PERSON" # For manual logs
+    PHONE = "PHONE"
+    VIRTUAL_MEETING = "VIRTUAL_MEETING" # For manual logs
+    OTHER = "OTHER" # For manual logs
 
 class CommunicationStatus(PyEnum):
     SIMULATED = "simulated" # Initial status before actual sending is implemented
@@ -38,15 +46,13 @@ class CommunicationStatus(PyEnum):
     DELIVERED = "delivered"   # Delivery confirmation received (requires webhook)
     OPENED = "opened"         # Email opened confirmation (requires webhook/tracking)
     CLICKED = "clicked"       # Link clicked confirmation (requires webhook/tracking)
+    LOGGED = "logged"         # Manually logged by staff
 
 class CommunicationDirection(PyEnum):
     OUTBOUND = "OUTBOUND"
     INBOUND = "INBOUND"
     SYSTEM = "SYSTEM"   # Internal system messages or logs
-    PHONE = "PHONE"
-    IN_PERSON = "IN_PERSON"
-    VIRTUAL_MEETING = "VIRTUAL_MEETING"
-    OTHER = "OTHER"
+    
 
 # --- Model Definition ---
 class CommunicationsLog(Base):
@@ -93,7 +99,7 @@ class CommunicationsLog(Base):
     # Timestamp of when the log entry was created (approximates sending time initially)
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-
+    subject = Column(String(255), nullable=True, comment="Optional subject/summary line")
     notes = Column(Text, nullable=True, comment="Main content/notes of the communication")
     
 

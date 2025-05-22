@@ -56,3 +56,317 @@
 .pagination-controls button.active { background-color: #007bff; color: white; border-color: #007bff; }
 .pagination-controls span { padding: 0 5px; color: #aaa; }
 
+/* --- Filter Bar --- */
+.filters-bar.client-filters {
+    display: flex;
+    flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+    gap: 15px;
+    padding: 15px;
+    background-color: #f9f9f9; /* Light background for the filter area */
+    border-radius: 6px;
+    margin-bottom: 20px;
+    align-items: center; /* Align items vertically */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-icon {
+    color: #777; /* Icon color */
+    font-size: 1.1em;
+}
+
+.form-input.search-input {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9em;
+    min-width: 250px; /* Decent width for search */
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.form-input.search-input:focus {
+    border-color: #007bff; /* Highlight on focus, match your primary color */
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); /* Bootstrap-like focus glow */
+    outline: none;
+}
+
+/* --- React Select Customization for Tag Filter --- */
+.tag-multiselect .react-select__control {
+    min-width: 280px; /* Ensure enough space for tags */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9em;
+    box-shadow: none; /* Remove default react-select shadow if any */
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.tag-multiselect .react-select__control--is-focused {
+    border-color: #007bff !important; /* Use !important to override inline styles if needed */
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25) !important;
+}
+
+.tag-multiselect .react-select__placeholder {
+    color: #888;
+}
+
+.tag-multiselect .react-select__multi-value {
+    background-color: #007bff; /* Primary color for selected tags */
+    color: white;
+    border-radius: 3px;
+    font-size: 0.85em;
+}
+
+.tag-multiselect .react-select__multi-value__label {
+    color: white;
+    padding: 2px 5px;
+}
+
+.tag-multiselect .react-select__multi-value__remove {
+    color: white;
+    cursor: pointer;
+}
+.tag-multiselect .react-select__multi-value__remove:hover {
+    background-color: #0056b3; /* Darker shade of primary for remove hover */
+    color: white;
+}
+
+.tag-multiselect .react-select__menu {
+    z-index: 100; /* Ensure dropdown menu is on top of other content */
+    font-size: 0.9em;
+}
+
+.tag-multiselect .react-select__option {
+    padding: 8px 12px;
+}
+.tag-multiselect .react-select__option--is-focused {
+    background-color: #e9ecef; /* Light hover for options */
+    color: #333;
+}
+.tag-multiselect .react-select__option--is-selected {
+    background-color: #007bff; /* Primary color for selected option in dropdown */
+    color: white;
+}
+
+
+/* --- Clear Filters Button --- */
+.clear-filters-btn {
+    padding: 8px 15px;
+    font-size: 0.9em;
+    background-color: #6c757d; /* A neutral secondary color */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.clear-filters-btn:hover {
+    background-color: #5a6268;
+}
+.clear-filters-btn .svg-inline--fa {
+    margin-right: 6px;
+}
+
+
+/* --- Pagination Controls Enhancements --- */
+.pagination-controls {
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    justify-content: space-between; /* Space out elements */
+    align-items: center;
+    gap: 10px; /* Increase gap slightly */
+    margin-top: 25px;
+    padding: 10px;
+    border-top: 1px solid #eee; /* Optional separator line */
+}
+
+.pagination-info {
+    font-size: 0.9em;
+    color: #555;
+}
+
+.pagination-buttons {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.pagination-controls button,
+.pagination-controls .items-per-page-selector select {
+    padding: 6px 12px; /* Slightly more padding */
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.9em;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+.pagination-controls button:hover:not(:disabled) {
+    background-color: #f0f0f0;
+    border-color: #bbb;
+}
+
+.pagination-controls button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+.pagination-controls button.active {
+    background-color: #007bff; /* Your primary color */
+    color: white;
+    border-color: #007bff;
+}
+.pagination-controls span.pagination-ellipsis {
+    padding: 0 5px;
+    color: #777;
+    align-self: center; /* Align ellipsis better */
+}
+
+.items-per-page-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+    color: #555;
+}
+.items-per-page-selector select {
+    /* Styles inherited or add specific ones */
+}
+
+
+/* --- No Results Message --- */
+.no-results-message {
+    text-align: center;
+    padding: 30px 15px;
+    color: #555;
+    font-size: 1.1em;
+    background-color: #f9f9f9;
+    border-radius: 6px;
+    margin-top: 20px;
+}
+.no-results-message .button-link { /* If you have a button-link class */
+    background: none;
+    border: none;
+    color: #007bff;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    font-size: 1em; /* Match surrounding text */
+}
+.no-results-message .button-link:hover {
+    color: #0056b3;
+}
+
+/* --- Inline Tag Editor (if any adjustments needed) --- */
+.inline-tag-editor-popover {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 100; /* Higher than table actions if needed */
+    min-width: 300px;
+    padding: 15px;
+    right: 0; /* Adjust as needed based on trigger position */
+    /* top: 100%; /* Position below the trigger cell */
+    /* Consider positioning logic if tags cell is far right */
+    transform: translateX(calc(100% - 30px)); /* Example to shift left if too far right */
+    /* If it's opened from the middle of the table, this might need to be more dynamic or centered */
+}
+.inline-tag-editor-popover h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.1em;
+    color: #333;
+}
+.inline-tag-editor-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 1.4em;
+    color: #888;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+.inline-tag-editor-close:hover {
+    color: #333;
+}
+
+.current-tags-section, .add-tags-section {
+    margin-bottom: 15px;
+}
+.current-tags-section .tag.assigned-tag {
+    display: inline-flex; /* To align text and remove button */
+    align-items: center;
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+.current-tags-section .tag.assigned-tag .remove-tag-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.7);
+    margin-left: 6px;
+    padding: 0 3px;
+    cursor: pointer;
+    font-size: 0.9em;
+    line-height: 1;
+}
+.current-tags-section .tag.assigned-tag .remove-tag-btn:hover {
+    color: white;
+}
+
+.tag-search-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    box-sizing: border-box; /* Ensure padding doesn't increase width */
+}
+
+.available-tags-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 150px; /* Limit height and make scrollable */
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+.available-tags-list li button.assign-tag-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid #f5f5f5;
+    cursor: pointer;
+}
+.available-tags-list li:last-child button.assign-tag-btn {
+    border-bottom: none;
+}
+.available-tags-list li button.assign-tag-btn:hover {
+    background-color: #f9f9f9;
+}
+.available-tags-list li button.assign-tag-btn .tag {
+    pointer-events: none; /* So click goes to button */
+}
+.available-tags-list li i { /* "No matching tags" message */
+    display: block;
+    padding: 8px 10px;
+    color: #777;
+}
+
+
+/* Make sure these styles are specific enough or adjust existing .view-header etc. if needed */
+.clients-view .view-header {
+    /* Existing styles are fine */
+    margin-bottom: 0; /* Remove bottom margin if filter bar is directly below */
+}

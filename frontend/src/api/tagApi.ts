@@ -36,8 +36,13 @@ export const fetchTags = async (): Promise<FetchedTag[]> => {
     try {
         const currentHostname = window.location.hostname;
         const apiUrl = `http://${currentHostname}:8000/tags/`;
-        console.log("Fetching tags from: /tags");
-        const response = await axios.get<FetchedTag[]>(apiUrl);
+        
+        const params = {
+            skip: 0,
+            limit: 500, // Increased limit for fetching all tags for a dropdown
+        };
+        console.log("Fetching tags from: /tags with params:", params);
+        const response = await axios.get<FetchedTag[]>(apiUrl, { params });
         return response.data;
     } catch (error) {
         console.error(`Error fetching tags:`, error);

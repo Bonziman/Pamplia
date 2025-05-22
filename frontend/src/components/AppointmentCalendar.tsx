@@ -263,7 +263,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                         <strong>Client:</strong> {tooltipContent.client_name}<br />
                         <strong>Email:</strong> {tooltipContent.client_email}<br />
                         <strong>Time:</strong> {formatReadableDateTime(tooltipContent.appointment_time)}<br />
-                        <strong>Status:</strong> <span className={`tooltip-status status-${tooltipContent.status}`}>{tooltipContent.status}</span><br />
+                        <strong>Status:</strong> <span className={`tooltip-status status-${tooltipContent.status}`}></span><br />
                         {tooltipContent.services?.length > 0 && (
                             <>
                                 <strong>Services:</strong>

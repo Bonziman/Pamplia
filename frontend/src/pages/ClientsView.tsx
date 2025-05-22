@@ -1,54 +1,56 @@
 // src/pages/ClientsView.tsx
-// --- NEW FILE ---
+// --- REFACTORED ---
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useOutletContext } from 'react-router-dom'; // To get shared data like tags
+import React, { useState, useCallback } from 'react'; // Removed useEffect as data loading is in ClientsTable
+import { useOutletContext } from 'react-router-dom';
 import axios from 'axios'; // For error checking
 
-// API Imports
+// API Imports for MODALS (createClient, updateClient, deleteClient, assignClientTag, removeClientTag)
+// fetchClients is no longer needed here as ClientsTable handles it.
 import {
-    fetchClients, createClient, updateClient, deleteClient, assignClientTag, removeClientTag,
+    createClient, updateClient, deleteClient, assignClientTag, removeClientTag,
     FetchedClient, ClientCreatePayload, ClientUpdatePayload
 } from '../api/clientApi';
 import { FetchedTag } from '../api/tagApi'; // Type for available tags
 
 // Components
-import ClientsTable from '../components/ClientsTable';
+import ClientsTable from '../components/ClientsTable'; // This component now fetches its own data
 import CreateClientModal from '../components/modals/CreateClientModal';
 import UpdateClientModal from '../components/modals/UpdateClientModal';
 import DeleteClientModal from '../components/modals/DeleteClientModal';
 
-// Context type from Layout
+// Context type from Layout (Dashboard.tsx)
 interface DashboardContext {
-    availableTenantTags: FetchedTag[];
-    loadingAvailableTags: boolean;
+    availableTenantTags: FetchedTag[]; // Tags for modals and inline editor
+    // loadingAvailableTags: boolean; // ClientsTable might not need this directly if tags are just for modals
     userProfile: any; // Replace 'any' with your UserProfile type
+    // You might also pass down global error handlers or setError from Dashboard if needed
 }
 
-
 const ClientsView: React.FC = () => {
-    // Access shared data/context from DashboardLayout
-    const { availableTenantTags, loadingAvailableTags, userProfile } = useOutletContext<DashboardContext>();
+    const {
+        availableTenantTags, // Use these for the UpdateClientModal and passed to ClientsTable for its inline editor
+        userProfile
+    } = useOutletContext<DashboardContext>();
 
-    // State specific to this view
-    const [clients, setClients] = useState<FetchedClient[]>([]);
-    const [loadingClients, setLoadingClients] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    // State specific to this view (mostly for modals and global toggles like showDeletedClients)
+    const [viewError, setViewError] = useState<string | null>(null); // Error specific to this view's operations (e.g., modal failures)
     const [showDeletedClients, setShowDeletedClients] = useState<boolean>(false);
 
     // Modal State
     const [isCreateClientModalOpen, setIsCreateClientModalOpen] = useState(false);
     const [isUpdateClientModalOpen, setIsUpdateClientModalOpen] = useState(false);
     const [isDeleteClientModalOpen, setIsDeleteClientModalOpen] = useState(false);
-    const [selectedClient, setSelectedClient] = useState<FetchedClient | null>(null);
+    const [selectedClientForModal, setSelectedClientForModal] = useState<FetchedClient | null>(null);
 
     // Permissions (derived from context or fetched profile)
-    const canManageClients = userProfile?.role === "super_admin" || userProfile?.role === "admin" || userProfile?.role === "staff";
+    // const canManageClients = userProfile?.role === "super_admin" || userProfile?.role === "admin" || userProfile?.role === "staff"; // ClientsTable can derive this from userProfile
     const canDeleteClients = userProfile?.role === "super_admin" || userProfile?.role === "admin";
     const canAssignClientTags = userProfile?.role === "super_admin" || userProfile?.role === "admin" || userProfile?.role === "staff";
 
     // Utility function to extract error message
     const getErrorMessage = (err: any, defaultMessage: string): string => {
+        // ... (keep your existing getErrorMessage function)
         console.error("API Error:", err.response || err);
         let errorMessage = defaultMessage;
         if (axios.isAxiosError(err) && err.response?.data?.detail) {
@@ -60,96 +62,138 @@ const ClientsView: React.FC = () => {
         return errorMessage;
     };
 
+    // --- Modal Handlers ---
+    // These handlers are for the modals managed by ClientsView.
+    // After a successful operation, ClientsTable will automatically re-fetch
+    // if its current filters/page might be affected (or on next interaction).
+    // No need to manually call a loadClients here.
 
-    // --- Data Fetching for this View ---
-    const loadClients = useCallback((includeDeleted = showDeletedClients) => {
-        if (!canManageClients) { setLoadingClients(false); return; }
-        setLoadingClients(true); setError(null);
-        fetchClients(includeDeleted)
-            .then(setClients)
-            .catch(err => { setError(getErrorMessage(err,"Could not load clients list.")); })
-            .finally(() => setLoadingClients(false));
-    }, [canManageClients, showDeletedClients]); // Dependency
-
-    // Initial load and reload when filter changes
-    useEffect(() => {
-        loadClients();
-    }, [loadClients]); // loadClients itself depends on showDeletedClients
-
-    // --- Handlers ---
-    const handleCreateClient = async (data: ClientCreatePayload) => {
-        try { setError(null); await createClient(data); loadClients(); setIsCreateClientModalOpen(false); }
-        catch(err: any) { setError(getErrorMessage(err, "Failed to create client.")); throw err; }
-    };
-    const handleUpdateClient = async (id: number, data: ClientUpdatePayload) => {
-         try { setError(null); await updateClient(id, data); loadClients(); setIsUpdateClientModalOpen(false); setSelectedClient(null); }
-        catch(err: any) { setError(getErrorMessage(err, "Failed to update client.")); throw err; }
-    };
-    const handleDeleteClient = async (id: number) => {
-         try { setError(null); await deleteClient(id); loadClients(); setIsDeleteClientModalOpen(false); setSelectedClient(null); }
-        catch(err: any) { setError(getErrorMessage(err, "Failed to delete client.")); throw err; }
-    };
-    const handleOpenCreateClientModal = () => { setIsCreateClientModalOpen(true); };
-    const handleClientRowEditClick = (client: FetchedClient) => { setSelectedClient(client); setIsUpdateClientModalOpen(true); };
-    const handleClientRowDeleteClick = (client: FetchedClient) => { setSelectedClient(client); setIsDeleteClientModalOpen(true); };
-    const handleToggleShowDeleted = () => { setShowDeletedClients(prev => !prev); }; // State change triggers useEffect -> loadClients
-
-    // Tag Handlers
-    const handleAssignTag = async (clientId: number, tagId: number) => {
+    const handleCreateClientSubmit = async (data: ClientCreatePayload) => {
         try {
-            setError(null);
-            const updatedClient = await assignClientTag(clientId, tagId);
-            setClients(prevClients => prevClients.map(c => c.id === clientId ? updatedClient : c));
-        } catch (err: any) { setError(getErrorMessage(err, "Failed to assign tag.")); /* loadClients(); */ }
+            setViewError(null);
+            await createClient(data);
+            setIsCreateClientModalOpen(false);
+            // ClientsTable will reflect the new client when its filters/pagination cause a re-fetch.
+        } catch (err: any) {
+            setViewError(getErrorMessage(err, "Failed to create client."));
+            throw err; // Let modal handle its own internal loading/error state if needed
+        }
     };
-    const handleRemoveTag = async (clientId: number, tagId: number) => {
+
+    const handleUpdateClientSubmit = async (id: number, data: ClientUpdatePayload) => {
         try {
-            setError(null);
+            setViewError(null);
+            await updateClient(id, data);
+            setIsUpdateClientModalOpen(false);
+            setSelectedClientForModal(null);
+        } catch (err: any) {
+            setViewError(getErrorMessage(err, "Failed to update client."));
+            throw err;
+        }
+    };
+
+    const handleDeleteClientConfirm = async (id: number) => {
+        try {
+            setViewError(null);
+            await deleteClient(id);
+            setIsDeleteClientModalOpen(false);
+            setSelectedClientForModal(null);
+        } catch (err: any) {
+            setViewError(getErrorMessage(err, "Failed to delete client."));
+            throw err;
+        }
+    };
+
+    const handleOpenCreateClientModal = () => setIsCreateClientModalOpen(true);
+    const handleOpenEditClientModal = (client: FetchedClient) => { setSelectedClientForModal(client); setIsUpdateClientModalOpen(true); };
+    const handleOpenDeleteClientModal = (client: FetchedClient) => { setSelectedClientForModal(client); setIsDeleteClientModalOpen(true); };
+
+    const handleToggleShowDeleted = () => {
+        setShowDeletedClients(prev => !prev);
+        // ClientsTable will pick up this prop change and re-fetch.
+    };
+
+    // Tag Handlers for UpdateClientModal (if it directly uses them)
+    // Or, if UpdateClientModal uses an inline editor, these might not be needed here.
+    // Your UpdateClientModal seems to take onAssignTag/onRemoveTag.
+    // These should interact with the backend and then ClientsTable will update.
+    const handleAssignTagForModal = async (clientId: number, tagId: number) => {
+        try {
+            setViewError(null);
+            await assignClientTag(clientId, tagId);
+            // Potentially refresh selectedClientForModal if it's being edited and needs to show new tag instantly in modal
+            if (selectedClientForModal && selectedClientForModal.id === clientId) {
+                // This is tricky as assignClientTag returns the full client.
+                // Simplest: close modal and let table refresh. Or fetch client again for modal.
+                // For now, rely on table refresh.
+            }
+        } catch (err: any) {
+            setViewError(getErrorMessage(err, "Failed to assign tag."));
+            throw err;
+        }
+    };
+
+    const handleRemoveTagForModal = async (clientId: number, tagId: number) => {
+        try {
+            setViewError(null);
             await removeClientTag(clientId, tagId);
-            setClients(prevClients => prevClients.map(c => c.id === clientId ? { ...c, tags: c.tags.filter(t => t.id !== tagId) } : c));
-        } catch (err: any) { setError(getErrorMessage(err, "Failed to remove tag.")); /* loadClients(); */ }
+            // Similar to assign, update modal's client state or rely on table refresh.
+        } catch (err: any) {
+            setViewError(getErrorMessage(err, "Failed to remove tag."));
+            throw err;
+        }
     };
+
 
     return (
         <>
-            {error && <div className="error-message view-error">Error: {error}</div>}
+            {viewError && <div className="error-message view-error">Error: {viewError} <button onClick={() => setViewError(null)}>Dismiss</button></div>}
+
             <ClientsTable
-                clients={clients}
-                isLoading={loadingClients || loadingAvailableTags} // Consider combined loading state
+                // Remove props that ClientsTable now manages internally:
+                // clients={clients} // REMOVED
+                // isLoading={loadingClients || loadingAvailableTags} // REMOVED
+
+                // Pass necessary props:
                 userProfile={userProfile}
-                showDeletedClients={showDeletedClients}
-                canDeleteClients={canDeleteClients}
+                showDeletedClients={showDeletedClients} // For the checkbox and API param
+                canDeleteClients={canDeleteClients}     // For action menu permission
+                onToggleShowDeleted={handleToggleShowDeleted} // Handler for the checkbox
+
+                // Modal Triggers (ClientsTable calls these when user clicks buttons in rows/header)
                 onAddClient={handleOpenCreateClientModal}
-                onEditClient={handleClientRowEditClick}
-                onDeleteClient={handleClientRowDeleteClick}
-                onToggleShowDeleted={handleToggleShowDeleted}
-                availableTags={availableTenantTags}
-                onAssignTag={handleAssignTag}
-                onRemoveTag={handleRemoveTag}
+                onEditClient={handleOpenEditClientModal}   // Renamed from handleClientRowEditClick for clarity
+                onDeleteClient={handleOpenDeleteClientModal} // Renamed from handleClientRowDeleteClick
+
+                // Tag related props for ClientsTable's *internal* InlineTagEditor
+                // These `availableTags` are passed from Dashboard -> OutletContext -> Here -> ClientsTable
+                availableTags={availableTenantTags} // For ClientsTable's inline editor
+                onAssignTag={handleAssignTagForModal} // ClientsTable's inline editor will call this
+                onRemoveTag={handleRemoveTagForModal} // ClientsTable's inline editor will call this
                 canAssignTags={canAssignClientTags}
             />
 
             {/* Client Modals Rendered by this View */}
-             <CreateClientModal
+            <CreateClientModal
                 isOpen={isCreateClientModalOpen}
                 onClose={() => setIsCreateClientModalOpen(false)}
-                onSubmit={handleCreateClient}
+                onSubmit={handleCreateClientSubmit}
             />
             <UpdateClientModal
                 isOpen={isUpdateClientModalOpen}
-                onClose={() => { setIsUpdateClientModalOpen(false); setSelectedClient(null); }}
-                onSubmit={handleUpdateClient}
-                client={selectedClient}
-                availableTags={availableTenantTags} // Pass available tags
-                onAssignTag={handleAssignTag}     // Pass assign handler
-                onRemoveTag={handleRemoveTag}     // Pass remove handler
-                canAssignTags={canAssignClientTags} // Pass permission
+                onClose={() => { setIsUpdateClientModalOpen(false); setSelectedClientForModal(null); }}
+                onSubmit={handleUpdateClientSubmit}
+                client={selectedClientForModal}
+                availableTags={availableTenantTags} // For the modal's own tag selection UI (if any)
+                onAssignTag={handleAssignTagForModal} // For the modal's own tag assignment logic
+                onRemoveTag={handleRemoveTagForModal} // For the modal's own tag removal logic
+                canAssignTags={canAssignClientTags}
             />
             <DeleteClientModal
                 isOpen={isDeleteClientModalOpen}
-                onClose={() => { setIsDeleteClientModalOpen(false); setSelectedClient(null); }}
-                onConfirm={handleDeleteClient}
-                client={selectedClient}
+                onClose={() => { setIsDeleteClientModalOpen(false); setSelectedClientForModal(null); }}
+                onConfirm={handleDeleteClientConfirm} // Changed from onSubmit to onConfirm for clarity
+                client={selectedClientForModal}
             />
         </>
     );

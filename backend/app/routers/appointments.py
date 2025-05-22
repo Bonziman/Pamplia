@@ -540,7 +540,7 @@ def update_appointment(
                 type=log_type,
                 channel=CommunicationChannel.EMAIL, # Default to EMAIL for now
                 # status defaults to SIMULATED
-                details=log_details
+                notes=log_details
             )
 
             if log_entry_created:

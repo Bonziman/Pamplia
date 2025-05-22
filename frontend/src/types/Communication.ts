@@ -62,6 +62,12 @@ export const MANUAL_DIRECTIONS = [
 ];
 
 
+export interface UserInLog {
+    id: number;
+    name: string | null; // Name can be null
+    email: string;
+}
+
 // Corresponds to CommunicationsLogOut schema
 export interface CommunicationLogOut {
   id: number;
@@ -76,6 +82,7 @@ export interface CommunicationLogOut {
   timestamp: string; // ISO date string
   subject: string | null;
   notes: string | null;
+  user: UserInLog | null;
   // Add user details if backend joins and includes them in response
   // user?: { id: number; name: string | null; email: string; };
 }

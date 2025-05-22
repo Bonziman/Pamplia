@@ -8,26 +8,28 @@ import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import BookingPage from "./pages/BookingPage";
 import ClientProfilePage from "./pages/ClientProfilePage";
+import { ChakraProvider } from '@chakra-ui/react';
+import theme from './theme';
+import '@fontsource/inter/index.css';
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        
+    <ChakraProvider theme={theme}>
+      <AuthProvider>
+        <BrowserRouter>
           <Routes>
             <Route path="/book" element={<BookingPage />} />
             {/* Add other routes as needed */}
             <Route path="/login" element={<Login />} />
             <Route element={<ProtectedRoute />}>
-          
-            <Route path="/dashboard/*" element={
-              <Dashboard />
-            }/>
+              <Route path="/dashboard/*" element={
+                <Dashboard />
+              }/>
             </Route>
           </Routes>
-        
-      </BrowserRouter>
-    </AuthProvider>
+        </BrowserRouter>
+      </AuthProvider>
+    </ChakraProvider>
   );
 };
 

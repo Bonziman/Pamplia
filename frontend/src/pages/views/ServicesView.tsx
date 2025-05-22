@@ -22,6 +22,8 @@ import DeleteServiceModal from '../../components/modals/DeleteServiceModal';
 import '../../components/TableStyles.css'; // Reuse table styles
 import '../Dashboard.css'; // Reuse view section styles if needed
 
+import { Button, Spinner } from "@chakra-ui/react"
+
 interface ServicesViewProps {
     userProfile: { role: string; id: number /* other profile fields */ }; // Pass necessary profile info
     // setError?: (message: string | null) => void; // Optional: For reporting global errors
@@ -149,13 +151,16 @@ const ServicesView: React.FC<ServicesViewProps> = ({ userProfile }) => {
             <div className="view-section">
                 <div className="view-header">
                     <h2>Services Management</h2>
-                    <button onClick={handleOpenCreateServiceModal} className="button button-primary">Add New Service</button>
+                    <Button onClick={handleOpenCreateServiceModal} className="button button-primary">Add New Service</Button>
                 </div>
 
                 {localError && <div className="error-message">Error: {localError} <button onClick={() => setLocalError(null)}>×</button></div>}
 
                 {loadingManagedServices ? (
-                    <div className="loading-message">Loading services...</div>
+                    <div className="loading-message" style={{display: 'flex',width: '100%', alignItems: 'center', padding: '20px' }}>
+                        <Spinner color='brand.500' alignSelf='center'/>
+                    </div>
+                    
                 ) : !managedServices || managedServices.length === 0 ? (
                     <div className="info-message">No services found.</div>
                 ) : (

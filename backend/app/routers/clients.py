@@ -2,8 +2,8 @@
 # --- NEW FILE ---
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, Query
+from sqlalchemy import desc, asc, or_, func, exc as SQLAlchemyExceptions, select, update
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import desc, exc as SQLAlchemyExceptions, select, update
 from typing import List, Optional
 from datetime import datetime as dt # Alias to avoid confusion with schema datetime
 import logging  # Import logging module
@@ -16,6 +16,7 @@ from app.models.tenant import Tenant as TenantModel
 from app.models.user import User
 from app.models.tag import Tag as TagModel           # Import the Tag model
 from app.schemas.tag import TagOut 
+from app.schemas.client import ClientOut
 router = APIRouter(
     prefix="/clients",
     tags=["Clients"]
@@ -152,34 +153,142 @@ def create_client_manual(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not create client.")
 
 
-# --- List Clients (Tenant-Scoped for Staff/Admin, All for SuperAdmin) ---
-@router.get("/", response_model=List[schemas.client.ClientOut])
-def get_clients(
+@router.get("/", response_model=PaginatedResponse[ClientOut])
+def get_clients_paginated(
     db: Session = Depends(database.get_db),
     current_user: User = Depends(get_current_user),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
-    include_deleted: bool = Query(False, description="Include soft-deleted clients in the results")
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(10, ge=1, le=100, description="Items per page"),
+    include_deleted: bool = Query(False, description="Include soft-deleted clients"),
+    search_term: Optional[str] = Query(None, description="Search term for name, email, phone"),
+    tag_ids: Optional[str] = Query(None, description="Comma-separated list of tag IDs to filter by (AND logic)"),
+    sort_by: Optional[str] = Query("last_name", description="Column to sort by (e.g., 'last_name', 'email', 'id', 'is_confirmed', 'created_at')"),
+    sort_direction: Optional[str] = Query("asc", description="'asc' or 'desc'")
 ):
-    print(f"[Get Clients] User: {current_user.email}, Role: {current_user.role}, Include Deleted: {include_deleted}")
+    logger.info(
+        f"[Get Clients Paginated] User: {current_user.email}, Role: {current_user.role}, Page: {page}, Limit: {limit}, "
+        f"Include Deleted: {include_deleted}, Search: '{search_term}', Tags: '{tag_ids}', "
+        f"SortBy: {sort_by}, SortDir: {sort_direction}"
+    )
 
+    # Base query for fetching actual client data
     query = db.query(ClientModel)
+    # Base query for counting total items matching filters
+    count_base_query = db.query(func.count(ClientModel.id))
 
-    # Filter by deletion status unless requested otherwise
+    # Apply tenant scoping first
+    if current_user.role != "super_admin":
+        if not current_user.tenant_id:
+             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not associated with a tenant.")
+        query = query.filter(ClientModel.tenant_id == current_user.tenant_id)
+        count_base_query = count_base_query.filter(ClientModel.tenant_id == current_user.tenant_id)
+
+    # Filter by deletion status
     if not include_deleted:
         query = query.filter(ClientModel.is_deleted == False)
+        count_base_query = count_base_query.filter(ClientModel.is_deleted == False)
 
-    # Apply tenant scoping
-    if current_user.role != "super_admin":
-        print(f"[Get Clients] Filtering by Tenant ID: {current_user.tenant_id}")
-        query = query.filter(ClientModel.tenant_id == current_user.tenant_id)
+    # Apply search term filter
+    if search_term:
+        search_filter_term = f"%{search_term.lower()}%"
+        search_conditions = or_(
+            func.lower(ClientModel.first_name).like(search_filter_term),
+            func.lower(ClientModel.last_name).like(search_filter_term),
+            func.lower(ClientModel.email).like(search_filter_term),
+            func.lower(ClientModel.phone_number).like(search_filter_term)
+        )
+        query = query.filter(search_conditions)
+        count_base_query = count_base_query.filter(search_conditions)
 
-    # Eager load tags for efficiency in the list
-    clients = query.options(joinedload(ClientModel.tags)).order_by(ClientModel.last_name, ClientModel.first_name).offset(skip).limit(limit).all()
+    # Apply tag filter (AND logic)
+    if tag_ids:
+        try:
+            tag_ids_list = [int(tid.strip()) for tid in tag_ids.split(',') if tid.strip().isdigit()]
+            if tag_ids_list:
+                for tag_id in tag_ids_list:
+                    query = query.filter(ClientModel.tags.any(TagModel.id == tag_id))
+                    # For the count query, applying the same .any() filter is crucial.
+                    # If TagModel is not implicitly joined by the filter on ClientModel for the count,
+                    # an explicit join might be needed first for count_base_query if it wasn't done by other filters.
+                    # However, .filter(ClientModel.tags.any(...)) usually handles the necessary join implicitly.
+                    count_base_query = count_base_query.filter(ClientModel.tags.any(TagModel.id == tag_id))
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid tag_ids format. Must be comma-separated integers.")
 
-    print(f"[Get Clients] Found {len(clients)} clients.")
-    return clients
+    # Get total count of items matching filters
+    # Use .scalar() which is more broadly compatible for getting a single value
+    total_items = count_base_query.scalar() # CORRECTED HERE
+    if total_items is None: # Should not happen with count, but good practice
+        total_items = 0
 
+
+    # Apply sorting
+    sort_column_map = {
+        "id": ClientModel.id,
+        "last_name": ClientModel.last_name,
+        "first_name": ClientModel.first_name,
+        "email": ClientModel.email,
+        "is_confirmed": ClientModel.is_confirmed,
+        "created_at": ClientModel.created_at,
+        "updated_at": ClientModel.updated_at,
+    }
+    sort_attr = sort_column_map.get(sort_by.lower() if sort_by else "last_name")
+    if sort_attr is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid sort_by column: {sort_by}")
+
+    if sort_direction.lower() == "desc":
+        query = query.order_by(desc(sort_attr))
+    else:
+        query = query.order_by(asc(sort_attr))
+    
+    if sort_attr != ClientModel.id:
+        query = query.order_by(asc(ClientModel.id)) # Secondary sort for stability
+
+    offset = (page - 1) * limit
+    clients_data = query.options(
+        selectinload(ClientModel.tags)
+    ).offset(offset).limit(limit).all()
+
+    logger.info(f"[Get Clients Paginated] Found {len(clients_data)} clients for page {page}, Total matching: {total_items}")
+
+    return PaginatedResponse(
+        total=total_items,
+        page=page,
+        limit=limit,
+        items=clients_data
+    )
+
+
+# --- Get Specific Client --- (Keep as is, but ensure joinedload is used for tags)
+@router.get("/{client_id}", response_model=schemas.client.ClientOut)
+def get_client(
+    client_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: User = Depends(get_current_user),
+    include_deleted: bool = Query(False, description="Allow fetching a soft-deleted client")
+):
+    # ... (your existing code, ensure options(joinedload(ClientModel.tags)) is present)
+    logger.info(f"[Get Client ID: {client_id}] User: {current_user.email}, Include Deleted: {include_deleted}")
+
+    query = db.query(ClientModel).filter(ClientModel.id == client_id)
+    
+    if not include_deleted:
+        query = query.filter(ClientModel.is_deleted == False)
+        
+    # Eager load tags - selectinload is often better for relationships if not already loaded
+    client = query.options(selectinload(ClientModel.tags)).first()
+    
+    if not client:
+        detail = "Client not found"
+        if not include_deleted:
+            detail += " (or has been deleted)."
+        logger.warning(f"Client ID {client_id} not found or inaccessible (Include Deleted: {include_deleted}).")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
+    
+    check_client_permission(current_user, client, action="view")
+
+    logger.info(f"Access granted for User '{current_user.email}' to Client ID: {client_id}")
+    return client
 
 # --- Get Specific Client ---
 @router.get("/{client_id}", response_model=schemas.client.ClientOut)
@@ -512,6 +621,10 @@ def list_client_communications(
         total_count = base_query.count() # Get total count before pagination
         logs = base_query.order_by(
             desc(CommunicationsLogModel.timestamp) # Order by most recent first
+        ).options(
+            # --- EAGER LOAD USER DETAILS ---
+            selectinload(CommunicationsLogModel.user) # Use selectinload for one-to-many/many-to-
+        
         ).offset(offset).limit(limit).all()
 
         logger.info(f"Found {len(logs)} communication logs (Total: {total_count}) for Client ID: {client_id} on page {page}.")

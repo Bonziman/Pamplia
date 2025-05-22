@@ -30,6 +30,16 @@ class CommunicationsLogBase(BaseModel):
     appointment_id: Optional[int] = None
     user_id: Optional[int] = None
 
+
+# --- Define a User schema for embedding in Log Output ---
+class UserInLog(BaseModel):
+    id: int
+    name: Optional[str] = None # User's name might be nullable
+    email: str # Email should usually be present
+
+    class Config:
+        from_attributes = True
+
 # --- Schema for Output (API Response) ---
 class CommunicationsLogOut(BaseModel): # Doesn't need to inherit Base necessarily
     id: int
@@ -44,6 +54,7 @@ class CommunicationsLogOut(BaseModel): # Doesn't need to inherit Base necessaril
     timestamp: datetime # Should always have a value
     subject: Optional[str] = Field(default=None)
     notes: Optional[str] = Field(default=None)
+    user: Optional[UserInLog] = None
 
     class Config:
         from_attributes = True

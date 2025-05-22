@@ -31,7 +31,8 @@ class DashboardStats(BaseModel):
     completed_appointments_period: int = Field(..., description="Count of 'done' appointments within the selected period.")
     revenue_period: float = Field(..., description="Sum of prices for 'done' appointments within the selected period.")
     new_clients_period: int = Field(..., description="Count of clients created within the selected period.")
-
+    appointments_change: float = Field(..., description="Percentage change in appointments from yesterday to today.")
+    revenue_change: float = Field(..., description="Percentage change in revenue from yesterday to today.")
     class Config:
         # Pydantic V2 uses from_attributes instead of orm_mode
         from_attributes = True

@@ -22,7 +22,7 @@ import {
     AppointmentCreatePayload as PublicAppointmentCreatePayload
 } from '../api/publicApi';
 import {
-    fetchClients,
+   // fetchClients, // No longer called directly from Dashboard for the main list
     createClient,
     updateClient,
     deleteClient, // Soft delete
@@ -130,7 +130,7 @@ const Dashboard: React.FC = () => {
     // Consider only loading Appointments when navigating to '/calendar'
     const loadAppointments = useCallback(() => { setLoadingAppointments(true); setError(null); console.log("LoadAppointments: Fetching..."); fetchAppointments().then(data => { console.log("LoadAppointments: Success", data); setAppointments(data); }).catch(err => { console.error("LoadAppointments: Error", err); setError(getErrorMessage(err,"Could not load appointments.")); }).finally(() => setLoadingAppointments(false)); }, []);
     const loadPublicServices = useCallback(() => { setLoadingPublicServices(true); setError(null); console.log("LoadPublicServices: Fetching..."); fetchTenantServices().then(data => { console.log("LoadPublicServices: Success", data); setPublicTenantServices(data);}).catch(err => { console.error("LoadPublicServices: Error", err); setError(getErrorMessage(err,"Could not load available services.")); }).finally(() => setLoadingPublicServices(false)); }, []);
-    const loadClients = useCallback((includeDeleted = showDeletedClients) => { if (!canManageClients) { setLoadingClients(false); return; } setLoadingClients(true); setError(null); console.log("LoadClients: Fetching...", { includeDeleted }); fetchClients(includeDeleted).then(data => { console.log("LoadClients: Success", data); setClients(data); }).catch(err => { console.error("LoadClients: Error", err); setError(getErrorMessage(err,"Could not load clients list.")); }).finally(() => setLoadingClients(false)); }, [canManageClients, showDeletedClients]);
+    //const loadClients = useCallback((includeDeleted = showDeletedClients) => { if (!canManageClients) { setLoadingClients(false); return; } setLoadingClients(true); setError(null); console.log("LoadClients: Fetching...", { includeDeleted }); fetchClients(includeDeleted).then(data => { console.log("LoadClients: Success", data); setClients(data); }).catch(err => { console.error("LoadClients: Error", err); setError(getErrorMessage(err,"Could not load clients list.")); }).finally(() => setLoadingClients(false)); }, [canManageClients, showDeletedClients]);
     const loadAvailableTags = useCallback(() => { if (!canAssignClientTags) { setLoadingAvailableTags(false); return; } setLoadingAvailableTags(true); setError(null); console.log("LoadAvailableTags: Fetching..."); fetchTags().then(data => { console.log("LoadAvailableTags: Success", data); setAvailableTenantTags(data); }).catch(err => { console.error("LoadAvailableTags: Error", err); setError(getErrorMessage(err, "Failed to load available tags")); }).finally(() => setLoadingAvailableTags(false)); }, [canAssignClientTags]);
 
     // --- Handlers (KEEP only handlers NOT moved) ---
@@ -147,18 +147,79 @@ const Dashboard: React.FC = () => {
     const handleCalendarDayClick = (date: Date) => { setSelectedDateForApptCreation(date); setIsCreateApptModalOpen(true); };
 
     // -- Client Handlers --
-    const handleCreateClient = useCallback(async (data: ClientCreatePayload) => { try { setError(null); await createClient(data); loadClients(); setIsCreateClientModalOpen(false); } catch (err: any) { setError(getErrorMessage(err, "Failed to create client.")); throw err; } }, [loadClients]);
-    const handleUpdateClient = useCallback(async (id: number, data: ClientUpdatePayload) => { try { setError(null); await updateClient(id, data); loadClients(); setIsUpdateClientModalOpen(false); setSelectedClient(null); } catch (err: any) { setError(getErrorMessage(err, "Failed to update client.")); throw err; } }, [loadClients]);
-    const handleDeleteClient = useCallback(async (id: number) => { try { setError(null); await deleteClient(id); loadClients(); setIsDeleteClientModalOpen(false); setSelectedClient(null); } catch (err: any) { setError(getErrorMessage(err, "Failed to delete client.")); throw err; } }, [loadClients]);
+    const handleCreateClient = useCallback(async (data: ClientCreatePayload) => {
+        // This function is passed to CreateClientModal.
+        // After successful creation, ClientsTable needs to refresh.
+        try {
+            setError(null);
+            await createClient(data);
+            // loadClients(); // REMOVED - ClientsTable will handle its own refresh
+            setIsCreateClientModalOpen(false);
+            // How to tell ClientsTable to refresh? -> It will manage its own data and filters.
+            // A change in filters (like a new client appearing) means it should re-evaluate.
+            // Or, we pass a refresh function from ClientsTable to its parent (Dashboard)
+            // and then to the modal. This gets complex.
+            // Simpler: CreateClientModal calls its onClose, and ClientsTable re-fetches if its filters might now include the new client.
+            // For now, the manual filter changes in ClientsTable will trigger its own re-fetch.
+        } catch (err: any) {
+            setError(getErrorMessage(err, "Failed to create client."));
+            throw err; // Let modal handle its own loading state/error display
+        }
+    }, []); // Removed loadClients dependency
+
+    const handleUpdateClient = useCallback(async (id: number, data: ClientUpdatePayload) => {
+        try {
+            setError(null);
+            await updateClient(id, data);
+            // loadClients(); // REMOVED
+            setIsUpdateClientModalOpen(false);
+            setSelectedClient(null);
+        } catch (err: any) {
+            setError(getErrorMessage(err, "Failed to update client."));
+            throw err;
+        }
+    }, []); // Removed loadClients dependency
+
+    const handleDeleteClient = useCallback(async (id: number) => {
+        try {
+            setError(null);
+            await deleteClient(id);
+            // loadClients(); // REMOVED
+            setIsDeleteClientModalOpen(false);
+            setSelectedClient(null);
+        } catch (err: any) {
+            setError(getErrorMessage(err, "Failed to delete client."));
+            throw err;
+        }
+    }, []); // Removed loadClients dependency
+
     const handleOpenCreateClientModal = () => { setIsCreateClientModalOpen(true); };
     const handleClientRowEditClick = (client: FetchedClient) => { setSelectedClient(client); setIsUpdateClientModalOpen(true); };
     const handleClientRowDeleteClick = (client: FetchedClient) => { setSelectedClient(client); setIsDeleteClientModalOpen(true); };
     const handleToggleShowDeleted = () => { setShowDeletedClients(prev => !prev); };
 
     // -- Client Tag Handlers --
-    const handleAssignTag = useCallback(async (clientId: number, tagId: number) => { try { setError(null); const updatedClient = await assignClientTag(clientId, tagId); setClients(prevClients => prevClients.map(c => c.id === clientId ? updatedClient : c)); } catch (err: any) { setError(getErrorMessage(err, "Failed to assign tag.")); } }, []);
-    const handleRemoveTag = useCallback(async (clientId: number, tagId: number) => { try { setError(null); await removeClientTag(clientId, tagId); setClients(prevClients => prevClients.map(c => c.id === clientId ? { ...c, tags: c.tags.filter(t => t.id !== tagId) } : c)); } catch (err: any) { setError(getErrorMessage(err, "Failed to remove tag.")); } }, []);
+    const handleAssignTag = useCallback(async (clientId: number, tagId: number) => {
+        try {
+            setError(null);
+            await assignClientTag(clientId, tagId);
+            // The updated client is returned by assignClientTag.
+            // ClientsTable will need to refresh its data.
+            // For now, this doesn't update any local state here.
+        } catch (err: any) {
+            setError(getErrorMessage(err, "Failed to assign tag."));
+        }
+    }, []);
 
+    const handleRemoveTag = useCallback(async (clientId: number, tagId: number) => {
+        try {
+            setError(null);
+            await removeClientTag(clientId, tagId);
+            // ClientsTable will need to refresh its data.
+        } catch (err: any) {
+            setError(getErrorMessage(err, "Failed to remove tag."));
+        }
+    }, []);
 
     // --- Effects ---
 
@@ -175,13 +236,6 @@ const Dashboard: React.FC = () => {
         }
     }, [authIsLoading, isAuthenticated, userProfile, navigate, loadPublicServices, loadAvailableTags]);
 
-    // Effect 2: Load CLIENT Data When Needed (Filter Changes or Navigating to clients page)
-     useEffect(() => {
-        if (location.pathname.startsWith('/dashboard/clients') && !authIsLoading && isAuthenticated) {
-           console.log("Dashboard Clients Effect: Triggering loadClients", { showDeletedClients });
-           loadClients();
-        }
-    }, [showDeletedClients, location.pathname, authIsLoading, isAuthenticated, loadClients]);
 
     // Effect 3: Load APPOINTMENTS Data when navigating to the calendar
      useEffect(() => {
@@ -206,7 +260,6 @@ const Dashboard: React.FC = () => {
 
     return (
         <div className={`dashboard-layout ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-            <Header userName={userProfile.name ?? userProfile.email} onLogout={handleLogout} />
             <Sidebar
                 isCollapsed={isSidebarCollapsed}
                 toggleSidebar={toggleSidebar}
@@ -218,8 +271,9 @@ const Dashboard: React.FC = () => {
                 toggleSettingsMenu={toggleSettingsMenu}
                 onLogout={handleLogout}
             />
-            <main className="main-content">
-                {/* Display global errors if any */}
+             <main className="main-content">
+                <Header userName={userProfile.name ?? userProfile.email} onLogout={handleLogout} />
+
                 {error && (
                     <div className="error-message global-error">
                         Error: {error}
@@ -227,60 +281,46 @@ const Dashboard: React.FC = () => {
                     </div>
                 )}
 
-                {/* --- Nested Routes --- */}
                 <Routes>
-                    {/* --- NEW: Render Overview at root --- */}
-                    <Route index element={<DashboardOverviewPage />} />
-                    {/* Optional: Explicit path if needed, but index handles '/dashboard' */}
-                    {/* <Route path="/" element={<DashboardOverviewPage />} /> */}
-
-                    {/* Calendar Route */}
+                    <Route index element={<DashboardOverviewPage userName={userProfile.name ?? userProfile.email} />} />
                     <Route path="calendar" element={
                         <div className="view-section">
                             <h2>Appointments Schedule</h2>
-                            {/* Consider moving loading logic into AppointmentCalendar */}
                             {loadingAppointments ? <div className="loading-message">Loading appointments...</div> : <AppointmentCalendar appointments={appointments} onAppointmentClick={handleCalendarAppointmentClick} onDayClick={handleCalendarDayClick} />}
                         </div>
                     } />
 
-                    {/* Clients List Route */}
+                    {/* Corrected ClientsTable invocation */}
                     <Route path="clients" element={
                         canManageClients ? (
-                            <ClientsTable // Consider moving loading logic into ClientsTable
-                                clients={clients} isLoading={loadingClients} userProfile={userProfile}
-                                showDeletedClients={showDeletedClients} canDeleteClients={canDeleteClients}
-                                onAddClient={handleOpenCreateClientModal} onEditClient={handleClientRowEditClick}
-                                onDeleteClient={handleClientRowDeleteClick} onToggleShowDeleted={handleToggleShowDeleted}
-                                availableTags={availableTenantTags} onAssignTag={handleAssignTag}
-                                onRemoveTag={handleRemoveTag} canAssignTags={canAssignClientTags}
+                            <ClientsTable
+                                userProfile={userProfile} // For role checks inside ClientsTable & action menu
+                                showDeletedClients={showDeletedClients} // Global toggle from Dashboard
+                                canDeleteClients={canDeleteClients} // For ActionMenu permission
+                                onToggleShowDeleted={handleToggleShowDeleted} // Handler for the toggle
+
+                                // Modal Triggers: ClientsTable calls these to open modals managed by Dashboard
+                                onAddClient={handleOpenCreateClientModal}
+                                onEditClient={handleClientRowEditClick}
+                                onDeleteClient={handleClientRowDeleteClick}
+                                
+                                // Props for ClientsTable's *internal* InlineTagEditor:
+                                availableTags={availableTenantTags} // All tags for the tenant
+                                onAssignTag={handleAssignTag}       // Dashboard's function to call API
+                                onRemoveTag={handleRemoveTag}       // Dashboard's function to call API
+                                canAssignTags={canAssignClientTags} // Permission for inline editor
                             />
                         ) : <div className="permission-message">You do not have permission to manage clients.</div>
                     } />
 
-                    {/* Client Profile Route */}
                     <Route path="clients/:clientId" element={
                         canManageClients ? <ClientProfilePage /> : <div className="permission-message">You do not have permission to view client profiles.</div>
                     } />
-
-                    {/* Services Route - Renders ServicesView */}
                     <Route path="services" element={<ServicesView userProfile={userProfile} />} />
-
-                    {/* Users Route - Renders UsersView */}
                     <Route path="users" element={<UsersView userProfile={userProfile} />} />
-
-                    {/* Settings Routes */}
-                    <Route path="settings-tags" element={
-                        canManageTagDefinitions ? <TagManagementView /> : <Navigate to="/dashboard" replace />
-                    } />
-                     <Route path="settings-business" element={
-                         isAdminOrSuper ? <TenantSettingsPage /> : <Navigate to="/dashboard" replace />
-                     } />
-                     <Route path="settings-templates" element={
-                         isAdminOrSuper ? <TemplatesView /> : <Navigate to="/dashboard" replace />
-                     } />
-                     {/* <Route path="settings-appearance" element={...} /> */}
-
-                    {/* Fallback - Redirect to new dashboard root */}
+                    <Route path="settings-tags" element={canManageTagDefinitions ? <TagManagementView /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="settings-business" element={isAdminOrSuper ? <TenantSettingsPage /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="settings-templates" element={isAdminOrSuper ? <TemplatesView /> : <Navigate to="/dashboard" replace />} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
             </main> {/* End main-content */}
