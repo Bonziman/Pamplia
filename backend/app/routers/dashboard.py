@@ -147,7 +147,7 @@ def get_dashboard_stats(
             else:
                 revenue_today_vs_yesterday_pct = 100.0
         else:
-            revenue_today_vs_yesterday_pct = ((expected_revenue_today - revenue_yesterday) / revenue_yesterday) * 100
+            revenue_today_vs_yesterday_pct = ((float(expected_revenue_today) - float(revenue_yesterday)) / float(revenue_yesterday)) * 100
 
 
         # 3. Pending Appointments Total Count

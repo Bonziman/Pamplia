@@ -81,7 +81,7 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({ userName 
             )}
 
             {/* --- Fixed Stats Section --- */}
-            <Heading as="h1" size="xl" mb={4} color="#18181b">
+            <Heading as="h1" size="xl" mb={4} color="#18181b" fontWeight={'bold'}>
                 Hello {userName ? userName.split(' ')[0] : 'there'}, welcome back!
             </Heading>
             <section className="dashboard-section fixed-stats">
@@ -90,9 +90,9 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({ userName 
                 <StatGroup  h="150px" gap="20px">
                     <Stat bg="#CCFBF7" w="auto" h="auto" borderRadius="12px" paddingLeft="15px" paddingTop="10px" color="#18181b" >
                         <StatLabel color="gray.500">Today's Expected Revenue</StatLabel>
-                        <StatNumber fontSize="32px">{formatCurrency(stats?.expected_revenue_today)}</StatNumber>
+                        <StatNumber fontSize="32px" fontWeight={'bold'}>{formatCurrency(stats?.expected_revenue_today)}</StatNumber>
                         <StatHelpText>
-                            <StatArrow type='increase' />
+                            <StatArrow type={stats?.revenue_change !== undefined && stats?.revenue_change < 0 ? 'decrease' : 'increase'} />
                             {stats?.revenue_change !== undefined && stats?.revenue_change !== null
                                 ? stats.revenue_change.toFixed(2)
                                 : '-'}%
@@ -127,39 +127,7 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({ userName 
                         </StatHelpText>
                     </Stat>
                 </StatGroup>
-                <div className="widgets-container">
-                    <StatWidget
-                        label="Appointments Today"
-                        value={stats?.appointments_today}
-                        icon={faCalendarDay}
-                        isLoading={isLoading}
-                    />
-                    <StatWidget
-                        label="Expected Revenue Today"
-                        value={formatCurrency(stats?.expected_revenue_today)}
-                        // unit="MAD" // Included in formatted string
-                        icon={faDollarSign}
-                        isLoading={isLoading}
-                    />
-                     <StatWidget
-                        label="Pending Appointments"
-                        value={stats?.pending_appointments_total}
-                        icon={faClock}
-                        isLoading={isLoading}
-                        isClickable={true}
-                        linkTo="/dashboard/appointments" // Route to appointments list
-                        linkState={{ preFilter: { status: 'pending' } }} // Pass filter state
-                    />
-                     <StatWidget
-                        label="Unconfirmed Clients"
-                        value={stats?.unconfirmed_clients_total}
-                        icon={faUserCheck}
-                        isLoading={isLoading}
-                        isClickable={true}
-                        linkTo="/dashboard/clients" // Route to clients list
-                        linkState={{ preFilter: { is_confirmed: false } }} // Pass filter state
-                    />
-                </div>
+                
             </section>
 
 
