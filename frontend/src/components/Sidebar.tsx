@@ -176,9 +176,19 @@ const Sidebar: React.FC<SidebarProps> = ({
                     borderColor="gray.700" // Darker border for dark bg
                 >
                     {!isCollapsed && (
-                        <Image src="/logo_light.png" alt="Pamplia Logo" h="65%" />
+                        <Image src="/logo_light.png" alt="Pamplia Logo" h="auto" w="150px" />
                         
                     )}
+                    <IconButton
+                        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                        icon={<ChakraIcon as={FontAwesomeIcon} icon={isCollapsed ? faArrowRight : faArrowLeft} />}
+                        onClick={toggleSidebar}
+                        variant="ghost"
+                        color="ui.sidebarText"
+                        _hover={{ bg: 'ui.sidebarActiveBg', color: 'brand.500' }}
+                        size="md"
+                        ml={isCollapsed ? 0 : "auto"} // Push to right when expanded
+                    />
                     
                 </Flex>
 
@@ -261,16 +271,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         </Flex>
                     </Button>
                 </Box>
-                <IconButton
-                        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                        icon={<ChakraIcon as={FontAwesomeIcon} icon={isCollapsed ? faArrowRight : faArrowLeft} />}
-                        onClick={toggleSidebar}
-                        variant="ghost"
-                        color="ui.sidebarText"
-                        _hover={{ bg: 'ui.sidebarActiveBg', color: 'brand.500' }}
-                        size="md"
-                        ml={isCollapsed ? 0 : "auto"} // Push to right when expanded
-                    />
+                
             </VStack>
         </Box>
     );

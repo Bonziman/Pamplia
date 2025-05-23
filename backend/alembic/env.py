@@ -6,7 +6,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from app.database import Base  # Assuming your Base is defined in database.py
-from app.models import appointment, service, tenant, user, communications_log  # Import your models here
+from app.models import appointment, service, tenant, user, communications_log, Invitation  # Import your models here
 
 
 

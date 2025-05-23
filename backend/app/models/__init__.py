@@ -6,3 +6,4 @@ from .client import Client
 from .tag import Tag
 from .communications_log import CommunicationsLog
 from .template import Template
+from .invitation import Invitation

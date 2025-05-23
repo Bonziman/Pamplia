@@ -21,7 +21,7 @@ export const fetchUsers = async (): Promise<FetchedUser[]> => {
 
     // Use axiosInstance to make the request (sends cookies)
     const response = await axiosInstance.get<FetchedUser[]>(apiUrl);
-
+    console.log('Raw fetchUsers response.data:', response.data);
     return response.data;
   } catch (error) { // error is initially 'unknown'
     console.error("Error fetching users:", error);
@@ -41,6 +41,36 @@ export const fetchUsers = async (): Promise<FetchedUser[]> => {
         }
     } else {
         // Handle non-Axios errors (e.g., network issues, JS errors)
+        console.error("Non-Axios error:", error);
+    }
+
+    throw error; // Re-throw the original error after logging
+  }
+};
+
+export const updateUser = async (id: number, userData: Partial<FetchedUser>): Promise<FetchedUser> => {
+  try {
+    const currentHostname = window.location.hostname;
+    const apiUrl = `http://${currentHostname}:8000/users/${id}/`; // Assuming a RESTful endpoint for updates
+    console.log(`Updating user ${id} at API URL:`, apiUrl);
+
+    // Use axiosInstance.put or axiosInstance.patch for updates
+    // PATCH is generally preferred for partial updates
+    const response = await axiosInstance.patch<FetchedUser>(apiUrl, userData);
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating user ${id}:`, error);
+
+    if (axios.isAxiosError(error)) {
+        console.error("Axios error details:", error.message);
+        if (error.response) {
+            console.error("API Error Status:", error.response.status);
+            console.error("API Error Data:", error.response.data);
+        } else if (error.request) {
+            console.error("No response received:", error.request);
+        }
+    } else {
         console.error("Non-Axios error:", error);
     }
 

@@ -49,7 +49,7 @@ class Tenant(Base):
         comment="Hours before appointment to send reminder (null=disabled)"
     )
 
-    # --- Relationships (Existing) ---
+    # --- Relationships  ---
     users = relationship("User", back_populates="tenant")
     services = relationship("Service", back_populates="tenant")
     appointments = relationship("Appointment", back_populates="tenant")
@@ -57,5 +57,7 @@ class Tenant(Base):
     tags = relationship("Tag", back_populates="tenant", cascade="all, delete-orphan")
     communication_logs = relationship("CommunicationsLog", back_populates="tenant", passive_deletes=True)
     templates = relationship("Template", back_populates="tenant", cascade="all, delete-orphan", passive_deletes=True)
+    invitations = relationship("Invitation", back_populates="tenant", cascade="all, delete-orphan")
+    
     def __repr__(self):
          return f"<Tenant(id={self.id}, name='{self.name}', subdomain='{self.subdomain}')>"

@@ -28,7 +28,7 @@ from app.schemas.appointment import ( # Explicitly import schemas used here
 
 # Communicaions logging imports
 from app.services.communication_service import create_communication_log # Import the utility
-from app.models.communications_log import CommunicationType, CommunicationChannel # Import enums 
+from app.models.communications_log import CommunicationDirection, CommunicationStatus, CommunicationType, CommunicationChannel # Import enums 
 
 # Notifications logic imports
 from app.services.notification_service import send_appointment_notification # Import the notification service
@@ -540,7 +540,9 @@ def update_appointment(
                 type=log_type,
                 channel=CommunicationChannel.EMAIL, # Default to EMAIL for now
                 # status defaults to SIMULATED
-                notes=log_details
+                notes=log_details,
+                direction=CommunicationDirection.SYSTEM, # Default to SYSTEM
+                status=CommunicationStatus.SIMULATED # Default to SIMULATED
             )
 
             if log_entry_created:

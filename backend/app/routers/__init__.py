@@ -8,3 +8,4 @@ from .tags import router as tags
 from .dashboard import router as dashboard
 from .templates import router as templates
 from  .communications import router as communications
+from .staff import router as staff

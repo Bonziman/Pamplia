@@ -7,7 +7,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware # Optional for 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response as StarletteResponse # For middleware typing
 
-from app.routers import tenants, appointments, services, auth, users, tags, clients, dashboard, templates, communications
+from app.routers import tenants, appointments, services, auth, users, tags, clients, dashboard, templates, communications, staff
 from app.database import Base, engine, get_db # Import get_db
 from app.models import tenant, user, service, appointment # Import models
 from sqlalchemy.orm import Session
@@ -137,6 +137,7 @@ app.include_router(clients)
 app.include_router(dashboard)
 app.include_router(templates)
 app.include_router(communications)
+app.include_router(staff)
 
 
 @app.get("/")

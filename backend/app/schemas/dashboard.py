@@ -2,7 +2,8 @@
 # --- NEW FILE ---
 
 from pydantic import BaseModel, Field
-from typing import Literal # To strongly type the period
+from typing import Literal, List # To strongly type the period
+from datetime import date
 
 # Define the Literal type for allowed period values, matching the frontend type
 StatsPeriod = Literal[
@@ -31,8 +32,8 @@ class DashboardStats(BaseModel):
     completed_appointments_period: int = Field(..., description="Count of 'done' appointments within the selected period.")
     revenue_period: float = Field(..., description="Sum of prices for 'done' appointments within the selected period.")
     new_clients_period: int = Field(..., description="Count of clients created within the selected period.")
-    appointments_change: float = Field(..., description="Percentage change in appointments from yesterday to today.")
-    revenue_change: float = Field(..., description="Percentage change in revenue from yesterday to today.")
+    appointments_change_today: float = Field(..., description="Percentage change in appointments from yesterday to today.")
+    revenue_change_today: float = Field(..., description="Percentage change in revenue from yesterday to today.")
     class Config:
         # Pydantic V2 uses from_attributes instead of orm_mode
         from_attributes = True
@@ -50,3 +51,14 @@ class DashboardStats(BaseModel):
                 "new_clients_period": 6
             }
         }
+
+class DailyRevenue(BaseModel):
+    date: date # Representing the day
+    revenue: float
+    
+class RevenueTrendData(BaseModel):
+    # Option 1: Separate labels and data (matches frontend example more easily initially)
+    # labels: List[str] # Could be formatted date strings or day names
+    # data: List[float]
+    # Option 2: List of objects (more structured, often preferred)
+    trend: List[DailyRevenue]

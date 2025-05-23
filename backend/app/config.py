@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     celery_result_backend: str
     timezone: str = "UTC"  # Default timezone
     
+    #frontend URL
+    frontend_url: str = "http://localtestt.me:3000" # Default for dev, GET FROM ENV
+    
+    invitation_expiry_hours: int = 48 # Default, GET FROM ENV
+    
     model_config = SettingsConfigDict(
         env_file='.env',    # Specify the .env file
         env_file_encoding='utf-8', # Specify encoding

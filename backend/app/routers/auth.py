@@ -10,6 +10,7 @@ from app.utils.jwt_utils import create_access_token
 from passlib.context import CryptContext
 from app.dependencies import AUTH_COOKIE_NAME
 from app.config import settings
+from app.schemas.user import UserOut
 
 router = APIRouter(
     prefix="/auth",
@@ -30,6 +31,8 @@ class LoginResponse(BaseModel):
 class LogoutResponse(BaseModel):
     success: bool = True
     message: str = "Logged out successfully"
+    
+
 
 # --- Helper Functions ---
 def verify_password(plain_password, hashed_password):

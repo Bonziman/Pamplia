@@ -14,8 +14,8 @@ export interface DashboardStats {
   completed_appointments_period: number;
   revenue_period: number; // Assuming backend sends number
   new_clients_period: number;
-  appointments_change: number; // Percentage change from yesterday to today
-  revenue_change: number; // Percentage change from yesterday to today
+  appointments_change_today: number; // Percentage change from yesterday to today
+  revenue_change_today: number; // Percentage change from yesterday to today
   // Add any other stats the backend might provide
 }
 
@@ -31,3 +31,13 @@ export const STATS_PERIOD_LABELS: Record<StatsPeriod, string> = {
   last_month: 'Last Month',
   all_time: 'All Time',
 };
+
+
+export interface DailyRevenueData { // For frontend use, date might be string for chart labels
+    date: string; // YYYY-MM-DD string from backend
+    revenue: number;
+}
+
+export interface RevenueChartData { // This is what the backend endpoint will return
+    trend: DailyRevenueData[];
+}

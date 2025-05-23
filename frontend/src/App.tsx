@@ -6,7 +6,8 @@ import { AuthProvider } from "./auth/authContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
-import BookingPage from "./pages/BookingPage";
+import BookingPage from "./pages/BookingPage"; 
+import AcceptInvitationPage from "./pages/public/AcceptInvitationPage";
 import ClientProfilePage from "./pages/ClientProfilePage";
 import { ChakraProvider } from '@chakra-ui/react';
 import theme from './theme';
@@ -17,16 +18,18 @@ const App: React.FC = () => {
     <ChakraProvider theme={theme}>
       <AuthProvider>
         <BrowserRouter>
-          <Routes>
+            <Routes>
             <Route path="/book" element={<BookingPage />} />
+            {/* Changed path to /accept-invitation to support token as a query parameter */}
+            <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
             {/* Add other routes as needed */}
             <Route path="/login" element={<Login />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard/*" element={
-                <Dashboard />
+              <Dashboard />
               }/>
             </Route>
-          </Routes>
+            </Routes>
         </BrowserRouter>
       </AuthProvider>
     </ChakraProvider>

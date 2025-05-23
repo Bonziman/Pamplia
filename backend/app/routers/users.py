@@ -1,12 +1,15 @@
 # app/routers/users.py
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app import models, schemas, database
 from app.models.user import User
 from passlib.context import CryptContext
 from app.dependencies import get_current_user, get_current_tenant_id
 from app.utils.permissions import can_edit_user, is_super_admin, is_admin, is_staff
-from typing import List
+from typing import List, Optional
+from app.schemas.pagination import PaginatedResponse # Ensure this is imported
+from app.schemas.user import UserOut # For type hint in PaginatedResponse
 
 router = APIRouter(
     prefix="/users",
@@ -15,6 +18,8 @@ router = APIRouter(
 
 # Set up bcrypt hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+ITEMS_PER_PAGE = 10  # Default items per page
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -103,16 +108,47 @@ def delete_user(
     db.commit()
     return {"detail": "User deleted successfully"}
 
-@router.get("/", response_model=List[schemas.user.UserOut])
-def get_all_users(
+@router.get("/", response_model=PaginatedResponse[UserOut]) # UPDATED response_model
+def get_all_users_paginated( # Renamed for clarity, or keep original name
     db: Session = Depends(database.get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    page: int = Query(1, ge=1),
+    limit: int = Query(ITEMS_PER_PAGE, ge=1, le=100), # Use constant or default
+    role: Optional[str] = Query(None),
+    is_active: Optional[bool] = Query(None),
+    tenant_id_filter: Optional[int] = Query(None, alias="tenantId") # For SuperAdmin
 ):
+    query = db.query(User)
+    count_query = db.query(func.count(User.id))
+
     if is_super_admin(current_user):
-        users = db.query(User).all()
+        if tenant_id_filter is not None:
+            query = query.filter(User.tenant_id == tenant_id_filter)
+            count_query = count_query.filter(User.tenant_id == tenant_id_filter)
+        # If no tenant_id_filter, super_admin sees all (no additional filter on tenant)
     elif is_admin(current_user):
-        users = db.query(User).filter(User.tenant_id == current_user.tenant_id).all()
-    else:
-        raise HTTPException(status_code=403, detail="Staff users are not allowed to fetch users")
+        if not current_user.tenant_id:
+             raise HTTPException(status_code=403, detail="Admin user not associated with a tenant.")
+        query = query.filter(User.tenant_id == current_user.tenant_id)
+        count_query = count_query.filter(User.tenant_id == current_user.tenant_id)
+    else: # Staff users should not typically list all users, this endpoint is for admin/super_admin
+        raise HTTPException(status_code=403, detail="Not authorized to list users.")
+
+    if role:
+        query = query.filter(User.role == role)
+        count_query = count_query.filter(User.role == role)
     
-    return users
+    if is_active is not None:
+        query = query.filter(User.is_active == is_active)
+        count_query = count_query.filter(User.is_active == is_active)
+
+    total_items = count_query.scalar() or 0
+    
+    users = query.order_by(User.name).offset((page - 1) * limit).limit(limit).all()
+    
+    return PaginatedResponse(
+        total=total_items,
+        page=page,
+        limit=limit,
+        items=users
+    )

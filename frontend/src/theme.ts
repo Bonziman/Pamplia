@@ -130,7 +130,7 @@ const components = {
 const styles = {
   global: (props: Record<string, any>) => ({
     'html, body': {
-      color: 'gray.100', bg: 'ui.bodyBg', fontFamily: 'body',
+      color: 'gray.700', bg: 'ui.bodyBg', fontFamily: 'body',
       lineHeight: 'base', fontSize: 'md',
     },
   }),

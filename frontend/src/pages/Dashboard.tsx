@@ -47,7 +47,7 @@ import AppointmentCalendar from '../components/AppointmentCalendar';
 import ClientsTable from "../components/ClientsTable";
 import TagManagementView from "../components/TagManagementView";
 import ClientProfilePage from "./ClientProfilePage";
-import UsersView from "./views/UsersView";
+import StaffManagementView from "./views/StaffManagementView";
 import ServicesView from "./views/ServicesView";
 import TenantSettingsPage from "./TenantSettingsPage";
 
@@ -145,6 +145,12 @@ const Dashboard: React.FC = () => {
     const handleCreateAppointment = useCallback(async (data: PublicAppointmentCreatePayload) => { try { setError(null); await createPublicAppointment(data); loadAppointments(); setIsCreateApptModalOpen(false); setSelectedDateForApptCreation(null); } catch (err: any) { setError(getErrorMessage(err, "Failed to create appointment.")); throw err; } }, [loadAppointments]);
     const handleCalendarAppointmentClick = (appointment: FetchedAppointment) => { setSelectedAppointment(appointment); setIsUpdateApptModalOpen(true); };
     const handleCalendarDayClick = (date: Date) => { setSelectedDateForApptCreation(date); setIsCreateApptModalOpen(true); };
+
+    // Add a handler to open the modal without a pre-selected date
+    const handleOpenCreateAppointmentModal = () => {
+        setSelectedDateForApptCreation(null); // Or new Date() if you want it to default to today
+        setIsCreateApptModalOpen(true);
+    };
 
     // -- Client Handlers --
     const handleCreateClient = useCallback(async (data: ClientCreatePayload) => {
@@ -264,9 +270,9 @@ const Dashboard: React.FC = () => {
                 isCollapsed={isSidebarCollapsed}
                 toggleSidebar={toggleSidebar}
                 userRole={userProfile.role}
+                tenantId={userProfile.tenant_id}
                 activeView={currentView} // Use derived view for highlighting
                 onNavigate={handleNavigation}
-                userName={userProfile.name ?? userProfile.email}
                 isSettingsMenuOpen={isSettingsMenuOpen}
                 toggleSettingsMenu={toggleSettingsMenu}
                 onLogout={handleLogout}
@@ -282,7 +288,9 @@ const Dashboard: React.FC = () => {
                 )}
 
                 <Routes>
-                    <Route index element={<DashboardOverviewPage userName={userProfile.name ?? userProfile.email} />} />
+                    <Route index element={<DashboardOverviewPage 
+                    userName={userProfile.name ?? userProfile.email}
+                    onOpenCreateAppointmentModal={handleOpenCreateAppointmentModal} />} />
                     <Route path="calendar" element={
                         <div className="view-section">
                             <h2>Appointments Schedule</h2>
@@ -317,7 +325,7 @@ const Dashboard: React.FC = () => {
                         canManageClients ? <ClientProfilePage /> : <div className="permission-message">You do not have permission to view client profiles.</div>
                     } />
                     <Route path="services" element={<ServicesView userProfile={userProfile} />} />
-                    <Route path="users" element={<UsersView userProfile={userProfile} />} />
+                    <Route path="users" element={<StaffManagementView />} />
                     <Route path="settings-tags" element={canManageTagDefinitions ? <TagManagementView /> : <Navigate to="/dashboard" replace />} />
                     <Route path="settings-business" element={isAdminOrSuper ? <TenantSettingsPage /> : <Navigate to="/dashboard" replace />} />
                     <Route path="settings-templates" element={isAdminOrSuper ? <TemplatesView /> : <Navigate to="/dashboard" replace />} />

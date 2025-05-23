@@ -3,7 +3,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_, case
+from sqlalchemy import func, and_, or_, case, cast, Date
 from datetime import datetime, timedelta, date, timezone
 
 # Core App Imports (Adjust paths if necessary)
@@ -15,13 +15,13 @@ from app.models.appointment import Appointment as AppointmentModel
 from app.models.client import Client as ClientModel
 from app.models.service import Service as ServiceModel
 from app.models.association_tables import appointment_services_table
-from app.schemas.dashboard import DashboardStats, StatsPeriod # Define these in schemas
+from app.schemas.dashboard import DashboardStats, RevenueTrendData, StatsPeriod, DailyRevenue # Define these in schemas
 from app.schemas.enums import AppointmentStatus # Import status enum
 
 
 import logging
 logger = logging.getLogger(__name__)
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 router = APIRouter(
     prefix="/dashboard",
@@ -64,8 +64,9 @@ def get_date_range_from_period(period: StatsPeriod) -> Tuple[datetime, datetime]
     logger.debug(f"Calculated date range for period '{period}': {start_date} to {end_date}")
     return start_date, end_date
 
+
 # --- GET /dashboard (Fetch Stats) ---
-@router.get("/", response_model=schemas.dashboard.DashboardStats) # Use schema from app.schemas
+@router.get("/", response_model=DashboardStats) # Use schema from app.schemas.dashboard
 def get_dashboard_stats(
     period: StatsPeriod = Query('last_7_days', description="Time period for stats like revenue, completed appts."),
     db: Session = Depends(database.get_db),
@@ -223,9 +224,83 @@ def get_dashboard_stats(
         completed_appointments_period=completed_appts_period_count,
         revenue_period=float(revenue_period), # Cast Decimal if needed
         new_clients_period=new_clients_period_count,
-        appointments_change=appts_today_vs_yesterday_pct,
-        revenue_change=revenue_today_vs_yesterday_pct,
+        appointments_change_today=appts_today_vs_yesterday_pct,
+        revenue_change_today=revenue_today_vs_yesterday_pct,
     )
 
     logger.info(f"Successfully fetched dashboard stats for Tenant ID: {tenant_id}, Period: {period}")
     return stats_data
+
+
+# --- GET /dashboard/revenue-trend (Fetch Revenue Trend) ---
+@router.get("/revenue-trend", response_model=schemas.dashboard.RevenueTrendData)
+def get_revenue_trend(
+    # For now, let's hardcode to last 7 days as per discussion.
+    # Later, you can add a query param: period: str = Query("last_7_days", description="Time period for the trend"),
+    db: Session = Depends(database.get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is not associated with a tenant.")
+
+    tenant_id = current_user.tenant_id
+    logger.info(f"Fetching revenue trend (last 7 days) for Tenant ID: {tenant_id}")
+
+    trend_data: List[DailyRevenue] = []
+    
+    # Calculate date range for the last 7 days (inclusive of today)
+    today = datetime.now(timezone.utc).date() # Current date, timezone-aware then to .date()
+    
+    # Generate dates for the last 7 days
+    # dates_in_period = [today - timedelta(days=i) for i in range(6, -1, -1)] # today, yesterday, ..., 6 days ago
+    # Corrected order: oldest to newest for chart
+    dates_in_period = [today - timedelta(days=i) for i in range(6, -1, -1)] # [6 days ago, ..., yesterday, today]
+
+    try:
+        # Query to get revenue grouped by day for completed appointments
+        # We need to cast appointment_time to date for grouping
+        # This query sums revenue for each day within the last 7 days.
+        
+        # Create a subquery that extracts the date part from appointment_time
+        # and sums up prices for completed appointments.
+        daily_revenue_subquery = (
+            db.query(
+                cast(AppointmentModel.appointment_time, Date).label("appointment_date"),
+                func.sum(ServiceModel.price).label("daily_revenue")
+            )
+            .join(appointment_services_table, AppointmentModel.id == appointment_services_table.c.appointment_id)
+            .join(ServiceModel, ServiceModel.id == appointment_services_table.c.service_id)
+            .filter(AppointmentModel.tenant_id == tenant_id)
+            .filter(AppointmentModel.status == AppointmentStatus.DONE)
+            .filter(cast(AppointmentModel.appointment_time, Date).in_(dates_in_period))
+            .group_by(cast(AppointmentModel.appointment_time, Date))
+            .subquery()
+        )
+
+        # Fetch the results
+        results = db.query(
+            daily_revenue_subquery.c.appointment_date,
+            daily_revenue_subquery.c.daily_revenue
+        ).all()
+
+        # Convert results to a dictionary for easy lookup
+        revenue_map = {row.appointment_date: float(row.daily_revenue or 0.0) for row in results}
+
+        # Populate trend_data, ensuring all 7 days are present, even if revenue is 0
+        for day_date in dates_in_period:
+            trend_data.append(
+                DailyRevenue(
+                    date=day_date,
+                    revenue=revenue_map.get(day_date, 0.0)
+                )
+            )
+
+    except Exception as e:
+        logger.error(f"Error querying revenue trend for Tenant ID {tenant_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not retrieve revenue trend data."
+        )
+    
+    logger.info(f"Successfully fetched revenue trend for Tenant ID: {tenant_id}, Data points: {len(trend_data)}")
+    return RevenueTrendData(trend=trend_data)
