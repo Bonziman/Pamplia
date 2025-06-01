@@ -26,6 +26,8 @@ interface AuthContextType {
   isLoading: boolean; // Still needed for initial load
   checkAuthStatus: () => Promise<void>; // Renamed login to checkAuthStatus
   logout: () => Promise<void>; // Logout now async
+  manuallySetUserSession: (userData: UserProfile, token?: string) => void; // For manual session setting
+  setIsAuthenticated: React.Dispatch<React.SetStateAction<boolean>>; // For manual auth state control
 }
 
 interface AuthProviderProps {
@@ -40,6 +42,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // State now focuses on the fetched profile and loading status
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true); // Start loading
+  
 
   // --- Check Auth Status / Fetch Profile ---
   // useCallback ensures the function identity is stable if passed down
@@ -90,13 +93,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Redirect happens in the component calling logout
     }
   };
+  const manuallySetUserSession = useCallback((userData: UserProfile, token?: string) => {
+
+    console.log("[AuthContext] Manually setting user session:", userData);
+    setUserProfile(userData);
+    setIsLoading(false); // Assume loading is done if we manually set
+    // If the token passed here is needed for anything client-side (e.g. non-HttpOnly for some reason, or analytics)
+    // you could store it. But for HttpOnly, the browser handles it.
+    // The main purpose here is to update userProfile and isAuthenticated state.
+  }, []);
 
   // Derived state for convenience
   const isAuthenticated = !!userProfile;
 
   // --- Provide Context Value ---
   return (
-    <AuthContext.Provider value={{ isAuthenticated, userProfile, isLoading, checkAuthStatus, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, userProfile, isLoading, checkAuthStatus, logout, manuallySetUserSession }}>
       {children}
     </AuthContext.Provider>
   );

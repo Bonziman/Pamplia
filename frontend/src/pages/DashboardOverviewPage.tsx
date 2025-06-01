@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchDashboardStats, fetchRevenueChartData } from '../api/dashboardApi'; // Import new fetch function
-import { DashboardStats, StatsPeriod, STATS_PERIOD_LABELS, RevenueChartData, DailyRevenueData } from '../types/Dashboard'; // Import new types
+import { DashboardStats, StatsPeriod, STATS_PERIOD_LABELS, DailyRevenueData } from '../types/Dashboard'; // Import new types
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
 
@@ -16,7 +16,7 @@ import {
   useTheme, // To access theme colors for chart styling
 } from '@chakra-ui/react';
 // Import chart components from recharts
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import {  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 type DashboardOverviewPageProps = {
     userName?: string;
@@ -89,6 +89,14 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({ userName,
         setSelectedPeriod(newPeriod);
         // loadDashboardData will be called by the useEffect above
     };
+
+    const handleAppointmentCreated = useCallback(() => {
+        console.log("Dashboard: Appointment created signal received. Refreshing data...");
+        // Reload data with the current selected period
+        loadDashboardData(selectedPeriod);
+        // You could also show a small toast notification here if desired
+        // toast({ title: "Dashboard Updated", status: "info", duration: 2000 });
+    }, [loadDashboardData, selectedPeriod]); // Dependencies: loadDashboardData and selectedPeriod
 
     const formatCurrency = (value: number | null | undefined, withSymbol = true) => {
         if (value === null || value === undefined) return '-';
@@ -256,7 +264,7 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({ userName,
                         cursor={{ stroke: theme.colors.brand[200], strokeWidth: 1, strokeDasharray: '3 3' }}
                     />
                     <Legend verticalAlign="top" align="right" height={36} iconSize={10} wrapperStyle={{ fontSize: "12px", color: theme.colors.gray[600] }}/>
-                    <Area type="monotone" dataKey="revenue" name="Revenue" stroke={theme.colors.brand[500]} strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" activeDot={{ r: 7, stroke: theme.colors.brand[100], strokeWidth: 3, fill: theme.colors.brand[500] }} dot={{ r: 3, strokeWidth: 1, fill: theme.colors.brand[500] }}/>
+                    <Area type="monotone" dataKey="revenue" name="Revenue" stroke={theme.colors.brand[500]} strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" activeDot={{ r: 7, stroke: theme.colors.brand[100], strokeWidth: 3, fill: theme.colors.brand[500] }} dot={{ r: 2, strokeWidth: 2, fill: theme.colors.brand[500] }}/>
                 </AreaChart> 
             </ResponsiveContainer>
         ) : (
@@ -327,7 +335,7 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({ userName,
                 </Heading>
                 <ChakraButton
                     colorScheme="brand"
-                    onClick={onOpenCreateAppointmentModal}
+                    onClick={() => onOpenCreateAppointmentModal(handleAppointmentCreated)}
                     leftIcon={<ChakraIcon as={FontAwesomeIcon} icon={faPlus} />}
                     size="md"
                 >

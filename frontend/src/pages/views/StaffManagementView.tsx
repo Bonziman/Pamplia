@@ -212,7 +212,7 @@ const StaffManagementView: React.FC = () => {
             action: async () => {
                 try {
                     await cancelStaffInvitation(invitationId);
-                    toast({ title: "Invitation Cancelled", status: 'success' });
+                    toast({ title: "Invitation Cancelled", status: 'info' });
                     loadInvitations(invitationsCurrentPage, invitationStatusFilter);
                 } catch (error: any) {
                     toast({ title: "Error Cancelling", description: error.response?.data?.detail || "Could not cancel invitation.", status: 'error' });
@@ -272,8 +272,9 @@ const StaffManagementView: React.FC = () => {
 
 
     return (
-        <Box p={{ base: "2", md: "4" }}> {/* Adjusted padding */}
-            <Flex mb="6" alignItems="center" flexWrap="wrap" gap="4">
+        <div className="view-section">
+        <Box p={{ base: "2", md: "4" }} bg={'white'}> {/* Adjusted padding */}
+            <Flex mb="6" alignItems="center" flexWrap="wrap" gap="4" >
                 <Heading as="h1" size="lg" color="gray.700">Staff Management</Heading> {/* Changed size */}
                 <Spacer />
                 <ChakraButton colorScheme="brand" leftIcon={<AddIcon />} onClick={onOpenInviteDrawer} size="md">
@@ -288,7 +289,7 @@ const StaffManagementView: React.FC = () => {
                 </TabList>
                 <TabPanels>
                     <TabPanel p="0">
-                        {isLoadingStaff && <Center py="10"><Spinner color="brand.500" size="lg" /></Center>}
+                        {isLoadingStaff && <Center h="400px" py="10"><Spinner color="brand.500" size="xl" thickness='4px' speed='0.65s' emptyColor='gray.200'/></Center>}
                         {staffError && <Text color="red.500" my="4">Error: {staffError}</Text>}
                         {!isLoadingStaff && !staffError && (!staffMembers || staffMembers.length === 0) && <Text my="4">No staff members found.</Text>}
                         {!isLoadingStaff && !staffError && staffMembers && staffMembers.length > 0 && (
@@ -428,6 +429,7 @@ const StaffManagementView: React.FC = () => {
                 />
             )}
         </Box>
+        </div>
     );
 };
 

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status, Response
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import exc as SQLAlchemyExceptions, func, case
 from typing import List, Optional
-from datetime import datetime as dt, timezone
+from datetime import datetime as dt, timedelta, timezone
 import logging
 
 from app import database, models, schemas # Ensure schemas is imported
@@ -200,10 +200,13 @@ async def create_appointment( # <--- Make endpoint async
         logger.warning(f"[Create Appointment] Invalid/missing service IDs requested: {missing_ids}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid or unavailable service IDs provided: {list(missing_ids)}")
 
+    total_duration = sum(service.duration_minutes for service in services if service.duration_minutes is not None)
+    
     # 4. Create Appointment Object
     db_appointment = AppointmentModel(
         client_id=client_id,
         appointment_time=appointment_data.appointment_time, # Ensure timezone info is handled correctly if coming from frontend
+        end_datetime_utc=appointment_data.appointment_time + timedelta(minutes=total_duration) if appointment_data.appointment_time else None,
         tenant_id=tenant_id_from_subdomain,
         status=AppointmentStatus.PENDING,
         # Associate related objects directly for easier access later

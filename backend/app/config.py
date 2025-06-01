@@ -5,7 +5,13 @@ class Settings(BaseSettings):
     secret_key: str  # Add this line to load the secret key
     environment: str #= os.getenv("ENVIRONMENT", "development") # "development" or "production"
     base_domain: str #= os.getenv("BASE_DOMAIN", "localhost") # Base domain for cookies/redirects
+    auth_cookie_name: str = "access_token" # Default cookie name
     
+    
+    # JWT Settings
+    access_token_expire_minutes: int = 60 * 24 * 7  # Default to 7 days, can be overridden in .env
+    cookie_domain: str = "localhost"  # Default for dev, GET FROM ENV
+    auth_cookie_name: str = "access_token"  # Default cookie name, can be overridden in .env
     # Email Settings
     mail_server: str
     mail_port: int = 587
@@ -20,7 +26,7 @@ class Settings(BaseSettings):
     timezone: str = "UTC"  # Default timezone
     
     #frontend URL
-    frontend_url: str = "http://localtestt.me:3000" # Default for dev, GET FROM ENV
+    frontend_url: str = "localtestt.me:3000" # Default for dev, GET FROM ENV
     
     invitation_expiry_hours: int = 48 # Default, GET FROM ENV
     

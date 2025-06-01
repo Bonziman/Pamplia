@@ -51,7 +51,7 @@ export const fetchUsers = async (): Promise<FetchedUser[]> => {
 export const updateUser = async (id: number, userData: Partial<FetchedUser>): Promise<FetchedUser> => {
   try {
     const currentHostname = window.location.hostname;
-    const apiUrl = `http://${currentHostname}:8000/users/${id}/`; // Assuming a RESTful endpoint for updates
+    const apiUrl = `http://${currentHostname}:8000/users/update/${id}/`; // Assuming a RESTful endpoint for updates
     console.log(`Updating user ${id} at API URL:`, apiUrl);
 
     // Use axiosInstance.put or axiosInstance.patch for updates

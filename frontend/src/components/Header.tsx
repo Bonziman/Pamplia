@@ -98,9 +98,9 @@ const Header: React.FC<HeaderProps> = ({ userName, userRole, userEmail, onLogout
                     >
                         <Flex align="center">
                             <Avatar
-                                size="sm"
+                                size="md"
                                 name={userName}
-                                // src="/defaults/icons8-male-user-94.png" // Use actual avatar URL if available
+                                src="/defaults/icons8-male-user-94.png" // Use actual avatar URL if available
                                 mr="3"
                             />
                             <Box textAlign="left" mr="3">
@@ -108,7 +108,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userRole, userEmail, onLogout
                                     {userName}
                                 </Text>
                                 {(userRole || userEmail) && (
-                                    <Text fontSize="xs" color="gray.500">
+                                    <Text fontSize="xs" color="gray.200" fontWeight="normal">
                                         {userRole && userEmail ? `${userRole} | ${userEmail}` : userRole || userEmail}
                                     </Text>
                                 )}

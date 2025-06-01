@@ -1,6 +1,6 @@
 # app/routers/staff.py
 import secrets
-from fastapi import APIRouter, HTTPException, Depends, Query, status
+from fastapi import APIRouter, HTTPException, Depends, Query, Response, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -21,6 +21,8 @@ from app.utils import permissions # Your permissions helpers
 from app.utils.jwt_utils import create_access_token # For login after accepting invite
 from app.core.config import settings # For FRONTEND_URL if constructing links
 from passlib.context import CryptContext # For hashing password
+from app.utils.cookie_utils import get_cookie_domain_attribute
+from app.utils.permissions import is_admin, is_super_admin, can_edit_user # Import your permission checks
 
 import logging
 logger = logging.getLogger(__name__)
@@ -118,7 +120,8 @@ async def invite_staff_member( # Made async to use await for email
     # Construct activation link (ensure FRONTEND_URL is in your settings)
     # Example: FRONTEND_URL = "http://localhost:3000" or "https://tenant.pamplia.com"
     # The frontend route for accepting invitations needs to be defined, e.g., /accept-invitation
-    activation_link = f"{settings.frontend_url.rstrip('/')}/accept-invitation?token={db_invitation.invitation_token}"
+    tenant_subdomain = current_user.tenant.subdomain if hasattr(current_user.tenant, 'subdomain') else None
+    activation_link = f"http://{tenant_subdomain}.{settings.frontend_url.rstrip('/')}/accept-invitation?token={db_invitation.invitation_token}"
     
     email_subject = f"You're invited to join {current_user.tenant.name} on Pamplia" # Tenant name from relationship
     # Create a simple HTML body or use a template rendering engine
@@ -126,7 +129,11 @@ async def invite_staff_member( # Made async to use await for email
     <p>Hello {invitation_data.first_name or invitation_data.email},</p>
     <p>You have been invited by {current_user.name} to join the team for <strong>{current_user.tenant.name}</strong> on Pamplia as a {db_invitation.role_to_assign}.</p>
     <p>Please click the link below to accept your invitation and set up your account. This link will expire in {settings.invitation_expiry_hours or 48} hours.</p>
-    <p><a href="{activation_link}">{activation_link}</a></p>
+    <p>
+        <a href="{activation_link}" style="display:inline-block;padding:10px 20px;background-color:#2563eb;color:#fff;text-decoration:none;border-radius:5px;font-weight:bold;">
+            Activate
+        </a>
+    </p>
     <p>If you did not expect this invitation, please ignore this email.</p>
     <p>Thanks,<br>The Pamplia Team</p>
     """
@@ -162,77 +169,115 @@ async def invite_staff_member( # Made async to use await for email
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not save invitation.")
 
 
-@router.post("/invitations/accept", response_model=schemas.token.TokenUserResponse) # Response includes UserOut and Token
+@router.post("/invitations/accept", response_model=schemas.token.TokenUserResponse) # Using TokenUserResponse from auth schemas
 async def accept_staff_invitation(
     invitation_accept_data: schemas.invitation.InvitationAccept,
+    response: Response, # FastAPI Response object injected
     db: Session = Depends(database.get_db)
 ):
-    token = invitation_accept_data.token
+    token_from_payload = invitation_accept_data.token
+    logger.info(f"Accepting invitation with token from payload: {token_from_payload[:10]}...")
     
-    # 1. Find invitation by token
-    invitation = db.query(InvitationModel).filter(InvitationModel.invitation_token == token).first()
+    invitation = db.query(InvitationModel).filter(InvitationModel.invitation_token == token_from_payload).first()
 
     if not invitation:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation token not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation token not found or invalid.")
     if invitation.status != InvitationStatusEnum.PENDING:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation is no longer pending (already accepted, cancelled, or expired).")
+        detail_msg = "Invitation is not currently valid or has already been processed."
+        if invitation.status == InvitationStatusEnum.ACCEPTED: detail_msg = "This invitation has already been accepted."
+        elif invitation.status == InvitationStatusEnum.EXPIRED: detail_msg = "This invitation link has expired."
+        elif invitation.status == InvitationStatusEnum.CANCELLED: detail_msg = "This invitation has been cancelled."
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail_msg)
     if invitation.token_expiry < datetime.now(pytimezone.utc):
-        invitation.status = InvitationStatusEnum.EXPIRED
-        db.commit()
+        if invitation.status == InvitationStatusEnum.PENDING: # Mark as expired
+            invitation.status = InvitationStatusEnum.EXPIRED
+            db.commit()
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="Invitation token has expired.")
 
-    # 2. Check if email is already an active user (should have been caught at invite, but double check)
     existing_user = db.query(UserModel).filter(UserModel.email == invitation.email, UserModel.is_active == True).first()
     if existing_user:
-        # This case implies an issue with the invitation flow or a race condition.
-        # Mark invitation as problematic or just error out.
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An active user with this email already exists.")
 
-    # 3. Create the new User
-    hashed_password = hash_password(invitation_accept_data.password)
-    new_user = UserModel(
-        email=invitation.email,
-        name=f"{invitation_accept_data.first_name} {invitation_accept_data.last_name}",
-        password=hashed_password,
-        tenant_id=invitation.tenant_id,
-        role=invitation.role_to_assign,
-        is_active=True,
-        activated_at=datetime.now(pytimezone.utc),
-        created_by_user_id=invitation.invited_by_user_id # User who sent invite
-    )
+    user_full_name = f"{invitation_accept_data.first_name} {invitation_accept_data.last_name}".strip()
+    
+    # Ensure your User model has first_name and last_name if you plan to set them separately
+    # Otherwise, just use the `name` field.
+    new_user_data = {
+        "email": invitation.email,
+        "name": user_full_name or invitation.email.split('@')[0],
+        "password": hash_password(invitation_accept_data.password),
+        "tenant_id": invitation.tenant_id,
+        "role": invitation.role_to_assign,
+        "is_active": True,
+        "activated_at": datetime.now(pytimezone.utc),
+        "created_by_user_id": invitation.invited_by_user_id,
+        # Add first_name and last_name if your UserModel supports them directly
+        # "first_name": invitation_accept_data.first_name,
+        # "last_name": invitation_accept_data.last_name,
+    }
+    # Filter out None values if UserModel fields are not nullable for these
+    # new_user_data = {k: v for k, v in new_user_data.items() if v is not None or k in ['is_active', 'tenant_id', 'email', 'name', 'password', 'role']}
+
+
+    new_user = UserModel(**new_user_data)
+    logger.info(f"Attempting to create new user: {new_user.email} for tenant {invitation.tenant_id}")
     
     try:
         db.add(new_user)
-        db.flush() # To get new_user.id
+        db.flush() 
+        logger.info(f"New user ID {new_user.id} generated for {new_user.email}")
 
         invitation.status = InvitationStatusEnum.ACCEPTED
         invitation.accepted_by_user_id = new_user.id
-        #invitation.invitation_token = None # Clear token after use
-        #invitation.token_expiry = None   # Clear token expiry
+        # Consider clearing token for security after successful use
+        # invitation.invitation_token = None 
+        # invitation.token_expiry = None   
 
         db.commit()
         db.refresh(new_user)
-        db.refresh(invitation) # Though not returned, good to refresh
-
-        # 4. Create JWT for immediate login
+        
+        access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
         access_token = create_access_token(
-            data={"sub": new_user.email, "user_id": new_user.id, "tenant_id": new_user.tenant_id, "role": new_user.role}
+            data={"sub": new_user.email, "user_id": new_user.id, "tenant_id": new_user.tenant_id, "role": new_user.role},
+            expires_delta=access_token_expires
         )
         
-        user_out = UserOut.model_validate(new_user) # Use UserOut schema for response
+        # --- REPLICATED COOKIE LOGIC FROM AUTH/LOGIN ---
+        cookie_key_to_set = settings.auth_cookie_name
+        # Use your get_cookie_domain_attribute function
+        cookie_domain_to_set = get_cookie_domain_attribute(settings.base_domain) 
+        
+        logger.info(
+            f"Attempting to set cookie (staff accept): key='{cookie_key_to_set}', "
+            f"domain='{cookie_domain_to_set}', secure={settings.environment == 'production'}, "
+            f"max_age={int(access_token_expires.total_seconds())}, samesite='Lax'"
+        )
 
-        return schemas.token.TokenUserResponse(
+        response.set_cookie(
+            key=cookie_key_to_set,
+            value=access_token,
+            httponly=True,
+            max_age=int(access_token_expires.total_seconds()), 
+            path="/",
+            samesite="Lax", # Capitalized "Lax"
+            secure=settings.environment == "production",
+            domain=cookie_domain_to_set # Value from your helper function
+        )
+        logger.info(f"Cookie '{cookie_key_to_set}' instruction prepared for response for user {new_user.email}.")
+        
+        user_out_data = UserOut.model_validate(new_user)
+
+        return schemas.token.TokenUserResponse( # Ensure this matches schemas.auth.TokenUserResponse
             access_token=access_token, 
             token_type="bearer",
-            user=user_out
+            user=user_out_data
         )
 
     except Exception as e:
         db.rollback()
-        logger.error(f"Error accepting invitation for token {token}: {e}", exc_info=True)
+        logger.error(f"Error during final stage of accepting invitation for token {token_from_payload[:10]}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not process invitation acceptance.")
-
-
+    
 @router.get("/invitations", response_model=schemas.pagination.PaginatedResponse[InvitationOut]) # Assuming you have a PaginatedResponse schema
 def list_tenant_invitations(
     page: int = Query(1, ge=1),
@@ -303,8 +348,12 @@ async def resend_staff_invitation( # Made async for email
     html_body = f"""
     <p>Hello {invitation.first_name or invitation.email},</p>
     <p>This is a reminder for your invitation to join <strong>{current_user.tenant.name}</strong> on Pamplia as a {invitation.role_to_assign}.</p>
-    <p>Please click the link below to accept. This new link will expire in {settings.invitation_expiry_hours or 48} hours.</p>
-    <p><a href="{activation_link}">{activation_link}</a></p>
+    <p>Please click the button below to accept. This new link will expire in {settings.invitation_expiry_hours or 48} hours.</p>
+    <p>
+        <a href="{activation_link}" style="display:inline-block;padding:10px 20px;background-color:#2563eb;color:#fff;text-decoration:none;border-radius:5px;font-weight:bold;">
+            Activate
+        </a>
+    </p>
     """
     email_sent = await email_service.send_email(
         to_email=invitation.email,
@@ -349,14 +398,13 @@ def cancel_staff_invitation(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only pending invitations can be cancelled.")
 
     invitation.status = InvitationStatusEnum.CANCELLED
-    invitation.invitation_token = None # Invalidate token
-    invitation.token_expiry = None
+    invitation.token_expiry = datetime.now(pytimezone.utc) # Reset expiry
     try:
         db.commit()
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not cancel invitation.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=e)
 
 
 # --- Staff User Management (subset of user management, focused on staff context) ---
@@ -377,7 +425,7 @@ def update_staff_status(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff user not found.")
 
     # Permission: Admin can manage staff in their tenant. SuperAdmin can manage any.
-    if not permissions.can_manage_specific_staff(current_user, target_staff_user):
+    if not permissions.can_edit_user(current_user, target_staff_user):
          raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to manage this staff member's status.")
     
     if target_staff_user.role not in ["staff"]: # Ensure only 'staff' role users are managed here, not other admins

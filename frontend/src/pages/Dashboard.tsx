@@ -112,6 +112,8 @@ const Dashboard: React.FC = () => {
     // Permissions for settings views
     const isAdminOrSuper = userProfile?.role === 'admin' || userProfile?.role === 'super_admin';
 
+    const [dashboardOverviewRefreshCallback, setDashboardOverviewRefreshCallback] = useState<(() => void) | null>(null);
+
     // --- Utility function to extract error message ---
     const getErrorMessage = (err: any, defaultMessage: string): string => {
         console.error("API Error:", err.response || err);
@@ -145,6 +147,29 @@ const Dashboard: React.FC = () => {
     const handleCreateAppointment = useCallback(async (data: PublicAppointmentCreatePayload) => { try { setError(null); await createPublicAppointment(data); loadAppointments(); setIsCreateApptModalOpen(false); setSelectedDateForApptCreation(null); } catch (err: any) { setError(getErrorMessage(err, "Failed to create appointment.")); throw err; } }, [loadAppointments]);
     const handleCalendarAppointmentClick = (appointment: FetchedAppointment) => { setSelectedAppointment(appointment); setIsUpdateApptModalOpen(true); };
     const handleCalendarDayClick = (date: Date) => { setSelectedDateForApptCreation(date); setIsCreateApptModalOpen(true); };
+
+    const handleSubmitCreateAppointmentForm = useCallback(async (data: PublicAppointmentCreatePayload) => {
+        try {
+            setError(null);
+            await createPublicAppointment(data); // API call
+            loadAppointments(); // Refresh the main appointments list (for calendar, etc.)
+            setIsCreateApptModalOpen(false);
+            setSelectedDateForApptCreation(null);
+            
+            // --- TRIGGER THE DASHBOARD OVERVIEW REFRESH ---
+            // This is where we call the callback passed from DashboardOverviewPage
+            if (dashboardOverviewRefreshCallback) {
+                console.log("Dashboard: Form submitted, triggering overview refresh callback.");
+                dashboardOverviewRefreshCallback();
+            }
+            // Optionally clear the callback after use if it's one-time per modal open cycle
+            // setDashboardOverviewRefreshCallback(null); 
+
+        } catch (err: any) {
+            setError(getErrorMessage(err, "Failed to create appointment."));
+            throw err; // Re-throw for the modal to handle its own error/loading state
+        }
+    }, [loadAppointments, dashboardOverviewRefreshCallback]);
 
     // Add a handler to open the modal without a pre-selected date
     const handleOpenCreateAppointmentModal = () => {
@@ -278,7 +303,7 @@ const Dashboard: React.FC = () => {
                 onLogout={handleLogout}
             />
              <main className="main-content">
-                <Header userName={userProfile.name ?? userProfile.email} onLogout={handleLogout} />
+                <Header userName={userProfile.name ?? userProfile.email} userRole={userProfile.role} onLogout={handleLogout} />
 
                 {error && (
                     <div className="error-message global-error">

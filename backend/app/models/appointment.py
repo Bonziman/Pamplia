@@ -21,6 +21,7 @@ class Appointment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     appointment_time = Column(DateTime(timezone=True), nullable=False, index=True) # Consider timezone=True
+    end_datetime_utc = Column(DateTime(timezone=True), nullable=True, index=True)
     tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
 
     # --- Client Relationship ---

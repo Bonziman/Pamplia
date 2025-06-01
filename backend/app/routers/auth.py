@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app import models, database
 from app.utils.jwt_utils import create_access_token
 from passlib.context import CryptContext
-from app.dependencies import AUTH_COOKIE_NAME
+from app.config import settings
 from app.config import settings
 from app.schemas.user import UserOut
 
@@ -109,11 +109,11 @@ def login_for_access_token(
 
     # --- MODIFIED: Get domain attribute value (will be None for localhost) ---
     cookie_domain_value = get_cookie_domain_attribute(base_domain_config)
-    print(f"[Login] Setting cookie: Name={AUTH_COOKIE_NAME}, Domain={cookie_domain_value}, Secure={settings.environment == 'production'}")
+    print(f"[Login] Setting cookie: Name={settings.auth_cookie_name}, Domain={cookie_domain_value}, Secure={settings.environment == 'production'}")
 
     # --- MODIFIED: Pass calculated domain value to set_cookie ---
     response.set_cookie(
-        key=AUTH_COOKIE_NAME,
+        key=settings.auth_cookie_name,
         value=access_token,
         httponly=True,
         samesite="lax",
@@ -133,10 +133,10 @@ def logout(response: Response):
     # --- MODIFIED: Use same helper for deletion ---
     cookie_domain_value = get_cookie_domain_attribute(base_domain_config)
 
-    print(f"[Logout] Deleting cookie: Name={AUTH_COOKIE_NAME}, Domain={cookie_domain_value}")
+    print(f"[Logout] Deleting cookie: Name={settings.auth_cookie_name}, Domain={cookie_domain_value}")
 
     response.delete_cookie(
-        key=AUTH_COOKIE_NAME,
+        key=settings.auth_cookie_name,
         path="/",
         domain=cookie_domain_value # <-- Use calculated value (None for localhost)
     )

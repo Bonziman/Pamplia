@@ -14,6 +14,7 @@ import { useAuth } from '../../auth/authContext'; // For login after success
 import { acceptInvitation, ValidateTokenResponse, validateInvitationToken } from '../../api/staffApi'; // Assuming staffApi.ts exists
 import { InvitationAcceptPayload } from '../../types/Invitation'; // You'll need to define this type
 import { useBrandedToast } from '../../hooks/useBrandedToast'; // Your custom toast hook
+import type { UserProfile } from '@/types/User';
 
 // Define the form schema
 const validationSchema = yup.object().shape({
@@ -78,6 +79,7 @@ const AcceptInvitationPage: React.FC = () => {
         checkToken();
     }, [token, setValue]);
 
+    const { manuallySetUserSession } = useAuth(); // Get the new function
     const onSubmit: SubmitHandler<AcceptInvitationFormData> = async (data) => {
         if (!token) {
             toast({ title: "Error", description: "Token missing.", status: "error" });
@@ -90,22 +92,38 @@ const AcceptInvitationPage: React.FC = () => {
                 first_name: data.first_name,
                 last_name: data.last_name,
             };
-            const response = await acceptInvitation(payload); // This should return { access_token, token_type, user }
-            
-            contextLogin(response.access_token, response.user); // Update auth context
+            // This API call is successful and the backend SETS THE HTTPONLY COOKIE
+            const response = await acceptInvitation(payload); 
+            // response is: { access_token: string, token_type: string, user: UserOut }
+
+            console.log("AcceptInvitationPage: Response from acceptInvitation API:", response);
+
+            // MANUALLY update the AuthContext with the user data received from the API
+            // This makes the app immediately aware of the authenticated user.
+            // The HttpOnly cookie is already set by the browser from the previous API response.
+            // The `response.user` should match the `UserProfile` type structure.
+            if (response.user) {
+                manuallySetUserSession(response.user as UserProfile, response.access_token); // Pass token if needed by manuallySetUserSession
+            } else {
+                // This should ideally not happen if API call was successful
+                throw new Error("User data not found in activation response.");
+            }
             
             toast({
                 title: `Welcome, ${response.user.name}!`,
                 description: "Your account has been successfully activated.",
                 status: 'success',
                 colorScheme: 'brand'
+                // maybe add duration too later
             });
-            navigate('/dashboard/overview'); // Redirect to dashboard
+            navigate('/dashboard/overview'); 
         } catch (error: any) {
-            const errorMessage = error.response?.data?.detail || "Failed to activate account. Please try again.";
-            toast({ title: "Activation Failed", description: errorMessage, status: "error" });
+            const errorMessage = error.response?.data?.detail || error.message || "Failed to complete account activation process.";
+            toast({ title: "Activation Process Failed", description: errorMessage, status: "error" });
+            console.error("Error during onSubmit in AcceptInvitationPage:", error);
         }
     };
+
     const handleTogglePassword = () => setShowPassword(!showPassword);
     const handleToggleConfirmPassword = () => setShowConfirmPassword(!showConfirmPassword);
 

@@ -22,7 +22,7 @@ import DeleteServiceModal from '../../components/modals/DeleteServiceModal';
 import '../../components/TableStyles.css'; // Reuse table styles
 import '../Dashboard.css'; // Reuse view section styles if needed
 
-import { Button, Spinner } from "@chakra-ui/react"
+import { Button, Spinner, Center } from "@chakra-ui/react"
 
 interface ServicesViewProps {
     userProfile: { role: string; id: number /* other profile fields */ }; // Pass necessary profile info
@@ -157,9 +157,9 @@ const ServicesView: React.FC<ServicesViewProps> = ({ userProfile }) => {
                 {localError && <div className="error-message">Error: {localError} <button onClick={() => setLocalError(null)}>×</button></div>}
 
                 {loadingManagedServices ? (
-                    <div className="loading-message" style={{display: 'flex',width: '100%', alignItems: 'center', padding: '20px' }}>
-                        <Spinner color='brand.500' alignSelf='center'/>
-                    </div>
+                    
+                        <Center h="400px"><Spinner color='brand.500' size='xl' thickness='4px' speed='0.65s' emptyColor='gray.200'/></Center>
+                    
                     
                 ) : !managedServices || managedServices.length === 0 ? (
                     <div className="info-message">No services found.</div>

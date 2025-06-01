@@ -7,13 +7,12 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware # Optional for 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response as StarletteResponse # For middleware typing
 
-from app.routers import tenants, appointments, services, auth, users, tags, clients, dashboard, templates, communications, staff
+from app.routers import tenants, appointments, services, auth, users, tags, clients, dashboard, templates, communications, staff, availability
 from app.database import Base, engine, get_db # Import get_db
 from app.models import tenant, user, service, appointment # Import models
 from sqlalchemy.orm import Session
 
 # Import dependencies and utils needed for middleware
-from app.dependencies import AUTH_COOKIE_NAME, credentials_exception # Use updated exception
 from app.utils.jwt_utils import verify_token
 from app.config import settings
 from jose import JWTError
@@ -78,7 +77,7 @@ class RedirectBaseDomainMiddleware(BaseHTTPMiddleware):
         ) # Avoid redirecting API calls or docs
 
         if is_base_and_not_api:
-            token = request.cookies.get(AUTH_COOKIE_NAME)
+            token = request.cookies.get(settings.auth_cookie_name) # Read from cookie
             if token:
                 try:
                     payload = verify_token(token)
@@ -138,7 +137,7 @@ app.include_router(dashboard)
 app.include_router(templates)
 app.include_router(communications)
 app.include_router(staff)
-
+app.include_router(availability)  # Ensure availability router is included
 
 @app.get("/")
 def root():
