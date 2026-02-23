@@ -1,77 +1,86 @@
 // src/pages/TenantSettingsPage.tsx
-// --- FULL REPLACEMENT - COMPLETE CODE ---
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useAuth } from '../auth/authContext'; // To get user role
-import { fetchTenantMe, updateTenantMe } from '../api/tenantApi'; // Import API functions
-import { TenantOut, TenantUpdate, BusinessHoursConfig } from '../types/tenants'; // Import Types (adjust path if needed)
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSpinner, faBuilding, faAddressCard, faMapMarkerAlt, faTools, faFileContract, faSave, faTimes, faEdit } from '@fortawesome/free-solid-svg-icons';
+import { useAuth } from '../auth/authContext';
+import { updateTenantMe } from '../api/tenantApi';
+import { TenantOut, TenantUpdate, BusinessHoursConfig } from '../types/tenants';
+import { Building2, Contact2, MapPin, Wrench, FileText, Save, X, Pencil } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+    Box, Flex, Text, Button, Image, Input, Textarea, Icon,
+    Alert, AlertIcon, AlertDescription,
+    VStack, HStack, Spinner, FormControl, FormLabel, FormHelperText,
+    SimpleGrid,
+} from '@chakra-ui/react';
 
-// Import the editor component
-import BusinessHoursEditor from '../components/settings/BusinessHoursEditor'; // Adjust path
+import BusinessHoursEditor from '../components/settings/BusinessHoursEditor';
+import { PageLoader } from '../components/ui';
 
-// Import shared styles or create new ones
-import './styles/TenantSettingsPage.css'; // Create this CSS file
- // Assuming common form styles
+import { useTenantMe, queryKeys } from '../hooks/useQueryHooks';
 
-// Default Logo
-const DEFAULT_LOGO_URL = '/defaults/icons8-male-user-94.png'; // Adjust path as needed
+const DEFAULT_LOGO_URL = '/defaults/icons8-male-user-94.png';
 
 type SettingsTab = 'general' | 'contact' | 'address' | 'operational' | 'policy';
 
 const TenantSettingsPage: React.FC = () => {
-    const { userProfile } = useAuth(); // Get user profile for role checks
+    const { userProfile } = useAuth();
+    const queryClient = useQueryClient();
 
-    // State for data, loading, editing, messages
+    // React Query for fetching
+    const { data: fetchedTenant, isLoading, error: queryError } = useTenantMe();
+
+    // Local form state
     const [tenantData, setTenantData] = useState<TenantOut | null>(null);
-    const [initialData, setInitialData] = useState<TenantOut | null>(null); // Store originally fetched data
-    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [initialData, setInitialData] = useState<TenantOut | null>(null);
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [isSaving, setIsSaving] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<SettingsTab>('general');
 
+    // Sync fetched data → local state (only when not editing)
+    useEffect(() => {
+        if (fetchedTenant && !isEditing) {
+            const sanitizedData = {
+                ...fetchedTenant,
+                business_hours_config: fetchedTenant.business_hours_config ?? null
+            };
+            setTenantData(sanitizedData);
+            setInitialData(sanitizedData);
+        }
+    }, [fetchedTenant, isEditing]);
+
     // Memoized permissions check
     const canEdit = useMemo(() => userProfile?.role === 'admin' || userProfile?.role === 'super_admin', [userProfile?.role]);
     const isSuperAdmin = useMemo(() => userProfile?.role === 'super_admin', [userProfile?.role]);
 
-    // --- Fetch Data ---
-    const loadTenantData = useCallback(async () => {
-        setIsLoading(true);
-        setError(null);
-        setSuccessMessage(null);
-        try {
-            const data = await fetchTenantMe();
-            // Ensure business_hours_config is handled correctly (null or object)
-            const sanitizedData = {
-                ...data,
-                business_hours_config: data.business_hours_config ?? null
-            };
-            setTenantData(sanitizedData);
-            setInitialData(sanitizedData); // Store the initial state for change comparison
-            console.log("Tenant data loaded:", sanitizedData);
-        } catch (err: any) {
-            console.error("Failed to load tenant settings:", err);
-            const detail = err.response?.data?.detail || err.message || "Failed to load tenant settings.";
-            setError(typeof detail === 'string' ? detail : JSON.stringify(detail));
-        } finally {
-            setIsLoading(false);
+    const validateBusinessHours = (config: BusinessHoursConfig | null | undefined): string | null => {
+        if (!config) return null;
+        for (const [day, value] of Object.entries(config)) {
+            if (!value?.isOpen) continue;
+            const intervals = value.intervals ?? [];
+            if (intervals.length === 0) {
+                return `Business hours for ${day} are open but have no time interval.`;
+            }
+            for (const interval of intervals) {
+                if (!interval.start || !interval.end) {
+                    return `Business hours for ${day} must include both start and end times.`;
+                }
+                if (interval.end <= interval.start) {
+                    return `Business hours for ${day} must have an end time after the start time.`;
+                }
+            }
         }
-    }, []); // Empty dependency array, load only once on mount
-
-    useEffect(() => {
-        loadTenantData();
-    }, [loadTenantData]); // Depend on the memoized function
+        return null;
+    };
 
     // --- Form Input Handler (for standard inputs) ---
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
+        const { name, value, type } = e.target;
+        const parsedValue = type === 'number' ? (value === '' ? null : Number(value)) : value;
         setTenantData((prev: TenantOut | null) => {
             if (!prev) return null;
-            // Add specific type handling if needed, e.g., for numbers
-            return { ...prev, [name]: value };
+            return { ...prev, [name]: parsedValue };
         });
         // Clear messages on user input
         setError(null);
@@ -92,11 +101,8 @@ const TenantSettingsPage: React.FC = () => {
         if (isEditing && initialData) {
             // If cancelling edit, reset form data to the initial fetched state
             setTenantData(initialData);
-            console.log("Edit cancelled, resetting form data.");
         } else if (!isEditing && initialData) {
-            // Entering edit mode, ensure current state matches initial before edits start
              setTenantData(initialData);
-             console.log("Entering edit mode.");
         }
         setIsEditing(prev => !prev);
     };
@@ -105,6 +111,12 @@ const TenantSettingsPage: React.FC = () => {
     const handleSaveChanges = async () => {
         if (!tenantData || !initialData || !canEdit) {
             setError("Cannot save: No data loaded or insufficient permissions.");
+            return;
+        }
+
+        const hoursValidationError = validateBusinessHours(tenantData.business_hours_config);
+        if (hoursValidationError) {
+            setError(hoursValidationError);
             return;
         }
 
@@ -154,22 +166,18 @@ const TenantSettingsPage: React.FC = () => {
             return;
         }
 
-        console.log("Saving payload:", payload);
-
         try {
             const updatedTenant = await updateTenantMe(payload);
-            // Sanitize response data before setting state
             const sanitizedData = {
                  ...updatedTenant,
                  business_hours_config: updatedTenant.business_hours_config ?? null
             };
-            setTenantData(sanitizedData); // Update local state with response
-            setInitialData(sanitizedData); // Update initial data to reflect saved state
-            setIsEditing(false); // Exit edit mode
+            setTenantData(sanitizedData);
+            setInitialData(sanitizedData);
+            setIsEditing(false);
             setSuccessMessage("Settings updated successfully!");
-            console.log("Tenant settings updated:", updatedTenant);
+            queryClient.invalidateQueries({ queryKey: queryKeys.tenantMe });
         } catch (err: any) {
-            console.error("Failed to update tenant settings:", err);
             const detail = err.response?.data?.detail || err.message || "Failed to save settings.";
              setError(typeof detail === 'string' ? detail : JSON.stringify(detail));
             // Keep isEditing true on error so user can retry or cancel
@@ -180,303 +188,380 @@ const TenantSettingsPage: React.FC = () => {
 
     // --- Render Loading/Error ---
     if (isLoading) {
-        return <div className="loading-message view-section">Loading Tenant Settings... <FontAwesomeIcon icon={faSpinner} spin /></div>;
+        return <PageLoader />;
     }
 
-    if (error && !tenantData && !isSaving) { // Show critical error only if data never loaded (and not during save)
-        return <div className="error-message alert alert-danger view-section">{error} <button className="button button-secondary button-small" onClick={loadTenantData}>Retry</button></div>;
+    if (queryError && !tenantData && !isSaving) {
+        return (
+            <Alert status="error" borderRadius="xl">
+                <AlertIcon />
+                <AlertDescription fontSize="sm" flex="1">{queryError.message || 'Failed to load tenant settings.'}</AlertDescription>
+                <Button size="xs" variant="ghost" onClick={() => queryClient.invalidateQueries({ queryKey: queryKeys.tenantMe })}>Retry</Button>
+            </Alert>
+        );
     }
 
     if (!tenantData) {
-        return <div className="info-message view-section">Tenant data is unavailable or could not be loaded.</div>;
+        return (
+            <Alert status="info" borderRadius="xl">
+                <AlertIcon />
+                <AlertDescription fontSize="sm">Tenant data is unavailable or could not be loaded.</AlertDescription>
+            </Alert>
+        );
     }
 
     // --- Tab Content Renderer ---
     const renderTabContent = () => {
+        const inputProps = {
+            size: 'sm' as const,
+            borderRadius: 'lg',
+            borderColor: isEditing ? 'gray.300' : 'gray.200',
+            bg: isEditing ? 'white' : 'gray.50',
+            _hover: isEditing ? { borderColor: 'gray.400' } : {},
+            _focus: { borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' },
+            _disabled: { opacity: 0.7, cursor: 'not-allowed', bg: 'gray.50' },
+        };
+
         switch (activeTab) {
             case 'general':
                 return (
-                    <div className="form-section">
-                        <h3 className="form-section-title">General Information</h3>
-                        <div className="form-group">
-                            <label htmlFor="tenantName">Business Name</label>
-                            <input
-                                type="text" id="tenantName" name="name"
+                    <VStack spacing="5" align="stretch">
+                        <Text fontSize="md" fontWeight="600" color="gray.800">General Information</Text>
+                        <FormControl>
+                            <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Business Name</FormLabel>
+                            <Input
+                                {...inputProps}
+                                name="name"
                                 value={tenantData.name || ''}
                                 onChange={handleInputChange}
-                                disabled={!isEditing || !isSuperAdmin} // Only super admin can edit name
-                                className={!isSuperAdmin && isEditing ? 'input-disabled-reason' : ''} // Style differently if disabled due to role
-                                required
+                                isDisabled={!isEditing || !isSuperAdmin}
+                                isRequired
                             />
-                             {!isSuperAdmin && <small className="field-hint">Only Super Admin can change the business name.</small>}
-                        </div>
-                         <div className="form-group">
-                             <label htmlFor="tenantSubdomain">Subdomain</label>
-                             <input type="text" id="tenantSubdomain" name="subdomain" value={tenantData.subdomain || ''} disabled className="input-disabled" />
-                             <small className="field-hint">Subdomain cannot be changed after creation.</small>
-                         </div>
-                        <div className="form-group">
-                            <label htmlFor="tenantSlogan">Slogan / Tagline</label>
-                            <input
-                                type="text" id="tenantSlogan" name="slogan"
-                                value={tenantData.slogan || ''}
-                                onChange={handleInputChange}
-                                disabled={!isEditing}
-                                className={!isEditing ? 'input-disabled' : ''}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="logoUrl">Logo URL</label>
-                            <input
-                                type="url" id="logoUrl" name="logo_url"
-                                value={tenantData.logo_url || ''}
-                                onChange={handleInputChange}
-                                disabled={!isEditing}
-                                className={!isEditing ? 'input-disabled' : ''}
-                                placeholder="https://example.com/logo.png"
-                            />
-                            {/* Future: Add upload button here */}
-                        </div>
-                    </div>
+                            {!isSuperAdmin && <FormHelperText fontSize="xs">Only Super Admin can change the business name.</FormHelperText>}
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Subdomain</FormLabel>
+                            <Input {...inputProps} name="subdomain" value={tenantData.subdomain || ''} isDisabled bg="gray.50" />
+                            <FormHelperText fontSize="xs">Subdomain cannot be changed after creation.</FormHelperText>
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Slogan / Tagline</FormLabel>
+                            <Input {...inputProps} name="slogan" value={tenantData.slogan || ''} onChange={handleInputChange} isDisabled={!isEditing} />
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Logo URL</FormLabel>
+                            <Input {...inputProps} name="logo_url" type="url" value={tenantData.logo_url || ''} onChange={handleInputChange} isDisabled={!isEditing} placeholder="https://example.com/logo.png" />
+                        </FormControl>
+                    </VStack>
                 );
             case 'contact':
                 return (
-                    <div className="form-section">
-                        <h3 className="form-section-title">Contact Details</h3>
-                        <div className="form-group">
-                            <label htmlFor="contactEmail">Contact Email</label>
-                            <input
-                                type="email" id="contactEmail" name="contact_email"
-                                value={tenantData.contact_email || ''}
-                                onChange={handleInputChange}
-                                disabled={!isEditing}
-                                className={!isEditing ? 'input-disabled' : ''}
-                                placeholder="info@yourbusiness.com"
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="contactPhone">Contact Phone</label>
-                            <input
-                                type="tel" id="contactPhone" name="contact_phone"
-                                value={tenantData.contact_phone || ''}
-                                onChange={handleInputChange}
-                                disabled={!isEditing}
-                                className={!isEditing ? 'input-disabled' : ''}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="websiteUrl">Website URL</label>
-                            <input
-                                type="url" id="websiteUrl" name="website_url"
-                                value={tenantData.website_url || ''}
-                                onChange={handleInputChange}
-                                disabled={!isEditing}
-                                className={!isEditing ? 'input-disabled' : ''}
-                                placeholder="https://yourbusiness.com"
-                            />
-                        </div>
-                    </div>
+                    <VStack spacing="5" align="stretch">
+                        <Text fontSize="md" fontWeight="600" color="gray.800">Contact Details</Text>
+                        <FormControl>
+                            <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Contact Email</FormLabel>
+                            <Input {...inputProps} name="contact_email" type="email" value={tenantData.contact_email || ''} onChange={handleInputChange} isDisabled={!isEditing} placeholder="info@yourbusiness.com" />
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Contact Phone</FormLabel>
+                            <Input {...inputProps} name="contact_phone" type="tel" value={tenantData.contact_phone || ''} onChange={handleInputChange} isDisabled={!isEditing} />
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Website URL</FormLabel>
+                            <Input {...inputProps} name="website_url" type="url" value={tenantData.website_url || ''} onChange={handleInputChange} isDisabled={!isEditing} placeholder="https://yourbusiness.com" />
+                        </FormControl>
+                    </VStack>
                 );
-             case 'address':
-                 return (
-                     <div className="form-section">
-                         <h3 className="form-section-title">Business Address</h3>
-                         <div className="form-group">
-                             <label htmlFor="addressStreet">Street</label>
-                             <input type="text" id="addressStreet" name="address_street" value={tenantData.address_street || ''} onChange={handleInputChange} disabled={!isEditing} className={!isEditing ? 'input-disabled' : ''}/>
-                         </div>
-                         <div className="form-grid-col-2">
-                             <div className="form-group">
-                                 <label htmlFor="addressCity">City</label>
-                                 <input type="text" id="addressCity" name="address_city" value={tenantData.address_city || ''} onChange={handleInputChange} disabled={!isEditing} className={!isEditing ? 'input-disabled' : ''}/>
-                             </div>
-                             <div className="form-group">
-                                 <label htmlFor="addressState">State / Province</label>
-                                 <input type="text" id="addressState" name="address_state" value={tenantData.address_state || ''} onChange={handleInputChange} disabled={!isEditing} className={!isEditing ? 'input-disabled' : ''}/>
-                             </div>
-                         </div>
-                         <div className="form-grid-col-2">
-                             <div className="form-group">
-                                 <label htmlFor="addressPostalCode">Postal Code</label>
-                                 <input type="text" id="addressPostalCode" name="address_postal_code" value={tenantData.address_postal_code || ''} onChange={handleInputChange} disabled={!isEditing} className={!isEditing ? 'input-disabled' : ''}/>
-                             </div>
-                              <div className="form-group">
-                                 <label htmlFor="addressCountry">Country</label>
-                                 <input type="text" id="addressCountry" name="address_country" value={tenantData.address_country || ''} onChange={handleInputChange} disabled={!isEditing} className={!isEditing ? 'input-disabled' : ''}/>
-                             </div>
-                         </div>
-                     </div>
-                 );
+            case 'address':
+                return (
+                    <VStack spacing="5" align="stretch">
+                        <Text fontSize="md" fontWeight="600" color="gray.800">Business Address</Text>
+                        <FormControl>
+                            <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Street</FormLabel>
+                            <Input {...inputProps} name="address_street" value={tenantData.address_street || ''} onChange={handleInputChange} isDisabled={!isEditing} />
+                        </FormControl>
+                        <SimpleGrid columns={{ base: 1, md: 2 }} spacing="4">
+                            <FormControl>
+                                <FormLabel fontSize="sm" fontWeight="500" color="gray.700">City</FormLabel>
+                                <Input {...inputProps} name="address_city" value={tenantData.address_city || ''} onChange={handleInputChange} isDisabled={!isEditing} />
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel fontSize="sm" fontWeight="500" color="gray.700">State / Province</FormLabel>
+                                <Input {...inputProps} name="address_state" value={tenantData.address_state || ''} onChange={handleInputChange} isDisabled={!isEditing} />
+                            </FormControl>
+                        </SimpleGrid>
+                        <SimpleGrid columns={{ base: 1, md: 2 }} spacing="4">
+                            <FormControl>
+                                <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Postal Code</FormLabel>
+                                <Input {...inputProps} name="address_postal_code" value={tenantData.address_postal_code || ''} onChange={handleInputChange} isDisabled={!isEditing} />
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Country</FormLabel>
+                                <Input {...inputProps} name="address_country" value={tenantData.address_country || ''} onChange={handleInputChange} isDisabled={!isEditing} />
+                            </FormControl>
+                        </SimpleGrid>
+                    </VStack>
+                );
             case 'operational':
-                 return (
-                     <div className="form-section">
-                         <h3 className="form-section-title">Operational Settings</h3>
-                         <div className="form-group">
-                             <label htmlFor="timezone">Timezone</label>
-                             <input type="text" id="timezone" name="timezone" list="timezones-list" value={tenantData.timezone || 'UTC'} onChange={handleInputChange} disabled={!isEditing} required className={!isEditing ? 'input-disabled' : ''}/>
-                             <datalist id="timezones-list">
-                                 <option value="UTC" />
-                                 <option value="Africa/Casablanca" />
-                                 <option value="Europe/Paris" />
-                                 <option value="Europe/London" />
-                                 <option value="America/New_York" />
-                                 <option value="America/Chicago" />
-                                 <option value="America/Denver" />
-                                 <option value="America/Los_Angeles" />
-                                 <option value="Asia/Dubai" />
-                                 <option value="Asia/Tokyo" />
-                             </datalist>
-                             <small className="field-hint">Standard TZ Database Name (e.g., UTC, Africa/Casablanca)</small>
-                         </div>
-                          <div className="form-group">
-                             <label htmlFor="defaultCurrency">Default Currency</label>
-                             <input type="text" id="defaultCurrency" name="default_currency" value={tenantData.default_currency || 'MAD'} onChange={handleInputChange} disabled={!isEditing} required maxLength={3} pattern="[A-Z]{3}" title="Enter 3-letter ISO 4217 code" className={!isEditing ? 'input-disabled' : ''}/>
-                              <small className="field-hint">3-letter ISO 4217 code (e.g., MAD, USD, EUR)</small>
-                         </div>
-                         {/* --- ADD REMINDER INPUT --- */}
-                         <div className="form-group">
-                             <label htmlFor="reminderInterval">Reminder Interval (Hours)</label>
-                             <input
-                                type="number"
-                                id="reminderInterval"
+                return (
+                    <VStack spacing="5" align="stretch">
+                        <Text fontSize="md" fontWeight="600" color="gray.800">Operational Settings</Text>
+                        <FormControl>
+                            <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Timezone</FormLabel>
+                            <Input {...inputProps} name="timezone" list="timezones-list" value={tenantData.timezone || 'UTC'} onChange={handleInputChange} isDisabled={!isEditing} isRequired />
+                            <datalist id="timezones-list">
+                                <option value="UTC" />
+                                <option value="Africa/Casablanca" />
+                                <option value="Europe/Paris" />
+                                <option value="Europe/London" />
+                                <option value="America/New_York" />
+                                <option value="America/Chicago" />
+                                <option value="America/Denver" />
+                                <option value="America/Los_Angeles" />
+                                <option value="Asia/Dubai" />
+                                <option value="Asia/Tokyo" />
+                            </datalist>
+                            <FormHelperText fontSize="xs">Standard TZ Database Name (e.g., UTC, Africa/Casablanca)</FormHelperText>
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Default Currency</FormLabel>
+                            <Input {...inputProps} name="default_currency" value={tenantData.default_currency || 'MAD'} onChange={handleInputChange} isDisabled={!isEditing} isRequired maxLength={3} />
+                            <FormHelperText fontSize="xs">3-letter ISO 4217 code (e.g., MAD, USD, EUR)</FormHelperText>
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Reminder Interval (Hours)</FormLabel>
+                            <Input
+                                {...inputProps}
                                 name="reminder_interval_hours"
-                                value={tenantData?.reminder_interval_hours ?? ''} // Use '' if null for input value
+                                type="number"
+                                value={tenantData?.reminder_interval_hours ?? ''}
                                 onChange={handleInputChange}
-                                disabled={!isEditing}
-                                className={`form-input ${!isEditing ? 'input-disabled' : ''}`}
-                                min="1" // Minimum 1 hour
-                                max="168" // Maximum 1 week (adjust as needed)
-                                step="1"
+                                isDisabled={!isEditing}
+                                min={1}
+                                max={168}
+                                step={1}
                                 placeholder="e.g., 24"
-                             />
-                              <small className="field-hint">Hours before appointment to send reminder. Leave blank or enter 0 to disable.</small>
-                         </div>
-                          <div className="form-group">
-                              <label>Business Hours</label>
-                              {/* Render the BusinessHoursEditor component */}
-                              <BusinessHoursEditor
-                                 value={tenantData?.business_hours_config}
-                                 onChange={handleHoursChange}
-                                 isEditing={isEditing}
-                             />
-                          </div>
-                     </div>
-                 );
-             case 'policy':
-                 return (
-                     <div className="form-section">
-                          <h3 className="form-section-title">Policies & Configuration</h3>
-                         <div className="form-group">
-                             <label htmlFor="cancellationPolicy">Cancellation Policy</label>
-                             <textarea
-                                id="cancellationPolicy" name="cancellation_policy_text"
+                            />
+                            <FormHelperText fontSize="xs">Hours before appointment to send reminder. Leave blank or enter 0 to disable.</FormHelperText>
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Business Hours</FormLabel>
+                            <FormHelperText fontSize="xs" mb="2">Times use 24-hour format (e.g., 17:00 for 5 PM).</FormHelperText>
+                            <BusinessHoursEditor
+                                value={tenantData?.business_hours_config}
+                                onChange={handleHoursChange}
+                                isEditing={isEditing}
+                            />
+                        </FormControl>
+                    </VStack>
+                );
+            case 'policy':
+                return (
+                    <VStack spacing="5" align="stretch">
+                        <Text fontSize="md" fontWeight="600" color="gray.800">Policies & Configuration</Text>
+                        <FormControl>
+                            <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Cancellation Policy</FormLabel>
+                            <Textarea
+                                size="sm"
+                                borderRadius="lg"
+                                borderColor={isEditing ? 'gray.300' : 'gray.200'}
+                                bg={isEditing ? 'white' : 'gray.50'}
+                                _hover={isEditing ? { borderColor: 'gray.400' } : {}}
+                                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
+                                _disabled={{ opacity: 0.7, cursor: 'not-allowed', bg: 'gray.50' }}
+                                name="cancellation_policy_text"
                                 value={tenantData.cancellation_policy_text || ''}
                                 onChange={handleInputChange}
-                                disabled={!isEditing}
-                                rows={8} // Increased rows
-                                className={`form-textarea ${!isEditing ? 'input-disabled' : ''}`}
+                                isDisabled={!isEditing}
+                                rows={8}
                             />
-                         </div>
-                          {/* Placeholder for Booking Widget Config - Display read-only JSON */}
-                          <div className="form-group">
-                              <label>Booking Widget Config (Read-Only)</label>
-                              <textarea
-                                  value={tenantData.booking_widget_config ? JSON.stringify(tenantData.booking_widget_config, null, 2) : 'Not configured.'}
-                                  readOnly
-                                  disabled
-                                  className="input-disabled code-display"
-                                  rows={5}
-                              />
-                              <small className="field-hint">Configuration for embeddable booking widget (future feature).</small>
-                          </div>
-                     </div>
-                 );
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel fontSize="sm" fontWeight="500" color="gray.700">Booking Widget Config (Read-Only)</FormLabel>
+                            <Textarea
+                                size="sm"
+                                borderRadius="lg"
+                                bg="gray.50"
+                                borderColor="gray.200"
+                                fontFamily="mono"
+                                fontSize="xs"
+                                value={tenantData.booking_widget_config ? JSON.stringify(tenantData.booking_widget_config, null, 2) : 'Not configured.'}
+                                isReadOnly
+                                isDisabled
+                                rows={5}
+                            />
+                            <FormHelperText fontSize="xs">Configuration for embeddable booking widget (future feature).</FormHelperText>
+                        </FormControl>
+                    </VStack>
+                );
             default:
-                // Ensure exhaustive check or return null
-                 const _exhaustiveCheck: never = activeTab;
+                const _exhaustiveCheck: never = activeTab;
                 return null;
         }
     };
 
     // --- Main Render ---
+    const tabItems: { key: SettingsTab; icon: any; label: string }[] = [
+        { key: 'general', icon: Building2, label: 'General' },
+        { key: 'contact', icon: Contact2, label: 'Contact' },
+        { key: 'address', icon: MapPin, label: 'Address' },
+        { key: 'operational', icon: Wrench, label: 'Operational' },
+        { key: 'policy', icon: FileText, label: 'Policies & Config' },
+    ];
+
     return (
-        <div className="view-section tenant-settings-page">
+        <Box>
             {/* Page Header */}
-            <div className="view-header tenant-settings-header">
-                 <div className="header-logo-name">
-                     <img
+            <Flex
+                align="center"
+                justify="space-between"
+                mb="6"
+                flexWrap="wrap"
+                gap="4"
+            >
+                <HStack spacing="4">
+                    <Image
                         src={tenantData.logo_url || DEFAULT_LOGO_URL}
                         alt={`${tenantData.name} Logo`}
-                        className="tenant-logo-preview"
-                        onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_LOGO_URL; }} // Type assertion for safety
+                        boxSize="56px"
+                        borderRadius="xl"
+                        objectFit="cover"
+                        border="1px solid"
+                        borderColor="gray.200"
+                        bg="white"
+                        onError={(e: any) => { e.target.src = DEFAULT_LOGO_URL; }}
                     />
-                    <div className="header-text">
-                        <h1>{tenantData.name}</h1>
-                        <p className="header-subtext">Manage your business profile and operational settings</p>
-                     </div>
-                 </div>
-                {/* Only show Edit/Save/Cancel buttons if the user has permission */}
+                    <Box>
+                        <Text fontSize="lg" fontWeight="700" color="gray.900" mb="0">{tenantData.name}</Text>
+                        <Text fontSize="sm" color="gray.500" mb="0">Manage your business profile and operational settings</Text>
+                    </Box>
+                </HStack>
                 {canEdit && (
-                    <div className="header-actions">
+                    <HStack spacing="2">
                         {!isEditing ? (
-                            <button className="button button-primary" onClick={handleEditToggle}>
-                                <FontAwesomeIcon icon={faEdit} style={{ marginRight: '5px' }}/> Edit Settings
-                            </button>
+                            <Button
+                                size="sm"
+                                colorScheme="brand"
+                                borderRadius="lg"
+                                leftIcon={<Pencil size={14} />}
+                                fontWeight="600"
+                                onClick={handleEditToggle}
+                            >
+                                Edit Settings
+                            </Button>
                         ) : (
                             <>
-                                <button className="button button-success" onClick={handleSaveChanges} disabled={isSaving}>
-                                    {isSaving ? <><FontAwesomeIcon icon={faSpinner} spin /> Saving...</> : <><FontAwesomeIcon icon={faSave} style={{ marginRight: '5px' }}/> Save Changes</>}
-                                </button>
-                                <button className="button button-secondary" onClick={handleEditToggle} disabled={isSaving}>
-                                     <FontAwesomeIcon icon={faTimes} style={{ marginRight: '5px' }}/> Cancel
-                                </button>
+                                <Button
+                                    size="sm"
+                                    colorScheme="green"
+                                    borderRadius="lg"
+                                    leftIcon={isSaving ? <Spinner size="xs" /> : <Save size={14} />}
+                                    fontWeight="600"
+                                    onClick={handleSaveChanges}
+                                    isLoading={isSaving}
+                                    loadingText="Saving..."
+                                >
+                                    Save Changes
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    borderRadius="lg"
+                                    leftIcon={<X size={14} />}
+                                    onClick={handleEditToggle}
+                                    isDisabled={isSaving}
+                                >
+                                    Cancel
+                                </Button>
                             </>
                         )}
-                    </div>
+                    </HStack>
                 )}
-            </div>
+            </Flex>
 
-             {/* Display Global Success/Error Messages */}
-             {successMessage && <div className="alert alert-success">{successMessage}</div>}
-             {/* Show persistent error only if not editing (errors during edit show inline potentially or clear on input) */}
-             {error && !isEditing && <div className="alert alert-danger">{error}</div>}
+            {/* Global Messages */}
+            {successMessage && (
+                <Alert status="success" borderRadius="xl" mb="4">
+                    <AlertIcon />
+                    <AlertDescription fontSize="sm">{successMessage}</AlertDescription>
+                </Alert>
+            )}
+            {error && !isEditing && (
+                <Alert status="error" borderRadius="xl" mb="4">
+                    <AlertIcon />
+                    <AlertDescription fontSize="sm">{error}</AlertDescription>
+                </Alert>
+            )}
 
+            {/* Settings Layout */}
+            <Flex
+                gap="6"
+                direction={{ base: 'column', md: 'row' }}
+            >
+                {/* Side Navigation */}
+                <Box
+                    w={{ base: '100%', md: '220px' }}
+                    flexShrink={0}
+                >
+                    <VStack
+                        as="nav"
+                        spacing="1"
+                        align="stretch"
+                        bg="white"
+                        borderRadius="xl"
+                        border="1px solid"
+                        borderColor="gray.200"
+                        p="2"
+                    >
+                        {tabItems.map(({ key, icon: TabIcon, label }) => (
+                            <Flex
+                                key={key}
+                                as="button"
+                                align="center"
+                                gap="2.5"
+                                px="3"
+                                py="2.5"
+                                borderRadius="lg"
+                                fontSize="sm"
+                                fontWeight={activeTab === key ? '600' : '400'}
+                                color={activeTab === key ? 'brand.600' : 'gray.600'}
+                                bg={activeTab === key ? 'brand.50' : 'transparent'}
+                                _hover={{ bg: activeTab === key ? 'brand.50' : 'gray.50' }}
+                                transition="all 0.15s ease"
+                                onClick={() => setActiveTab(key)}
+                                border="none"
+                                cursor="pointer"
+                                textAlign="left"
+                                w="100%"
+                            >
+                                <Icon as={TabIcon} boxSize="4" />
+                                <Text mb="0">{label}</Text>
+                            </Flex>
+                        ))}
+                    </VStack>
+                </Box>
 
-            {/* Settings Content Layout (Tabs + Form Area) */}
-            <div className="settings-content-layout">
-                 {/* Left Side Navigation (Tabs) */}
-                 <div className="settings-nav">
-                     <ul>
-                         <li className={activeTab === 'general' ? 'active' : ''} onClick={() => setActiveTab('general')}>
-                            <FontAwesomeIcon icon={faBuilding} fixedWidth/> General
-                         </li>
-                         <li className={activeTab === 'contact' ? 'active' : ''} onClick={() => setActiveTab('contact')}>
-                            <FontAwesomeIcon icon={faAddressCard} fixedWidth/> Contact
-                         </li>
-                         <li className={activeTab === 'address' ? 'active' : ''} onClick={() => setActiveTab('address')}>
-                            <FontAwesomeIcon icon={faMapMarkerAlt} fixedWidth/> Address
-                         </li>
-                         <li className={activeTab === 'operational' ? 'active' : ''} onClick={() => setActiveTab('operational')}>
-                            <FontAwesomeIcon icon={faTools} fixedWidth/> Operational
-                         </li>
-                          <li className={activeTab === 'policy' ? 'active' : ''} onClick={() => setActiveTab('policy')}>
-                            <FontAwesomeIcon icon={faFileContract} fixedWidth/> Policies & Config
-                         </li>
-                     </ul>
-                 </div>
-
-                 {/* Right Side Form Area (Content changes based on activeTab) */}
-                <div className="settings-form-area">
-                    {/* Display specific error during save attempt */}
-                    {error && isSaving && <div className="alert alert-danger">{error}</div>}
-                    {/* Use a key on the form or content div if resetting state on tab change is needed */}
-                    {/* key={activeTab} */}
+                {/* Form Area */}
+                <Box
+                    flex="1"
+                    bg="white"
+                    borderRadius="xl"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    p="6"
+                >
+                    {error && isSaving && (
+                        <Alert status="error" borderRadius="xl" mb="4">
+                            <AlertIcon />
+                            <AlertDescription fontSize="sm">{error}</AlertDescription>
+                        </Alert>
+                    )}
                     <form onSubmit={(e) => e.preventDefault()}>
                         {renderTabContent()}
-                     </form>
-                 </div>
-            </div>
-        </div>
+                    </form>
+                </Box>
+            </Flex>
+        </Box>
     );
 };
 

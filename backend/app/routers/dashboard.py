@@ -76,12 +76,14 @@ def get_dashboard_stats(
     Retrieves aggregated dashboard statistics for the current user's tenant.
     Includes fixed stats (Today, Pending) and period-based stats.
     """
-    if not current_user.tenant_id:
+    is_super_admin = current_user.role == "super_admin"
+    if not is_super_admin and not current_user.tenant_id:
         logger.error(f"Data Integrity Issue: User {current_user.email} has no tenant_id.")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is not associated with a tenant.")
 
     tenant_id = current_user.tenant_id
-    logger.info(f"Fetching dashboard stats for Tenant ID: {tenant_id}, Period: {period}")
+    scope_label = "ALL" if is_super_admin else f"Tenant ID: {tenant_id}"
+    logger.info(f"Fetching dashboard stats for {scope_label}, Period: {period}")
 
     # --- Date Calculations ---
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -92,19 +94,23 @@ def get_dashboard_stats(
     # --- Database Queries ---
     try:
         # 1. Appointments Today Count
-        appts_today_count = db.query(func.count(AppointmentModel.id)).filter(
-            AppointmentModel.tenant_id == tenant_id,
+        appts_today_query = db.query(func.count(AppointmentModel.id)).filter(
             AppointmentModel.appointment_time >= today_start,
             AppointmentModel.appointment_time < tomorrow_start
-        ).scalar() or 0
+        )
+        if not is_super_admin:
+            appts_today_query = appts_today_query.filter(AppointmentModel.tenant_id == tenant_id)
+        appts_today_count = appts_today_query.scalar() or 0
         
         # Appointments Yesterday Count
         yesterday_start = today_start - timedelta(days=1)
-        appts_yesterday_count = db.query(func.count(AppointmentModel.id)).filter(
-            AppointmentModel.tenant_id == tenant_id,
+        appts_yesterday_query = db.query(func.count(AppointmentModel.id)).filter(
             AppointmentModel.appointment_time >= yesterday_start,
             AppointmentModel.appointment_time < today_start
-        ).scalar() or 0
+        )
+        if not is_super_admin:
+            appts_yesterday_query = appts_yesterday_query.filter(AppointmentModel.tenant_id == tenant_id)
+        appts_yesterday_count = appts_yesterday_query.scalar() or 0
         
         # Calculate percentage change (handle division by zero)
         if appts_yesterday_count == 0:
@@ -121,11 +127,12 @@ def get_dashboard_stats(
         ).join(
             AppointmentModel, AppointmentModel.id == appointment_services_table.c.appointment_id
         ).filter(
-            AppointmentModel.tenant_id == tenant_id,
             AppointmentModel.appointment_time >= today_start,
             AppointmentModel.appointment_time < tomorrow_start,
             AppointmentModel.status.in_([AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED])
         )
+        if not is_super_admin:
+            expected_revenue_today_query = expected_revenue_today_query.filter(AppointmentModel.tenant_id == tenant_id)
         expected_revenue_today = expected_revenue_today_query.scalar() or 0.0
         
         # 2b. Yesterday's Revenue (DONE appointments)
@@ -134,11 +141,12 @@ def get_dashboard_stats(
         ).join(
             AppointmentModel, AppointmentModel.id == appointment_services_table.c.appointment_id
         ).filter(
-            AppointmentModel.tenant_id == tenant_id,
             AppointmentModel.appointment_time >= yesterday_start,
             AppointmentModel.appointment_time < today_start,
             AppointmentModel.status == AppointmentStatus.DONE
         )
+        if not is_super_admin:
+            revenue_yesterday_query = revenue_yesterday_query.filter(AppointmentModel.tenant_id == tenant_id)
         revenue_yesterday = revenue_yesterday_query.scalar() or 0.0
 
         # Calculate percentage difference between today's expected revenue and yesterday's revenue
@@ -152,34 +160,41 @@ def get_dashboard_stats(
 
 
         # 3. Pending Appointments Total Count
-        pending_appts_count = db.query(func.count(AppointmentModel.id)).filter(
-            AppointmentModel.tenant_id == tenant_id,
+        pending_appts_query = db.query(func.count(AppointmentModel.id)).filter(
             AppointmentModel.status == AppointmentStatus.PENDING
-        ).scalar() or 0
+        )
+        if not is_super_admin:
+            pending_appts_query = pending_appts_query.filter(AppointmentModel.tenant_id == tenant_id)
+        pending_appts_count = pending_appts_query.scalar() or 0
 
         # 4. Unconfirmed Clients Total Count
-        unconfirmed_clients_count = db.query(func.count(ClientModel.id)).filter(
-            ClientModel.tenant_id == tenant_id,
+        unconfirmed_clients_query = db.query(func.count(ClientModel.id)).filter(
             ClientModel.is_confirmed == False,
             ClientModel.is_deleted == False
-        ).scalar() or 0
+        )
+        if not is_super_admin:
+            unconfirmed_clients_query = unconfirmed_clients_query.filter(ClientModel.tenant_id == tenant_id)
+        unconfirmed_clients_count = unconfirmed_clients_query.scalar() or 0
 
         # 5. Upcoming Appointments (Next 7 Days) Count
-        upcoming_appts_7_days_count = db.query(func.count(AppointmentModel.id)).filter(
-            AppointmentModel.tenant_id == tenant_id,
+        upcoming_appts_query = db.query(func.count(AppointmentModel.id)).filter(
             AppointmentModel.status.in_([AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED]),
             AppointmentModel.appointment_time >= today_start, # From start of today
             AppointmentModel.appointment_time < seven_days_from_now # Up to (but not including) 7 days from start of today
-        ).scalar() or 0
+        )
+        if not is_super_admin:
+            upcoming_appts_query = upcoming_appts_query.filter(AppointmentModel.tenant_id == tenant_id)
+        upcoming_appts_7_days_count = upcoming_appts_query.scalar() or 0
 
         # --- Period Based Stats ---
 
         # Base query for period appointments (completed)
         period_appts_base_query = db.query(AppointmentModel).filter(
-             AppointmentModel.tenant_id == tenant_id,
-             AppointmentModel.appointment_time >= period_start_date,
-             AppointmentModel.appointment_time < period_end_date
+            AppointmentModel.appointment_time >= period_start_date,
+            AppointmentModel.appointment_time < period_end_date
         )
+        if not is_super_admin:
+            period_appts_base_query = period_appts_base_query.filter(AppointmentModel.tenant_id == tenant_id)
 
         # 6. Completed Appointments (Period) Count
         completed_appts_period_count = period_appts_base_query.filter(
@@ -192,19 +207,27 @@ def get_dashboard_stats(
          ).join(
              AppointmentModel, AppointmentModel.id == appointment_services_table.c.appointment_id
          ).filter(
-             AppointmentModel.tenant_id == tenant_id,
              AppointmentModel.status == AppointmentStatus.DONE,
              AppointmentModel.appointment_time >= period_start_date,
              AppointmentModel.appointment_time < period_end_date
          )
+        if not is_super_admin:
+            revenue_period_query = revenue_period_query.filter(AppointmentModel.tenant_id == tenant_id)
         revenue_period = revenue_period_query.scalar() or 0.0
 
         # 8. New Clients (Period) Count
-        new_clients_period_count = db.query(func.count(ClientModel.id)).filter(
-            ClientModel.tenant_id == tenant_id,
+        new_clients_period_query = db.query(func.count(ClientModel.id)).filter(
             ClientModel.created_at >= period_start_date,
             ClientModel.created_at < period_end_date
-        ).scalar() or 0
+        )
+        if not is_super_admin:
+            new_clients_period_query = new_clients_period_query.filter(ClientModel.tenant_id == tenant_id)
+        new_clients_period_count = new_clients_period_query.scalar() or 0
+
+        tenants_total = db.query(func.count(TenantModel.id)).scalar() or 0
+        services_total = db.query(func.count(ServiceModel.id)).scalar() or 0
+        clients_total = db.query(func.count(ClientModel.id)).scalar() or 0
+        appointments_total = db.query(func.count(AppointmentModel.id)).scalar() or 0
 
     except Exception as e:
         logger.error(f"Error querying dashboard stats for Tenant ID {tenant_id}: {e}", exc_info=True)
@@ -226,6 +249,10 @@ def get_dashboard_stats(
         new_clients_period=new_clients_period_count,
         appointments_change_today=appts_today_vs_yesterday_pct,
         revenue_change_today=revenue_today_vs_yesterday_pct,
+        tenants_total=tenants_total if is_super_admin else 0,
+        services_total=services_total if is_super_admin else 0,
+        clients_total=clients_total if is_super_admin else 0,
+        appointments_total=appointments_total if is_super_admin else 0,
     )
 
     logger.info(f"Successfully fetched dashboard stats for Tenant ID: {tenant_id}, Period: {period}")
@@ -240,11 +267,13 @@ def get_revenue_trend(
     db: Session = Depends(database.get_db),
     current_user: UserModel = Depends(get_current_user)
 ):
-    if not current_user.tenant_id:
+    is_super_admin = current_user.role == "super_admin"
+    if not is_super_admin and not current_user.tenant_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is not associated with a tenant.")
 
     tenant_id = current_user.tenant_id
-    logger.info(f"Fetching revenue trend (last 7 days) for Tenant ID: {tenant_id}")
+    scope_label = "ALL" if is_super_admin else f"Tenant ID: {tenant_id}"
+    logger.info(f"Fetching revenue trend (last 7 days) for {scope_label}")
 
     trend_data: List[DailyRevenue] = []
     
@@ -263,19 +292,22 @@ def get_revenue_trend(
         
         # Create a subquery that extracts the date part from appointment_time
         # and sums up prices for completed appointments.
-        daily_revenue_subquery = (
+        daily_revenue_query = (
             db.query(
                 cast(AppointmentModel.appointment_time, Date).label("appointment_date"),
                 func.sum(ServiceModel.price).label("daily_revenue")
             )
             .join(appointment_services_table, AppointmentModel.id == appointment_services_table.c.appointment_id)
             .join(ServiceModel, ServiceModel.id == appointment_services_table.c.service_id)
-            .filter(AppointmentModel.tenant_id == tenant_id)
             .filter(AppointmentModel.status == AppointmentStatus.DONE)
             .filter(cast(AppointmentModel.appointment_time, Date).in_(dates_in_period))
             .group_by(cast(AppointmentModel.appointment_time, Date))
-            .subquery()
         )
+
+        if not is_super_admin:
+            daily_revenue_query = daily_revenue_query.filter(AppointmentModel.tenant_id == tenant_id)
+
+        daily_revenue_subquery = daily_revenue_query.subquery()
 
         # Fetch the results
         results = db.query(
@@ -296,11 +328,11 @@ def get_revenue_trend(
             )
 
     except Exception as e:
-        logger.error(f"Error querying revenue trend for Tenant ID {tenant_id}: {e}", exc_info=True)
+        logger.error(f"Error querying revenue trend for {scope_label}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Could not retrieve revenue trend data."
         )
     
-    logger.info(f"Successfully fetched revenue trend for Tenant ID: {tenant_id}, Data points: {len(trend_data)}")
+    logger.info(f"Successfully fetched revenue trend for {scope_label}, Data points: {len(trend_data)}")
     return RevenueTrendData(trend=trend_data)

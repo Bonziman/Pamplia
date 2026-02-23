@@ -1,7 +1,7 @@
 # app/models/tenant.py
 # --- MODIFIED ---
 
-from sqlalchemy import Column, Integer, String, Text # Added Text
+from sqlalchemy import Column, Integer, String, Text, Boolean # Added Text
 from sqlalchemy.dialects.postgresql import JSONB # Use JSONB for PostgreSQL JSON
 # If not using PostgreSQL, use: from sqlalchemy.types import JSON
 from sqlalchemy.orm import relationship
@@ -38,6 +38,9 @@ class Tenant(Base):
     # Use ISO 4217 currency codes (e.g., "MAD", "USD", "EUR")
     default_currency = Column(String(3), nullable=False, server_default='MAD', default='MAD') # Added, Default MAD
 
+    # --- Status ---
+    is_active = Column(Boolean, nullable=False, default=True, server_default='true')
+
     # --- Policy ---
     cancellation_policy_text = Column(Text, nullable=True) # Added (Using Text for potentially long policy)
 
@@ -58,6 +61,7 @@ class Tenant(Base):
     communication_logs = relationship("CommunicationsLog", back_populates="tenant", passive_deletes=True)
     templates = relationship("Template", back_populates="tenant", cascade="all, delete-orphan", passive_deletes=True)
     invitations = relationship("Invitation", back_populates="tenant", cascade="all, delete-orphan")
+    consent_forms = relationship("ConsentForm", back_populates="tenant", cascade="all, delete-orphan")
     
     def __repr__(self):
          return f"<Tenant(id={self.id}, name='{self.name}', subdomain='{self.subdomain}')>"

@@ -1,286 +1,688 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { FetchedAppointment } from '../api/appointmentApi'; // Adjust path if needed
-import { formatReadableDateTime } from '../utils/formatDate'; // Adjust path if needed
-import './AppointmentCalendar.css'; // Ensure CSS is updated
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faAngleLeft, faAngleRight } from '@fortawesome/free-solid-svg-icons';
-
+import React, { useMemo, useState } from 'react';
+import { FetchedAppointment } from '../api/appointmentApi';
+import {
+  Box,
+  Flex,
+  Icon,
+  IconButton,
+  Text,
+  HStack,
+  VStack,
+  Badge,
+  Button,
+  SimpleGrid,
+  Divider,
+  Input,
+  InputGroup,
+  InputLeftElement,
+} from '@chakra-ui/react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+  Clock,
+  Plus,
+  User,
+  Scissors,
+  Search,
+} from 'lucide-react';
 
 interface AppointmentCalendarProps {
-    appointments: FetchedAppointment[];
-    onAppointmentClick?: (appointment: FetchedAppointment) => void;
-    onDayClick?: (date: Date) => void; // Callback for clicking a day
+  appointments: FetchedAppointment[];
+  onAppointmentClick?: (appointment: FetchedAppointment) => void;
+  onDayClick?: (date: Date) => void;
 }
 
-// Helper to get month name
-const getMonthName = (monthIndex: number): string => {
-    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    return months[monthIndex];
+type StatusKey = 'pending' | 'confirmed' | 'cancelled' | 'done';
+
+const UI_LOCALE = 'fr-MA';
+
+const statusMeta: Record<StatusKey, { label: string; colorScheme: string; borderColor: string; bg: string; textColor: string }> = {
+  pending: {
+    label: 'En attente',
+    colorScheme: 'yellow',
+    borderColor: 'yellow.200',
+    bg: 'yellow.50',
+    textColor: 'yellow.800',
+  },
+  confirmed: {
+    label: 'Confirmé',
+    colorScheme: 'green',
+    borderColor: 'green.200',
+    bg: 'green.50',
+    textColor: 'green.800',
+  },
+  cancelled: {
+    label: 'Annulé',
+    colorScheme: 'red',
+    borderColor: 'red.200',
+    bg: 'red.50',
+    textColor: 'red.800',
+  },
+  done: {
+    label: 'Terminé',
+    colorScheme: 'gray',
+    borderColor: 'gray.200',
+    bg: 'gray.50',
+    textColor: 'gray.700',
+  },
 };
 
-// Helper to format time as HH:MM (24-hour)
+const normalizeStatus = (status: string): StatusKey => {
+  const normalized = status.toLowerCase();
+  if (normalized === 'completed' || normalized === 'done') return 'done';
+  if (normalized === 'canceled' || normalized === 'cancelled') return 'cancelled';
+  if (normalized === 'confirmed') return 'confirmed';
+  return 'pending';
+};
+
+const toDayKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const fromDayKey = (key: string): Date => {
+  const [year, month, day] = key.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const addDays = (date: Date, days: number): Date => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
+const isSameDay = (left: Date, right: Date): boolean =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth() &&
+  left.getDate() === right.getDate();
+
+const getStartOfWeek = (date: Date): Date => {
+  const start = new Date(date);
+  const day = start.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  start.setDate(start.getDate() + diffToMonday);
+  start.setHours(0, 0, 0, 0);
+  return start;
+};
+
+const getMonthGridStart = (date: Date): Date => {
+  const first = new Date(date.getFullYear(), date.getMonth(), 1);
+  const day = first.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  return addDays(first, diffToMonday);
+};
+
+const formatRangeLabel = (start: Date, end: Date): string => {
+  const startLabel = start.toLocaleDateString(UI_LOCALE, { day: 'numeric', month: 'long' });
+  const endLabel = end.toLocaleDateString(UI_LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
+  return `${startLabel} - ${endLabel}`;
+};
+
 const formatTime = (dateString: string): string => {
-    try {
-        const date = new Date(dateString);
-        return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
-    } catch (e) {
-        console.error("Error formatting time:", e);
-        return "Invalid Time";
-    }
+  try {
+    return new Date(dateString).toLocaleTimeString(UI_LOCALE, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  } catch {
+    return '--:--';
+  }
 };
 
-// Style interface for tooltip position
-interface TooltipPosition {
-    top: number;
-    left: number;
-    visibility: 'visible' | 'hidden';
-}
+const formatDayShort = (date: Date): string =>
+  date.toLocaleDateString(UI_LOCALE, { weekday: 'short' }).replace('.', '').toUpperCase();
 
-const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
-    appointments,
-    onAppointmentClick,
-    onDayClick
-}) => {
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const tooltipRef = useRef<HTMLDivElement>(null);
-    const [tooltipVisible, setTooltipVisible] = useState(false);
-    const [tooltipContent, setTooltipContent] = useState<FetchedAppointment | null>(null);
-    const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition>({ top: 0, left: 0, visibility: 'hidden' });
-    const hoveredElementRef = useRef<HTMLDivElement | null>(null);
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth();
+const AppointmentCalendar = ({
+  appointments,
+  onAppointmentClick,
+  onDayClick,
+}: AppointmentCalendarProps) => {
+  const allStatuses = useMemo<StatusKey[]>(() => Object.keys(statusMeta) as StatusKey[], []);
+  const [anchorDate, setAnchorDate] = useState<Date>(new Date());
+  const [selectedDayKey, setSelectedDayKey] = useState<string>(toDayKey(new Date()));
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [visibleStatuses, setVisibleStatuses] = useState<StatusKey[]>(['pending', 'confirmed', 'cancelled', 'done']);
 
-    const appointmentsByDay = useMemo(() => {
-        const grouped: { [key: number]: FetchedAppointment[] } = {};
-        appointments.forEach(appt => {
-            try {
-                const apptDate = new Date(appt.appointment_time);
-                if (apptDate.getFullYear() === currentYear && apptDate.getMonth() === currentMonth) {
-                    const dayOfMonth = apptDate.getDate();
-                    if (!grouped[dayOfMonth]) {
-                        grouped[dayOfMonth] = [];
-                    }
-                    grouped[dayOfMonth].push(appt);
-                    grouped[dayOfMonth].sort((a, b) => new Date(a.appointment_time).getTime() - new Date(b.appointment_time).getTime());
-                }
-            } catch (e) {
-                console.error("Error processing appointment date:", appt.appointment_time, e);
-            }
-        });
-        return grouped;
-    }, [appointments, currentYear, currentMonth]);
+  const weekStart = useMemo<Date>(() => getStartOfWeek(anchorDate), [anchorDate]);
+  const weekDays = useMemo<Date[]>(
+    () => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)),
+    [weekStart]
+  );
+  const weekEnd = weekDays[6];
 
-    const goToPreviousMonth = () => {
-        setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
+  const selectedDay = useMemo<Date>(() => {
+    const parsed = fromDayKey(selectedDayKey);
+    const inCurrentWeek = weekDays.some((day: Date) => isSameDay(day, parsed));
+    if (inCurrentWeek) return parsed;
+    const today = new Date();
+    const todayInWeek = weekDays.find((day: Date) => isSameDay(day, today));
+    return todayInWeek || weekDays[0];
+  }, [selectedDayKey, weekDays]);
+
+  const appointmentsInWeek = useMemo<FetchedAppointment[]>(() => {
+    const start = weekStart.getTime();
+    const end = addDays(weekEnd, 1).getTime();
+
+    return appointments
+      .filter((appointment: FetchedAppointment) => {
+        const value = new Date(appointment.appointment_time).getTime();
+        return value >= start && value < end;
+      })
+      .sort(
+        (left: FetchedAppointment, right: FetchedAppointment) =>
+          new Date(left.appointment_time).getTime() - new Date(right.appointment_time).getTime()
+      );
+  }, [appointments, weekStart, weekEnd]);
+
+  const statusCounts = useMemo<Record<StatusKey, number>>(() => {
+    const counters: Record<StatusKey, number> = {
+      pending: 0,
+      confirmed: 0,
+      cancelled: 0,
+      done: 0,
     };
 
-    const goToNextMonth = () => {
-        setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
-    };
+    appointmentsInWeek.forEach((appointment: FetchedAppointment) => {
+      const status = normalizeStatus(appointment.status);
+      counters[status] += 1;
+    });
 
-    const calculateAndSetTooltipPosition = useCallback(() => {
-        if (!tooltipVisible || !tooltipRef.current || !hoveredElementRef.current) {
-            if (tooltipPosition.visibility === 'visible') {
-                setTooltipPosition(prev => ({ ...prev, visibility: 'hidden' }));
-            }
-            return;
-        }
-        const triggerElement = hoveredElementRef.current;
-        const tooltipElement = tooltipRef.current;
-        const triggerRect = triggerElement.getBoundingClientRect();
-        const tooltipRect = tooltipElement.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        const GAP = 10;
-        const EDGE_MARGIN = 8;
-        let finalTop: number;
-        let finalLeft: number;
-        const spaceBelow = viewportHeight - triggerRect.bottom;
-        const spaceAbove = triggerRect.top;
-        const fitsBelow = tooltipRect.height + GAP < spaceBelow;
-        const fitsAbove = tooltipRect.height + GAP < spaceAbove;
+    return counters;
+  }, [appointmentsInWeek]);
 
-        if (fitsBelow) {
-            finalTop = triggerRect.bottom + GAP;
-        } else if (fitsAbove) {
-            finalTop = triggerRect.top - tooltipRect.height - GAP;
-        } else {
-            finalTop = triggerRect.bottom + GAP;
-            if (finalTop + tooltipRect.height > viewportHeight - EDGE_MARGIN) {
-                 const potentialTop = viewportHeight - tooltipRect.height - EDGE_MARGIN;
-                 finalTop = (potentialTop >= EDGE_MARGIN) ? potentialTop : EDGE_MARGIN;
-             }
-        }
-        let desiredLeft = triggerRect.left + (triggerRect.width / 2) - (tooltipRect.width / 2);
-        finalLeft = desiredLeft;
-        if (finalLeft < EDGE_MARGIN) {
-            finalLeft = EDGE_MARGIN;
-        } else if (finalLeft + tooltipRect.width > viewportWidth - EDGE_MARGIN) {
-            finalLeft = viewportWidth - tooltipRect.width - EDGE_MARGIN;
-        }
-        setTooltipPosition({ top: finalTop, left: finalLeft, visibility: 'visible' });
-    }, [tooltipVisible, tooltipPosition.visibility]);
+  const filteredAppointments = useMemo<FetchedAppointment[]>(() => {
+    const term = searchTerm.trim().toLowerCase();
 
-    useEffect(() => {
-        if (tooltipVisible) {
-            const timer = setTimeout(calculateAndSetTooltipPosition, 0);
-            return () => clearTimeout(timer);
-        }
-    }, [tooltipVisible, tooltipContent, calculateAndSetTooltipPosition]);
+    return appointmentsInWeek.filter((appointment: FetchedAppointment) => {
+      const status = normalizeStatus(appointment.status);
+      if (!visibleStatuses.includes(status)) return false;
 
-    useEffect(() => {
-        const handler = () => { if (tooltipVisible) calculateAndSetTooltipPosition(); };
-        window.addEventListener('scroll', handler, true);
-        window.addEventListener('resize', handler);
-        return () => {
-            window.removeEventListener('scroll', handler, true);
-            window.removeEventListener('resize', handler);
-        };
-    }, [tooltipVisible, calculateAndSetTooltipPosition]);
+      if (!term) return true;
 
-    const handleMouseEnter = (event: React.MouseEvent<HTMLDivElement>, appointment: FetchedAppointment) => {
-        hoveredElementRef.current = event.currentTarget;
-        setTooltipContent(appointment);
-        setTooltipVisible(true);
-    };
+      const services = appointment.services?.map((service) => service.name.toLowerCase()).join(' ') || '';
+      const haystack = `${appointment.client_name} ${appointment.client_email} ${services}`.toLowerCase();
+      return haystack.includes(term);
+    });
+  }, [appointmentsInWeek, searchTerm, visibleStatuses]);
 
-    const handleMouseLeave = () => {
-        hoveredElementRef.current = null;
-        setTooltipVisible(false);
-        setTooltipContent(null);
-        setTooltipPosition(prev => ({ ...prev, visibility: 'hidden' }));
-    };
+  const appointmentsByDay = useMemo<Record<string, FetchedAppointment[]>>(() => {
+    const grouped: Record<string, FetchedAppointment[]> = {};
 
-    const handleDayDivClick = (day: number) => {
-        if (onDayClick) {
-            const clickedDate = new Date(currentYear, currentMonth, day);
-            onDayClick(clickedDate);
-        }
-    };
+    weekDays.forEach((day: Date) => {
+      grouped[toDayKey(day)] = [];
+    });
 
-    const renderCalendarDays = () => {
-        const days = [];
-        const today = new Date();
-        const todayString = today.toDateString();
-        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-        const firstDayOfMonthIndex = new Date(currentYear, currentMonth, 1).getDay();
+    filteredAppointments.forEach((appointment: FetchedAppointment) => {
+      const dayKey = toDayKey(new Date(appointment.appointment_time));
+      if (!grouped[dayKey]) grouped[dayKey] = [];
+      grouped[dayKey].push(appointment);
+    });
 
-        for (let i = 0; i < firstDayOfMonthIndex; i++) {
-            days.push(<div key={`empty-start-${i}`} className="calendar-day empty"></div>);
-        }
+    Object.values(grouped).forEach((list: FetchedAppointment[]) => {
+      list.sort(
+        (left: FetchedAppointment, right: FetchedAppointment) =>
+          new Date(left.appointment_time).getTime() - new Date(right.appointment_time).getTime()
+      );
+    });
 
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dayAppointments = appointmentsByDay[day] || [];
-            const isMultiple = dayAppointments.length > 1;
-            const isToday = new Date(currentYear, currentMonth, day).toDateString() === todayString;
+    return grouped;
+  }, [filteredAppointments, weekDays]);
 
-            days.push(
-                <div
-                    key={day}
-                    className={`calendar-day ${isToday ? 'today' : ''} ${dayAppointments.length > 0 ? 'has-appointments' : ''}`}
-                    onClick={() => handleDayDivClick(day)}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Add appointment for ${getMonthName(currentMonth)} ${day}, ${currentYear}`}
-                    onKeyDown={(e) => e.key === 'Enter' && handleDayDivClick(day)} // Keyboard accessibility
-                >
-                    <div className="day-content-wrapper">
-                        <div className="day-header">
-                             <div className="day-number">{day}</div>
-                        </div>
-                        <div className="appointments-container">
-                            {dayAppointments.map(appt => (
-                                <div
-                                    key={appt.id}
-                                    className={`appointment-item ${isMultiple ? 'minimized' : ''} status-${appt.status}`}
-                                    onClick={(e) => { e.stopPropagation(); onAppointmentClick && onAppointmentClick(appt); }}
-                                    onMouseEnter={(e) => handleMouseEnter(e, appt)}
-                                    onMouseLeave={handleMouseLeave}
-                                    title="" // Let custom tooltip handle it
-                                >
-                                    <span className="appointment-time">{formatTime(appt.appointment_time)}</span>
-                                    <span className="appointment-client">{appt.client_name}</span>
-                                    {!isMultiple && (
-                                        <ul className="appointment-services">
-                                            {appt.services?.slice(0, 1).map(s => <li key={s.id}>{s.name}</li>)}
-                                            {(appt.services?.length ?? 0) > 1 && <li className="more-services">...</li>}
-                                        </ul>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                        <div className="add-appointment-overlay">
-                            <span className="add-appointment-button">+</span>
-                        </div>
-                    </div>
-                </div>
+  const selectedDayAppointments = appointmentsByDay[toDayKey(selectedDay)] || [];
+  const hasStatusFilter = visibleStatuses.length !== allStatuses.length;
+  const hasSearchTerm = searchTerm.trim().length > 0;
+  const hasActiveFilters = hasStatusFilter || hasSearchTerm;
+
+  const miniMonthStart = useMemo<Date>(() => getMonthGridStart(anchorDate), [anchorDate]);
+  const miniMonthDays = useMemo<Date[]>(
+    () => Array.from({ length: 42 }, (_, index) => addDays(miniMonthStart, index)),
+    [miniMonthStart]
+  );
+
+  const goPreviousWeek = (): void => {
+    setAnchorDate((current: Date) => addDays(current, -7));
+  };
+
+  const goNextWeek = (): void => {
+    setAnchorDate((current: Date) => addDays(current, 7));
+  };
+
+  const goToday = (): void => {
+    const today = new Date();
+    setAnchorDate(today);
+    setSelectedDayKey(toDayKey(today));
+  };
+
+  const moveMiniMonth = (monthsDelta: number): void => {
+    setAnchorDate((current: Date) => new Date(current.getFullYear(), current.getMonth() + monthsDelta, 1));
+  };
+
+  const selectDay = (date: Date): void => {
+    setSelectedDayKey(toDayKey(date));
+    setAnchorDate(date);
+  };
+
+  const toggleStatus = (status: StatusKey): void => {
+    setVisibleStatuses((current: StatusKey[]) => {
+      if (current.includes(status)) {
+        if (current.length === 1) return current;
+        return current.filter((item: StatusKey) => item !== status);
+      }
+      return [...current, status];
+    });
+  };
+
+  const resetFilters = (): void => {
+    setSearchTerm('');
+    setVisibleStatuses(allStatuses);
+  };
+
+  return (
+    <Flex gap={5} align="stretch" direction={{ base: 'column', '2xl': 'row' }}>
+      <Box
+        display={{ base: 'none', xl: 'block' }}
+        w="260px"
+        bg="white"
+        borderWidth="1px"
+        borderColor="gray.100"
+        borderRadius="2xl"
+        boxShadow="sm"
+        p={4}
+      >
+        <Flex align="center" justify="space-between" mb={3}>
+          <Text fontSize="sm" fontWeight="700" color="gray.800" textTransform="capitalize">
+            {anchorDate.toLocaleDateString(UI_LOCALE, { month: 'long', year: 'numeric' })}
+          </Text>
+          <HStack spacing={1}>
+            <IconButton
+              aria-label="Previous month"
+              icon={<ChevronLeft size={14} />}
+              size="xs"
+              variant="ghost"
+              borderRadius="md"
+              onClick={() => moveMiniMonth(-1)}
+            />
+            <IconButton
+              aria-label="Next month"
+              icon={<ChevronRight size={14} />}
+              size="xs"
+              variant="ghost"
+              borderRadius="md"
+              onClick={() => moveMiniMonth(1)}
+            />
+          </HStack>
+        </Flex>
+
+        <SimpleGrid columns={7} gap={1} mb={1}>
+          {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((label: string, index: number) => (
+            <Text key={`${label}-${index}`} fontSize="2xs" color="gray.400" textAlign="center" fontWeight="700">
+              {label}
+            </Text>
+          ))}
+        </SimpleGrid>
+
+        <SimpleGrid columns={7} gap={1}>
+          {miniMonthDays.map((day: Date) => {
+            const isCurrentMonth = day.getMonth() === anchorDate.getMonth();
+            const isToday = isSameDay(day, new Date());
+            const isSelected = isSameDay(day, selectedDay);
+
+            return (
+              <Button
+                key={toDayKey(day)}
+                size="xs"
+                h="28px"
+                px={0}
+                minW="28px"
+                variant={isSelected ? 'solid' : 'ghost'}
+                colorScheme={isSelected ? 'brand' : 'gray'}
+                borderRadius="md"
+                onClick={() => selectDay(day)}
+                fontWeight={isSelected || isToday ? '700' : '500'}
+                color={!isCurrentMonth ? 'gray.300' : undefined}
+              >
+                {day.getDate()}
+              </Button>
             );
-        }
+          })}
+        </SimpleGrid>
 
-        const totalCells = firstDayOfMonthIndex + daysInMonth;
-        const remainingCells = 7 - (totalCells % 7);
-        if (remainingCells < 7) {
-             for (let i = 0; i < remainingCells; i++) {
-                days.push(<div key={`empty-end-${i}`} className="calendar-day empty"></div>);
-            }
-        }
-        return days;
-    };
+        <Divider my={4} borderColor="gray.100" />
 
-    return (
-        <div className="appointment-calendar-container">
-            <div className="calendar-header">
-                <button onClick={goToPreviousMonth} className="nav-button" aria-label="Previous month"> <FontAwesomeIcon icon={faAngleLeft} /> </button>
-                <h2>{getMonthName(currentMonth)} {currentYear}</h2>
-                <button onClick={goToNextMonth} className="nav-button" aria-label="Next month"> <FontAwesomeIcon icon={faAngleRight} /> </button>
-            </div>
-            <div className="calendar-grid">
-                <div className="weekday">Sun</div>
-                <div className="weekday">Mon</div>
-                <div className="weekday">Tue</div>
-                <div className="weekday">Wed</div>
-                <div className="weekday">Thu</div>
-                <div className="weekday">Fri</div>
-                <div className="weekday">Sat</div>
-                {renderCalendarDays()}
-            </div>
+        <VStack spacing={2} align="stretch">
+          <Text fontSize="xs" color="gray.500" fontWeight="700" textTransform="uppercase" letterSpacing="0.04em">
+            Cette semaine
+          </Text>
+          <HStack justify="space-between">
+            <Text fontSize="sm" color="gray.600">Rendez-vous</Text>
+            <Badge borderRadius="full" colorScheme="brand" px={2}>{appointmentsInWeek.length}</Badge>
+          </HStack>
+          <HStack justify="space-between">
+            <Text fontSize="sm" color="gray.600">En attente</Text>
+            <Text fontSize="sm" color="gray.800" fontWeight="700">{statusCounts.pending}</Text>
+          </HStack>
+          <HStack justify="space-between">
+            <Text fontSize="sm" color="gray.600">Confirmés</Text>
+            <Text fontSize="sm" color="gray.800" fontWeight="700">{statusCounts.confirmed}</Text>
+          </HStack>
+        </VStack>
+      </Box>
 
-            <div
-                ref={tooltipRef}
-                className="shared-appointment-tooltip"
-                style={{
-                    position: 'fixed',
-                    top: `${tooltipPosition.top}px`,
-                    left: `${tooltipPosition.left}px`,
-                    visibility: tooltipPosition.visibility,
-                    opacity: tooltipVisible ? 1 : 0,
-                }}
-                role="tooltip"
-                aria-hidden={!tooltipVisible}
-            >
-                {tooltipContent && (
-                    <>
-                        <strong>Client:</strong> {tooltipContent.client_name}<br />
-                        <strong>Email:</strong> {tooltipContent.client_email}<br />
-                        <strong>Time:</strong> {formatReadableDateTime(tooltipContent.appointment_time)}<br />
-                        <strong>Status:</strong> <span className={`tooltip-status status-${tooltipContent.status}`}></span><br />
-                        {tooltipContent.services?.length > 0 && (
-                            <>
-                                <strong>Services:</strong>
-                                <ul>
-                                    {tooltipContent.services.map(s => (
-                                        <li key={s.id}>
-                                            {s.name} ({s.duration_minutes} min) - ${s.price}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </>
+      <Box flex="1" minW={0}>
+        <Box
+          bg="white"
+          borderWidth="1px"
+          borderColor="gray.100"
+          borderRadius="2xl"
+          boxShadow="sm"
+          overflow="hidden"
+        >
+          <Flex
+            px={{ base: 4, md: 5 }}
+            py={4}
+            justify="space-between"
+            align={{ base: 'stretch', md: 'center' }}
+            direction={{ base: 'column', md: 'row' }}
+            gap={3}
+            borderBottomWidth="1px"
+            borderColor="gray.100"
+          >
+            <HStack spacing={2}>
+              <IconButton
+                aria-label="Previous week"
+                icon={<ChevronLeft size={16} />}
+                size="sm"
+                variant="ghost"
+                borderRadius="lg"
+                onClick={goPreviousWeek}
+              />
+              <IconButton
+                aria-label="Next week"
+                icon={<ChevronRight size={16} />}
+                size="sm"
+                variant="ghost"
+                borderRadius="lg"
+                onClick={goNextWeek}
+              />
+              <Button size="sm" variant="outline" borderRadius="lg" onClick={goToday}>
+                Aujourd’hui
+              </Button>
+              <Text fontSize="lg" fontWeight="700" color="gray.900" letterSpacing="-0.01em" ml={1}>
+                {formatRangeLabel(weekStart, weekEnd)}
+              </Text>
+            </HStack>
+
+            <HStack spacing={2}>
+              <InputGroup size="sm" w={{ base: 'full', md: '220px' }}>
+                <InputLeftElement pointerEvents="none">
+                  <Search size={14} color="var(--chakra-colors-gray-400)" />
+                </InputLeftElement>
+                <Input
+                  value={searchTerm}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(event.target.value)}
+                  placeholder="Rechercher client ou service"
+                  borderRadius="lg"
+                  borderColor="gray.200"
+                />
+              </InputGroup>
+              <Button
+                size="sm"
+                colorScheme="brand"
+                borderRadius="lg"
+                leftIcon={<Plus size={14} />}
+                onClick={() => onDayClick?.(selectedDay)}
+              >
+                Ajouter un rendez-vous
+              </Button>
+            </HStack>
+          </Flex>
+
+          <Flex px={{ base: 4, md: 5 }} py={3} gap={2} wrap="wrap" borderBottomWidth="1px" borderColor="gray.100">
+            {(Object.keys(statusMeta) as StatusKey[]).map((status: StatusKey) => {
+              const isActive = visibleStatuses.includes(status);
+              const meta = statusMeta[status];
+
+              return (
+                <Button
+                  key={status}
+                  size="xs"
+                  borderRadius="full"
+                  variant="ghost"
+                  borderWidth="1px"
+                  borderColor={isActive ? 'brand.100' : 'gray.200'}
+                  bg={isActive ? 'brand.50' : 'transparent'}
+                  color={isActive ? 'brand.700' : 'gray.600'}
+                  _hover={{
+                    bg: isActive ? 'brand.100' : 'gray.50',
+                    borderColor: isActive ? 'brand.200' : 'gray.300',
+                  }}
+                  onClick={() => toggleStatus(status)}
+                  fontWeight="600"
+                  aria-pressed={isActive}
+                >
+                  {meta.label} ({statusCounts[status]})
+                </Button>
+              );
+            })}
+            {hasActiveFilters && (
+              <Button
+                size="xs"
+                borderRadius="full"
+                variant="ghost"
+                color="gray.600"
+                onClick={resetFilters}
+              >
+                Réinitialiser
+              </Button>
+            )}
+          </Flex>
+
+          {appointmentsInWeek.length === 0 ? (
+            <VStack spacing={3} py={16} bg="gray.50" px={4}>
+              <Icon as={CalendarDays} boxSize={7} color="gray.300" />
+              <Text fontSize="sm" color="gray.600" fontWeight="600">Aucun rendez-vous cette semaine</Text>
+              <Text fontSize="xs" color="gray.500" textAlign="center">
+                Commencez en ajoutant un rendez-vous pour remplir votre planning.
+              </Text>
+            </VStack>
+          ) : filteredAppointments.length === 0 ? (
+            <VStack spacing={3} py={16} bg="gray.50" px={4}>
+              <Icon as={Search} boxSize={6} color="gray.300" />
+              <Text fontSize="sm" color="gray.600" fontWeight="600">Aucun résultat</Text>
+              <Text fontSize="xs" color="gray.500" textAlign="center">
+                Aucun rendez-vous ne correspond à votre recherche ou à vos filtres actuels.
+              </Text>
+              <Button size="sm" variant="outline" onClick={resetFilters}>
+                Réinitialiser les filtres
+              </Button>
+            </VStack>
+          ) : (
+            <SimpleGrid columns={{ base: 1, md: 2, xl: 7 }} gap={3} p={4} bg="gray.50">
+              {weekDays.map((day: Date) => {
+                const dayKey = toDayKey(day);
+                const dayAppointments = appointmentsByDay[dayKey] || [];
+                const visibleAppointments = dayAppointments.slice(0, 3);
+                const hiddenAppointmentsCount = Math.max(dayAppointments.length - visibleAppointments.length, 0);
+                const isSelected = isSameDay(day, selectedDay);
+                const isToday = isSameDay(day, new Date());
+
+                return (
+                  <Box
+                    key={dayKey}
+                    bg="white"
+                    borderWidth="1px"
+                    borderColor={isSelected ? 'brand.200' : 'gray.100'}
+                    borderRadius="xl"
+                    minH="220px"
+                    p={3}
+                    cursor="pointer"
+                    onClick={() => setSelectedDayKey(dayKey)}
+                    transition="all 0.15s ease"
+                    _hover={{ borderColor: isSelected ? 'brand.300' : 'gray.200', boxShadow: 'sm' }}
+                  >
+                    <HStack justify="space-between" mb={3}>
+                      <VStack spacing={0} align="start">
+                        <Text fontSize="xs" fontWeight="700" color="gray.500" letterSpacing="0.04em">
+                          {formatDayShort(day)}
+                        </Text>
+                        <Text fontSize="lg" fontWeight="700" color={isToday ? 'brand.600' : 'gray.800'} lineHeight="1">
+                          {day.getDate()}
+                        </Text>
+                      </VStack>
+                      <Badge borderRadius="full" colorScheme={dayAppointments.length > 0 ? 'brand' : 'gray'}>
+                        {dayAppointments.length}
+                      </Badge>
+                    </HStack>
+
+                    {dayAppointments.length === 0 ? (
+                      <Flex align="center" justify="center" h="110px">
+                        <Text fontSize="xs" color="gray.400">Aucun rendez-vous</Text>
+                      </Flex>
+                    ) : (
+                      <VStack spacing={2} align="stretch">
+                        {visibleAppointments.map((appointment: FetchedAppointment) => {
+                          const status = normalizeStatus(appointment.status);
+                          const meta = statusMeta[status];
+                          const serviceNames = appointment.services?.map((service) => service.name).join(', ') || 'Service non renseigné';
+
+                          return (
+                            <Box
+                              key={appointment.id}
+                              p={2.5}
+                              borderRadius="lg"
+                              borderWidth="1px"
+                              borderColor={meta.borderColor}
+                              bg={meta.bg}
+                              onClick={(event: React.MouseEvent) => {
+                                event.stopPropagation();
+                                onAppointmentClick?.(appointment);
+                              }}
+                              transition="all 0.15s ease"
+                              _hover={{ transform: 'translateY(-1px)', boxShadow: 'sm' }}
+                            >
+                              <HStack justify="space-between" mb={1}>
+                                <Text fontSize="xs" fontWeight="700" color="gray.700">
+                                  {formatTime(appointment.appointment_time)}
+                                </Text>
+                                <Badge
+                                  variant="subtle"
+                                  borderRadius="full"
+                                  colorScheme={meta.colorScheme as any}
+                                  fontSize="2xs"
+                                  textTransform="none"
+                                >
+                                  {meta.label}
+                                </Badge>
+                              </HStack>
+                              <HStack spacing={1.5} mb={1}>
+                                <Icon as={User} boxSize={3.5} color="gray.500" />
+                                <Text fontSize="sm" color="gray.800" fontWeight="600" noOfLines={1}>
+                                  {appointment.client_name}
+                                </Text>
+                              </HStack>
+                              <HStack spacing={1.5}>
+                                <Icon as={Scissors} boxSize={3.5} color="gray.400" />
+                                <Text fontSize="xs" color="gray.600" noOfLines={1}>
+                                  {serviceNames}
+                                </Text>
+                              </HStack>
+                            </Box>
+                          );
+                        })}
+
+                        {hiddenAppointmentsCount > 0 && (
+                          <Text fontSize="xs" color="gray.500" fontWeight="600" pl={1}>
+                            + {hiddenAppointmentsCount} autre{hiddenAppointmentsCount > 1 ? 's' : ''} rendez-vous
+                          </Text>
                         )}
-                    </>
-                )}
-            </div>
-        </div>
-    );
+                      </VStack>
+                    )}
+                  </Box>
+                );
+              })}
+            </SimpleGrid>
+          )}
+        </Box>
+        <Box
+          mt={4}
+          bg="white"
+          borderWidth="1px"
+          borderColor="gray.100"
+          borderRadius="2xl"
+          boxShadow="sm"
+          overflow="hidden"
+        >
+          <Box px={4} py={3.5} borderBottomWidth="1px" borderColor="gray.100">
+            <HStack spacing={2}>
+              <Flex align="center" justify="center" w={8} h={8} borderRadius="lg" bg="brand.50">
+                <Icon as={CalendarDays} boxSize={4} color="brand.600" />
+              </Flex>
+              <Box>
+                <Text fontSize="sm" fontWeight="700" color="gray.800">
+                  {selectedDay.toLocaleDateString(UI_LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })}
+                </Text>
+                <Text fontSize="xs" color="gray.500">
+                  {selectedDayAppointments.length} rendez-vous
+                </Text>
+              </Box>
+            </HStack>
+          </Box>
+
+          <Box px={4} py={3.5}>
+            {selectedDayAppointments.length === 0 ? (
+              <VStack spacing={3} py={8}>
+                <Icon as={Clock} boxSize={7} color="gray.300" />
+                <Text fontSize="sm" color="gray.500">Aucun rendez-vous prévu</Text>
+                <Text fontSize="xs" color="gray.400">Utilisez « Ajouter un rendez-vous » ou cliquez sur un jour.</Text>
+              </VStack>
+            ) : (
+              <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={3}>
+                {selectedDayAppointments.map((appointment: FetchedAppointment) => {
+                  const status = normalizeStatus(appointment.status);
+                  const meta = statusMeta[status];
+                  const serviceNames = appointment.services?.map((service) => service.name).join(', ') || 'Service non renseigné';
+
+                  return (
+                    <Box
+                      key={appointment.id}
+                      p={3}
+                      borderRadius="lg"
+                      bg="gray.50"
+                      borderLeftWidth="3px"
+                      borderLeftColor={meta.borderColor}
+                      onClick={() => onAppointmentClick?.(appointment)}
+                      cursor="pointer"
+                      _hover={{ bg: 'gray.100' }}
+                      transition="background 0.15s ease"
+                    >
+                      <HStack justify="space-between" mb={1.5}>
+                        <Text fontSize="sm" fontWeight="700" color="gray.800">
+                          {formatTime(appointment.appointment_time)}
+                        </Text>
+                        <Badge colorScheme={meta.colorScheme as any} borderRadius="full" textTransform="none" fontSize="2xs">
+                          {meta.label}
+                        </Badge>
+                      </HStack>
+                      <Text fontSize="sm" fontWeight="600" color="gray.700" mb={0.5} noOfLines={1}>
+                        {appointment.client_name}
+                      </Text>
+                      <Text fontSize="xs" color="gray.500" noOfLines={2}>
+                        {serviceNames}
+                      </Text>
+                    </Box>
+                  );
+                })}
+              </SimpleGrid>
+            )}
+          </Box>
+        </Box>
+      </Box>
+    </Flex>
+  );
 };
 
 export default AppointmentCalendar;

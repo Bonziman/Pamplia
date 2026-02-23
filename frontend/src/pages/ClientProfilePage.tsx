@@ -2,15 +2,14 @@
 // --- FULL REPLACEMENT - COMPLETE CODE ---
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../auth/authContext';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheckCircle, faSpinner, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons';
+import { CheckCircle, Loader2, AlertTriangle, PlusCircle } from 'lucide-react';
 
 // API Imports
-import { fetchClientById, updateClient, FetchedClient, ClientUpdatePayload, ClientTag } from '../api/clientApi';
-import { fetchPaginatedAppointments, FetchedAppointment, PaginatedAppointments } from '../api/appointmentApi';
-import { fetchTenantServices, createPublicAppointment, PublicService, AppointmentCreatePayload as PublicAppointmentCreatePayload } from '../api/publicApi'; // For Modal
+import { fetchClientById, updateClient, FetchedClient, ClientUpdatePayload } from '../api/clientApi';
+import { fetchPaginatedAppointments, FetchedAppointment } from '../api/appointmentApi';
+import { fetchTenantServices, PublicService } from '../api/publicApi';
 
 // --- Components ---
 import { StatusBadge } from '../components/StatusBadge';
@@ -25,7 +24,7 @@ import LogInteractionModal from '../components/modals/LogInteractionModal';
 import ActivityFeed from '../components/activity/ActivityFeed';
 import { createManualLog } from '../api/communicationsApi'; // API function
 import { ManualLogCreatePayload } from '../types/Communication'; // Type for payload
-import { faPlusCircle } from '@fortawesome/free-solid-svg-icons'; // Icon for button
+
 
 // Default Avatar
 const DEFAULT_AVATAR = '/defaults/icons8-male-user-94.png'; // Adjust path as needed
@@ -89,7 +88,6 @@ const PaginationControls: React.FC<PaginationProps> = ({ currentPage, totalPages
 const ClientProfilePage: React.FC = () => {
     const { clientId } = useParams<{ clientId: string }>();
     const { userProfile } = useAuth();
-    const navigate = useNavigate();
 
     // --- States ---
     const [client, setClient] = useState<FetchedClient | null>(null);
@@ -103,7 +101,7 @@ const ClientProfilePage: React.FC = () => {
 
     // Appointment List State
     const [appointmentPage, setAppointmentPage] = useState(1);
-    const [appointmentLimit, setAppointmentLimit] = useState(10);
+    const [appointmentLimit] = useState(10);
     const [appointmentTotalItems, setAppointmentTotalItems] = useState(0);
     const [appointmentFilter, setAppointmentFilter] = useState('all');
 
@@ -164,10 +162,8 @@ const ClientProfilePage: React.FC = () => {
     // Fetch public services needed for the modal
     const loadPublicServices = useCallback(() => {
         setLoadingPublicServices(true);
-        console.log("ClientProfilePage: Fetching public services...");
         fetchTenantServices()
             .then(data => {
-                console.log("ClientProfilePage: Public services success", data);
                 setPublicTenantServices(data);
             })
             .catch(err => {
@@ -211,16 +207,10 @@ const ClientProfilePage: React.FC = () => {
     };
 
     const handleSaveManualLog = useCallback(async (payload: ManualLogCreatePayload) => {
-        console.log("ClientProfilePage: Saving manual log...", payload);
-        setError(null); // Clear page error before save
+        setError(null);
         try {
             await createManualLog(payload);
-            console.log("ClientProfilePage: Manual log creation success.");
-            handleCloseLogModal(); // Close modal on success
-            // TODO: Trigger refresh of ActivityFeed component
-            // This might happen automatically if ActivityFeed refetches on prop change,
-            // or we might need a more explicit refresh mechanism (e.g., passing a refresh counter prop).
-            // For now, closing modal is the main action. Activity feed might refetch on next load.
+            handleCloseLogModal();
         } catch (apiError: any) {
             console.error("ClientProfilePage: Manual log creation failed:", apiError);
             // Re-throw the error so the modal's catch block can handle displaying it
@@ -304,20 +294,6 @@ const ClientProfilePage: React.FC = () => {
         setIsCreateModalOpen(false);
     };
 
-    const handleCreateAppointment = useCallback(async (data: PublicAppointmentCreatePayload) => {
-        console.log("ClientProfilePage: Submitting appointment from modal...", data);
-        try {
-            await createPublicAppointment(data);
-            console.log("ClientProfilePage: Appointment creation success.");
-            handleCloseCreateModal(); // Close modal on success
-            loadClientAppointments(); // Refresh the appointment list
-        } catch (apiError: any) {
-            console.error("ClientProfilePage: Appointment creation failed:", apiError);
-            // Re-throw error so the modal can display it
-            throw apiError;
-        }
-    }, [loadClientAppointments]);
-
 
     // Date/Time Formatters
     const formatDate = (dateString: string | undefined | null): { day: string, month: string } => {
@@ -344,8 +320,8 @@ const ClientProfilePage: React.FC = () => {
     };
 
     // --- Render Logic ---
-    if (isLoadingClient) return <div className="loading-message">Loading Client Profile... <FontAwesomeIcon icon={faSpinner} spin /></div>;
-    if (error && !client && !isLoadingClient) return <div className="error-message global-error">Error: {error} <FontAwesomeIcon icon={faExclamationTriangle} /> <button onClick={loadClientDetails}>Retry</button></div>;
+    if (isLoadingClient) return <div className="loading-message">Loading Client Profile... <Loader2 size={16} className="animate-spin" /></div>;
+    if (error && !client && !isLoadingClient) return <div className="error-message global-error">Error: {error} <AlertTriangle size={16} /> <button onClick={loadClientDetails}>Retry</button></div>;
     if (!client) return <div className="loading-message">Client not found or could not be loaded.</div>;
     const clientIdNum = parseInt(clientId || '0', 10); // Get client ID as number
     const fullName = `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Unnamed Client';
@@ -365,7 +341,7 @@ const ClientProfilePage: React.FC = () => {
                                 className={`confirmation-badge ${client.is_confirmed ? 'confirmed' : 'unconfirmed'}`}
                                 title={client.is_confirmed ? 'Client Confirmed' : 'Client Not Confirmed'}
                             >
-                                <FontAwesomeIcon icon={faCheckCircle} />
+                                <CheckCircle size={16} />
                             </span>
                         </div>
                         <div className="client-tags-list">
@@ -389,7 +365,7 @@ const ClientProfilePage: React.FC = () => {
                              className="button button-secondary add-log-btn" // Style as needed
                              style={{ marginTop: '1rem', width: '100%' }} // Example inline style
                          >
-                             <FontAwesomeIcon icon={faPlusCircle} /> Log Interaction
+                             <PlusCircle size={16} /> Log Interaction
                          </button>
                     </div>
 
@@ -436,7 +412,7 @@ const ClientProfilePage: React.FC = () => {
                                 ) : (
                                     <>
                                         <button onClick={handleSaveChanges} className="button button-primary" disabled={isSaving}>
-                                            {isSaving ? <><FontAwesomeIcon icon={faSpinner} spin /> Saving...</> : 'Save Changes'}
+                                            {isSaving ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : 'Save Changes'}
                                         </button>
                                         <button onClick={handleCancelEdit} className="button button-secondary" disabled={isSaving}>
                                             Cancel
@@ -494,7 +470,7 @@ const ClientProfilePage: React.FC = () => {
                             </div>
                         </div>
                          {isLoadingAppointments ? (
-                            <div className="loading-message">Loading appointments... <FontAwesomeIcon icon={faSpinner} spin /></div>
+                            <div className="loading-message">Loading appointments... <Loader2 size={16} className="animate-spin" /></div>
                          ) : (
                             <>
                                 <div className="table-container appointments-list">
@@ -551,7 +527,7 @@ const ClientProfilePage: React.FC = () => {
             <CreateAppointmentModal
                 isOpen={isCreateModalOpen}
                 onClose={handleCloseCreateModal}
-                onSubmit={handleCreateAppointment}
+                onAppointmentCreated={loadClientAppointments}
                 tenantServices={publicTenantServices}
                 isLoadingServices={loadingPublicServices}
                 clientPreInfo={client ? {

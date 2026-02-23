@@ -1,31 +1,30 @@
-// src/components/UpdateAppointmentModal.tsx
-import React, { useState, useEffect, useCallback } from 'react';
-import Modal from './Modal'; // Assuming Modal.tsx is in the same folder or adjust path
-import { FetchedAppointment, AppointmentUpdatePayload } from '../../api/appointmentApi'; // Adjust path
-import { formatForDateTimeLocalInput } from '../../utils/formatDate'; // Adjust path
-import { AppointmentStatus } from '../../types/enums'; // Assuming you have this frontend enum or use strings
+// src/components/modals/UpdateAppointmentModal.tsx
+import React, { useState, useEffect } from 'react';
+import {
+    Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
+    ModalCloseButton, Button, VStack, FormControl, FormLabel, Input, Select,
+    Alert, AlertIcon, Grid, GridItem,
+} from '@chakra-ui/react';
+import { FetchedAppointment, AppointmentUpdatePayload } from '../../api/appointmentApi';
+import { formatForDateTimeLocalInput } from '../../utils/formatDate';
+import { AppointmentStatus } from '../../types/enums';
 
-// Define possible statuses for the dropdown
-const appointmentStatuses = Object.values(AppointmentStatus); // Get values from enum
+const appointmentStatuses = Object.values(AppointmentStatus);
 
 interface UpdateAppointmentModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (id: number, data: AppointmentUpdatePayload) => Promise<void>; // Make onSubmit async
-    appointment: FetchedAppointment | null; // The appointment being edited
+    onSubmit: (id: number, data: AppointmentUpdatePayload) => Promise<void>;
+    appointment: FetchedAppointment | null;
 }
 
 const UpdateAppointmentModal: React.FC<UpdateAppointmentModalProps> = ({
-    isOpen,
-    onClose,
-    onSubmit,
-    appointment
+    isOpen, onClose, onSubmit, appointment,
 }) => {
     const [formData, setFormData] = useState<AppointmentUpdatePayload>({});
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Pre-fill form when appointment prop changes (modal opens)
     useEffect(() => {
         if (appointment) {
             const formattedTime = formatForDateTimeLocalInput(appointment.appointment_time);
@@ -35,11 +34,11 @@ const UpdateAppointmentModal: React.FC<UpdateAppointmentModalProps> = ({
                 appointment_time: formattedTime,
                 status: appointment.status,
             });
-            setError(null); // Clear previous errors
+            setError(null);
         } else {
-             setFormData({}); // Clear form if no appointment
+            setFormData({});
         }
-    }, [appointment]); // Re-run when the appointment object changes
+    }, [appointment]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -49,67 +48,110 @@ const UpdateAppointmentModal: React.FC<UpdateAppointmentModalProps> = ({
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!appointment) return;
-
         setError(null);
         setIsSubmitting(true);
         try {
-            // Convert time back to ISO if needed by backend
             const payload: AppointmentUpdatePayload = {
                 ...formData,
                 appointment_time: formData.appointment_time
-                                    ? new Date(formData.appointment_time).toISOString()
-                                    : undefined
+                    ? new Date(formData.appointment_time).toISOString()
+                    : undefined,
             };
-            await onSubmit(appointment.id, payload); // Call the onSubmit prop passed from Dashboard
-            // onClose(); // Let the parent component handle closing on success if needed
+            await onSubmit(appointment.id, payload);
         } catch (apiError: any) {
-             console.error("Update failed in modal:", apiError);
-             // Extract error message more robustly if needed
-             setError(apiError.response?.data?.detail || "Failed to update appointment.");
+            setError(apiError.response?.data?.detail || "Failed to update appointment.");
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <Modal
-            isOpen={isOpen}
-            onClose={onClose}
-            title={`Update Appointment #${appointment?.id}`}
-        >
-            {appointment && (
-                <form onSubmit={handleSubmit} className="modal-form">
-                    <div>
-                        <label htmlFor="update_client_name">Client Name</label>
-                        <input type="text" id="update_client_name" name="client_name" value={formData.client_name || ''} onChange={handleChange} disabled={isSubmitting} />
-                    </div>
-                    <div>
-                        <label htmlFor="update_client_email">Client Email</label>
-                        <input type="email" id="update_client_email" name="client_email" value={formData.client_email || ''} onChange={handleChange} disabled={isSubmitting} />
-                    </div>
-                    <div>
-                        <label htmlFor="update_appointment_time">Appointment Time</label>
-                        <input type="datetime-local" id="update_appointment_time" name="appointment_time" value={formData.appointment_time || ''} onChange={handleChange} required disabled={isSubmitting} />
-                    </div>
-                    <div>
-                        <label htmlFor="update_status">Status</label>
-                        <select id="update_status" name="status" value={formData.status || ''} onChange={handleChange} required disabled={isSubmitting}>
-                            {appointmentStatuses.map(statusValue => (
-                                <option key={statusValue} value={statusValue}>
-                                    {statusValue.charAt(0).toUpperCase() + statusValue.slice(1)}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    {error && <p style={{ color: 'red' }}>{error}</p>}
-                    <div className="modal-actions">
-                        <button type="button" className="modal-button-cancel" onClick={onClose} disabled={isSubmitting}>Cancel</button>
-                        <button type="submit" className="modal-button-confirm" disabled={isSubmitting}>
-                            {isSubmitting ? "Saving..." : "Save Changes"}
-                        </button>
-                    </div>
-                </form>
-            )}
+        <Modal isOpen={isOpen} onClose={onClose} isCentered size="lg">
+            <ModalOverlay bg="blackAlpha.400" backdropFilter="blur(4px)" />
+            <ModalContent borderRadius="xl" mx={4}>
+                <ModalHeader
+                    borderBottomWidth="1px" borderColor="gray.100"
+                    fontSize="lg" fontWeight="700" color="gray.900" letterSpacing="-0.025em"
+                >
+                    Update Appointment #{appointment?.id}
+                </ModalHeader>
+                <ModalCloseButton borderRadius="full" _hover={{ bg: 'gray.100' }} />
+                {appointment && (
+                    <form onSubmit={handleSubmit}>
+                        <ModalBody py={6}>
+                            <VStack spacing={4} align="stretch">
+                                {error && (
+                                    <Alert status="error" borderRadius="lg" fontSize="sm">
+                                        <AlertIcon /> {error}
+                                    </Alert>
+                                )}
+                                <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4}>
+                                    <GridItem>
+                                        <FormControl>
+                                            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Client Name</FormLabel>
+                                            <Input
+                                                name="client_name" value={formData.client_name || ''}
+                                                onChange={handleChange}
+                                                borderRadius="lg" bg="gray.50"
+                                                _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                                isDisabled={isSubmitting}
+                                            />
+                                        </FormControl>
+                                    </GridItem>
+                                    <GridItem>
+                                        <FormControl>
+                                            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Client Email</FormLabel>
+                                            <Input
+                                                name="client_email" type="email"
+                                                value={formData.client_email || ''}
+                                                onChange={handleChange}
+                                                borderRadius="lg" bg="gray.50"
+                                                _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                                isDisabled={isSubmitting}
+                                            />
+                                        </FormControl>
+                                    </GridItem>
+                                </Grid>
+                                <FormControl isRequired>
+                                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Appointment Time</FormLabel>
+                                    <Input
+                                        name="appointment_time" type="datetime-local"
+                                        value={formData.appointment_time || ''}
+                                        onChange={handleChange}
+                                        borderRadius="lg" bg="gray.50"
+                                        _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                        isDisabled={isSubmitting}
+                                    />
+                                </FormControl>
+                                <FormControl isRequired>
+                                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Status</FormLabel>
+                                    <Select
+                                        name="status" value={formData.status || ''}
+                                        onChange={handleChange}
+                                        borderRadius="lg" bg="gray.50"
+                                        _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                        isDisabled={isSubmitting}
+                                    >
+                                        {appointmentStatuses.map(statusValue => (
+                                            <option key={statusValue} value={statusValue}>
+                                                {statusValue.charAt(0).toUpperCase() + statusValue.slice(1).replace('_', ' ')}
+                                            </option>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </VStack>
+                        </ModalBody>
+                        <ModalFooter borderTopWidth="1px" borderColor="gray.100" gap={3}>
+                            <Button variant="outline" onClick={onClose} isDisabled={isSubmitting} borderRadius="lg" fontWeight="600">
+                                Cancel
+                            </Button>
+                            <Button type="submit" colorScheme="brand" isLoading={isSubmitting} loadingText="Saving..." borderRadius="lg" fontWeight="600">
+                                Save Changes
+                            </Button>
+                        </ModalFooter>
+                    </form>
+                )}
+            </ModalContent>
         </Modal>
     );
 };

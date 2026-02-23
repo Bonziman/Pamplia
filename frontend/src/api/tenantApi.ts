@@ -2,6 +2,7 @@
 // --- NEW FILE or Add to existing ---
 
 import axiosInstance from './axiosInstance'; // Use your configured axios instance
+import { buildApiUrl } from './apiBase';
 import { TenantOut, TenantUpdate } from '../types/tenants';
 
 
@@ -12,8 +13,7 @@ import { TenantOut, TenantUpdate } from '../types/tenants';
  */
 export const fetchTenantMe = async (): Promise<TenantOut> => {
     try {
-        const currentHostname = window.location.hostname; 
-        const apiUrl = `http://${currentHostname}:8000/tenants/me`
+        const apiUrl = buildApiUrl("/tenants/me");
         console.log('API: Fetching ${apiUrl}');
         const response = await axiosInstance.get<TenantOut>(apiUrl);
         return response.data;
@@ -39,8 +39,7 @@ export const updateTenantMe = async (payload: TenantUpdate): Promise<TenantOut> 
      }
 
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/tenants/me`
+        const apiUrl = buildApiUrl("/tenants/me");
         console.log(`API: Patching ${apiUrl} with payload:`, payload);
         const response = await axiosInstance.patch<TenantOut>(apiUrl, payload);
         return response.data;
@@ -57,13 +56,24 @@ export const updateTenantMe = async (payload: TenantUpdate): Promise<TenantOut> 
  */
 export const fetchTenantById = async (tenantId: number): Promise<TenantOut> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/tenants/${tenantId}`
+        const apiUrl = buildApiUrl(`/tenants/${tenantId}`);
         console.log(`API: Fetching ${apiUrl}`);
         const response = await axiosInstance.get<TenantOut>(apiUrl);
         return response.data;
     } catch (error) {
         console.error(`Error fetching tenant ${tenantId} details:`, error);
+        throw error;
+    }
+};
+
+// --- Super Admin: List all tenants ---
+export const fetchTenants = async (): Promise<TenantOut[]> => {
+    try {
+        const apiUrl = buildApiUrl("/tenants/");
+        const response = await axiosInstance.get<TenantOut[]>(apiUrl);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching tenants:", error);
         throw error;
     }
 };
@@ -78,13 +88,47 @@ export const updateTenantById = async (tenantId: number, payload: TenantUpdate):
          throw new Error("No changes detected to save.");
      }
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/tenants/${tenantId}`
+        const apiUrl = buildApiUrl(`/tenants/${tenantId}`);
         console.log(`API: Patching ${apiUrl} with payload:`, payload);
         const response = await axiosInstance.patch<TenantOut>(apiUrl, payload);
         return response.data;
     } catch (error) {
         console.error(`Error updating tenant ${tenantId} details:`, error);
+        throw error;
+    }
+};
+
+export const createTenant = async (payload: { name: string; subdomain: string }): Promise<TenantOut> => {
+    try {
+        const apiUrl = buildApiUrl("/tenants/");
+        const response = await axiosInstance.post<TenantOut>(apiUrl, payload);
+        return response.data;
+    } catch (error) {
+        console.error("Error creating tenant:", error);
+        throw error;
+    }
+};
+
+export type TenantStats = {
+    tenant_id: number;
+    revenue_total: number;
+    revenue_last_30_days: number;
+    appointments_total: number;
+    clients_total: number;
+    services_total: number;
+    users_total: number;
+    admins_total: number;
+    staff_total: number;
+    last_appointment_at: string | null;
+};
+
+export const fetchTenantStats = async (tenantId: number): Promise<TenantStats> => {
+    try {
+        const apiUrl = buildApiUrl(`/tenants/${tenantId}/stats`);
+        const response = await axiosInstance.get<TenantStats>(apiUrl);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching tenant stats:", error);
         throw error;
     }
 };

@@ -1,32 +1,35 @@
 // src/pages/views/TemplatesView.tsx
-// --- MODIFIED ---
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faEdit, faTrashAlt, faToggleOn, faToggleOff, faSpinner, faExclamationTriangle, faCopy, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
-import { Tooltip } from 'react-tooltip';
-import axios from 'axios'; // Import axios for error checking helper
+import React, { useState, useCallback } from 'react';
+import { Plus, Pencil, Trash2, MoreVertical, Copy, Info, Mail } from 'lucide-react';
+import axios from 'axios';
+import { useQueryClient } from '@tanstack/react-query';
 
 import {
-    fetchTemplates, createTemplate, updateTemplate, deleteTemplate // Import API functions
+    createTemplate, updateTemplate, deleteTemplate
 } from '../../api/templateApi';
 import {
     TemplateOut, TEMPLATE_TRIGGER_LABELS, EMAIL_PLACEHOLDERS,
-    TemplateCreatePayload, TemplateUpdatePayload // Import Types
-} from '../../types/Template'; // Adjust path
+    TemplateCreatePayload, TemplateUpdatePayload
+} from '../../types/Template';
+import { useTemplates, queryKeys } from '../../hooks/useQueryHooks';
 
-// --- Import Actual Modals ---
-import DeleteTemplateModal from '../../components/modals/DeleteTemplateModal'; // Adjust path
-import CreateUpdateTemplateModal from '../../components/modals/CreateUpdateTemplateModal'; // Ensure this file exists or adjust the path
+import DeleteTemplateModal from '../../components/modals/DeleteTemplateModal';
+import CreateUpdateTemplateModal from '../../components/modals/CreateUpdateTemplateModal';
 
-// Import shared styles
-import '../../components/TableStyles.css';
-import '../Dashboard.css';
-import './TemplatesView.css';
+import { TableSkeleton, EmptyState } from '../../components/ui';
+import {
+    Box, Flex, Heading, Text, Icon,
+    Table, Thead, Tbody, Tr, Th, Td, TableContainer,
+    Badge, Switch, Menu, MenuButton, MenuList, MenuItem, IconButton,
+    Alert, AlertIcon, AlertDescription, CloseButton,
+    Tooltip, Wrap, WrapItem, Tag, TagLabel,
+    useToast,
+} from '@chakra-ui/react';
+import { Button } from '@chakra-ui/react';
 
-// --- Utility function to extract error message (can be moved to a utils file) ---
 const getErrorMessage = (err: any, defaultMessage: string): string => {
-    console.error("API Error:", err); // Log the raw error
+    console.error("API Error:", err);
     let errorMessage = defaultMessage;
     if (axios.isAxiosError(err) && err.response?.data?.detail) {
         const detail = err.response.data.detail;
@@ -39,33 +42,15 @@ const getErrorMessage = (err: any, defaultMessage: string): string => {
 
 
 const TemplatesView: React.FC = () => {
-    const [templates, setTemplates] = useState<TemplateOut[]>([]);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null); // Page-level error
+    const queryClient = useQueryClient();
+    const toast = useToast();
+    const { data: templates = [], isLoading, error: queryError } = useTemplates();
+    const [error, setError] = useState<string | null>(queryError ? 'Failed to load templates.' : null);
 
     // Modal State
     const [isCreateUpdateModalOpen, setIsCreateUpdateModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedTemplate, setSelectedTemplate] = useState<TemplateOut | null>(null);
-
-    // --- Load Templates ---
-    const loadTemplates = useCallback(async () => {
-        setIsLoading(true);
-        setError(null); // Clear page error on load
-        try {
-            const data = await fetchTemplates();
-            setTemplates(data);
-        } catch (err: any) {
-            setError(getErrorMessage(err, "Failed to load templates."));
-            setTemplates([]);
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        loadTemplates();
-    }, [loadTemplates]);
 
     // --- Handlers for Modals ---
     const handleOpenCreateModal = () => {
@@ -94,168 +79,302 @@ const TemplatesView: React.FC = () => {
         templateId: number | null,
         data: TemplateCreatePayload | TemplateUpdatePayload
     ) => {
-        setError(null); // Clear page error before save attempt
-        console.log("Saving template...", { templateId, data });
+        setError(null);
         try {
-            if (templateId) { // Editing existing template
+            if (templateId) {
                 await updateTemplate(templateId, data as TemplateUpdatePayload);
-            } else { // Creating new template
+            } else {
                 await createTemplate(data as TemplateCreatePayload);
             }
             handleCloseModals();
-            loadTemplates(); // Refresh list on success
+            queryClient.invalidateQueries({ queryKey: queryKeys.templates });
         } catch (err: any) {
-            console.error("Failed to save template:", err);
-            // Re-throw error so modal can display it
             throw err;
         }
-    }, [loadTemplates]); // Depend on loadTemplates
+    }, [queryClient]);
 
     // --- Handler for Deleting ---
     const handleDeleteTemplate = useCallback(async (templateId: number) => {
          setError(null);
-         console.log("Deleting template...", templateId);
          try {
              await deleteTemplate(templateId);
              handleCloseModals();
-             loadTemplates(); // Refresh list on success
+             queryClient.invalidateQueries({ queryKey: queryKeys.templates });
          } catch (err: any) {
-             console.error("Failed to delete template:", err);
-             // Re-throw error so modal can display it
              throw err;
          }
-    }, [loadTemplates]); // Depend on loadTemplates
+    }, [queryClient]);
 
-    // --- Toggle Active Status ---
+    // --- Toggle Active Status (optimistic) ---
      const handleToggleActive = useCallback(async (template: TemplateOut) => {
          setError(null);
          const newStatus = !template.is_active;
-         const originalTemplates = [...templates]; // Store original state for revert
-         console.log(`Toggling active status for ${template.id} to ${newStatus}`);
 
          // Optimistic UI update
-         setTemplates(prev => prev.map(t => t.id === template.id ? { ...t, is_active: newStatus } : t));
+         queryClient.setQueryData<TemplateOut[]>(queryKeys.templates, (old) =>
+           old?.map(t => t.id === template.id ? { ...t, is_active: newStatus } : t) ?? []
+         );
 
          try {
              await updateTemplate(template.id, { is_active: newStatus });
-             // Optional: call loadTemplates() here for server confirmation,
-             // but optimistic update often feels faster. If loadTemplates() is called,
-             // remove the setTemplates line above.
-             // loadTemplates();
          } catch (err: any) {
-             console.error("Failed to toggle template status", err);
-             setError(getErrorMessage(err,"Failed to update template status."));
+             setError(getErrorMessage(err, "Failed to update template status."));
              // Revert optimistic update on error
-             setTemplates(originalTemplates);
+             queryClient.invalidateQueries({ queryKey: queryKeys.templates });
          }
-     }, [templates]); // Depend on templates for revert
+     }, [queryClient]);
 
 
     // --- Copy Placeholder ---
     const copyPlaceholder = (placeholder: string) => {
-         // NOTE: navigator.clipboard requires a secure context (HTTPS or localhost).
-         // This may not work reliably during development using http://*.localtest.me
-         // but is expected to work in production over HTTPS.
-         navigator.clipboard.writeText(placeholder).catch(err => console.error('Copy failed: ', err));
-         
+         navigator.clipboard.writeText(placeholder).then(() => {
+             toast({
+                 title: 'Copied!',
+                 description: `${placeholder} copied to clipboard`,
+                 status: 'success',
+                 duration: 1500,
+                 isClosable: true,
+                 position: 'bottom',
+             });
+         }).catch(err => console.error('Copy failed: ', err));
      };
 
     // --- Render ---
     return (
-        <div className="view-section templates-view">
-             {/* Page Header */}
-            <div className="view-header">
-                <h1>Email Templates</h1>
-                 <button className="button button-primary" onClick={handleOpenCreateModal}>
-                    <FontAwesomeIcon icon={faPlus} /> Add New Template
-                </button>
-            </div>
+        <Box>
+            {/* Page Header */}
+            <Flex
+                align={{ base: 'flex-start', sm: 'center' }}
+                justify="space-between"
+                direction={{ base: 'column', sm: 'row' }}
+                gap={3}
+                mb={6}
+            >
+                <Box>
+                    <Heading as="h1" size="lg" color="gray.900" fontWeight="700" letterSpacing="-0.02em">
+                        Email Templates
+                    </Heading>
+                    <Text color="gray.500" fontSize="sm" mt={1} mb={0}>
+                        Manage automated email communications
+                    </Text>
+                </Box>
+                <Button
+                    colorScheme="brand"
+                    onClick={handleOpenCreateModal}
+                    leftIcon={<Icon as={Plus} boxSize="4" />}
+                    size="md"
+                >
+                    Add Template
+                </Button>
+            </Flex>
 
-            {/* Page-level Error Display */}
-            {error && <div className="error-message alert alert-danger">{error}</div>}
+            {/* Page-level Error */}
+            {error && (
+                <Alert status="error" borderRadius="xl" mb={5} variant="subtle">
+                    <AlertIcon />
+                    <AlertDescription flex="1" fontSize="sm">{error}</AlertDescription>
+                    <CloseButton size="sm" onClick={() => setError(null)} />
+                </Alert>
+            )}
+
+            {/* Placeholders Info Section */}
+            <Box
+                bg="blue.50"
+                border="1px solid"
+                borderColor="blue.100"
+                borderRadius="xl"
+                p={4}
+                mb={6}
+            >
+                <Flex align="center" gap={2} mb={3}>
+                    <Icon as={Info} boxSize="4" color="blue.500" />
+                    <Text fontSize="sm" fontWeight="600" color="blue.700" mb={0}>
+                        Available Placeholders
+                    </Text>
+                    <Text fontSize="xs" color="blue.500" mb={0}>
+                        — Click to copy
+                    </Text>
+                </Flex>
+                <Wrap spacing={2}>
+                    {EMAIL_PLACEHOLDERS.map(p => (
+                        <WrapItem key={p.placeholder}>
+                            <Tooltip label={p.description} hasArrow placement="top" fontSize="xs">
+                                <Tag
+                                    size="sm"
+                                    variant="subtle"
+                                    colorScheme="blue"
+                                    cursor="pointer"
+                                    borderRadius="lg"
+                                    px={2.5}
+                                    _hover={{ bg: 'blue.100', transform: 'translateY(-1px)' }}
+                                    transition="all 0.15s ease"
+                                    onClick={() => copyPlaceholder(p.placeholder)}
+                                >
+                                    <TagLabel fontSize="xs" fontFamily="mono">
+                                        {p.placeholder}
+                                    </TagLabel>
+                                    <Icon as={Copy} boxSize="3" ml={1.5} />
+                                </Tag>
+                            </Tooltip>
+                        </WrapItem>
+                    ))}
+                </Wrap>
+            </Box>
 
 
-             {/* Placeholders Info Section */}
-            <div className="placeholders-info-section">
-                 {/* ... Placeholder rendering ... */}
-                <h3 data-tooltip-id="placeholder-tooltip">
-                    Available Placeholders <FontAwesomeIcon icon={faInfoCircle} />
-                </h3>
-                <Tooltip id="placeholder-tooltip" place="top">
-                    Click placeholder to copy. Use these in Subject and Body fields. They will be replaced with actual data when the email is sent.
-                </Tooltip>
-                <div className="placeholders-list">
-                     {EMAIL_PLACEHOLDERS.map(p => (
-                         <span key={p.placeholder} className="placeholder-tag" onClick={() => copyPlaceholder(p.placeholder)} title={`Click to copy: ${p.description}`}>
-                            {p.placeholder} <FontAwesomeIcon icon={faCopy} size="xs"/>
-                         </span>
-                     ))}
-                </div>
-            </div>
-
-
-            {/* Templates Table / List */}
+            {/* Templates Table */}
             {isLoading ? (
-                <div className="loading-message">Loading templates... <FontAwesomeIcon icon={faSpinner} spin /></div>
+                <TableSkeleton rows={4} columns={5} />
+            ) : templates.length === 0 ? (
+                <Box bg="white" borderRadius="xl" border="1px solid" borderColor="gray.200">
+                    <EmptyState
+                        icon={Mail}
+                        title="No templates yet"
+                        description="Create email templates to automate your communications."
+                        actionLabel="Add Template"
+                        onAction={handleOpenCreateModal}
+                        colorScheme="blue"
+                    />
+                </Box>
             ) : (
-                <div className="table-container">
-                    <table className="data-table templates-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Trigger Event</th>
-                                <th>Subject</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {templates.length > 0 ? templates.map(template => (
-                                <tr key={template.id} className={!template.is_active ? 'inactive-row' : ''}>
-                                    <td>{template.name}</td>
-                                    <td>{TEMPLATE_TRIGGER_LABELS[template.event_trigger] || template.event_trigger}</td>
-                                    <td>{template.email_subject || <span className="text-muted">- None -</span>}</td>
-                                    <td>
-                                        {/* Toggle Button */}
-                                        <button
-                                            className={`button-icon toggle-button ${template.is_active ? 'active' : 'inactive'}`}
-                                            onClick={() => handleToggleActive(template)}
-                                            title={template.is_active ? 'Deactivate Template' : 'Activate Template'}
-                                            // disabled={template.is_default_template} // Example: Prevent disabling defaults
+                <TableContainer
+                    bg="white"
+                    borderRadius="xl"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    transition="all 0.2s ease"
+                    _hover={{ shadow: 'sm' }}
+                >
+                    <Table variant="simple" size="md">
+                        <Thead>
+                            <Tr>
+                                <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>
+                                    Template
+                                </Th>
+                                <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>
+                                    Trigger
+                                </Th>
+                                <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>
+                                    Subject
+                                </Th>
+                                <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5} textAlign="center">
+                                    Active
+                                </Th>
+                                <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5} w="60px">
+                                </Th>
+                            </Tr>
+                        </Thead>
+                        <Tbody>
+                            {templates.map(template => (
+                                <Tr
+                                    key={template.id}
+                                    transition="background 0.15s ease"
+                                    _hover={{ bg: 'gray.50' }}
+                                    opacity={template.is_active ? 1 : 0.6}
+                                >
+                                    <Td borderColor="gray.100" py={4}>
+                                        <Flex align="center" gap={3}>
+                                            <Flex
+                                                align="center"
+                                                justify="center"
+                                                w="36px"
+                                                h="36px"
+                                                borderRadius="lg"
+                                                bg={template.is_active ? 'brand.50' : 'gray.100'}
+                                                flexShrink={0}
+                                            >
+                                                <Icon
+                                                    as={Mail}
+                                                    boxSize="4"
+                                                    color={template.is_active ? 'brand.500' : 'gray.400'}
+                                                    strokeWidth={1.5}
+                                                />
+                                            </Flex>
+                                            <Text fontWeight="600" color="gray.900" fontSize="sm" mb={0}>
+                                                {template.name}
+                                            </Text>
+                                        </Flex>
+                                    </Td>
+                                    <Td borderColor="gray.100" py={4}>
+                                        <Badge
+                                            variant="subtle"
+                                            colorScheme="purple"
+                                            borderRadius="full"
+                                            px={2.5}
+                                            py={0.5}
+                                            fontSize="xs"
+                                            fontWeight="500"
                                         >
-                                            <FontAwesomeIcon icon={template.is_active ? faToggleOn : faToggleOff} />
-                                            {/* Optional Text: {template.is_active ? ' Active' : ' Inactive'} */}
-                                        </button>
-                                    </td>
-                                    <td>
-                                        {/* Action Buttons */}
-                                        <div className="action-buttons">
-                                            <button className="button button-secondary button-small" onClick={() => handleOpenEditModal(template)}>
-                                                <FontAwesomeIcon icon={faEdit} /> Edit
-                                            </button>
-                                             {/* Prevent deleting defaults if needed */}
-                                             {/* {!template.is_default_template && ( */}
-                                                 <button className="button button-danger button-small" onClick={() => handleOpenDeleteModal(template)}>
-                                                     <FontAwesomeIcon icon={faTrashAlt} /> Delete
-                                                 </button>
-                                             {/* )} */}
-                                        </div>
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan={5} className="no-data-message">
-                                        No templates created yet. Click "Add New Template" to start.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                            {TEMPLATE_TRIGGER_LABELS[template.event_trigger] || template.event_trigger}
+                                        </Badge>
+                                    </Td>
+                                    <Td borderColor="gray.100" py={4}>
+                                        <Text fontSize="sm" color={template.email_subject ? 'gray.700' : 'gray.400'} mb={0} noOfLines={1} maxW="250px">
+                                            {template.email_subject || '— None —'}
+                                        </Text>
+                                    </Td>
+                                    <Td borderColor="gray.100" py={4} textAlign="center">
+                                        <Switch
+                                            size="md"
+                                            colorScheme="brand"
+                                            isChecked={template.is_active}
+                                            onChange={() => handleToggleActive(template)}
+                                            aria-label={template.is_active ? 'Deactivate template' : 'Activate template'}
+                                        />
+                                    </Td>
+                                    <Td borderColor="gray.100" py={4}>
+                                        <Menu placement="bottom-end" isLazy>
+                                            <MenuButton
+                                                as={IconButton}
+                                                aria-label="Actions"
+                                                icon={<MoreVertical size={16} />}
+                                                variant="ghost"
+                                                size="sm"
+                                                color="gray.400"
+                                                _hover={{ color: 'gray.600', bg: 'gray.100' }}
+                                            />
+                                            <MenuList
+                                                minW="150px"
+                                                py={1.5}
+                                                borderRadius="xl"
+                                                border="1px solid"
+                                                borderColor="gray.200"
+                                                shadow="lg"
+                                            >
+                                                <MenuItem
+                                                    icon={<Pencil size={15} />}
+                                                    fontSize="sm"
+                                                    borderRadius="md"
+                                                    mx={1.5}
+                                                    px={3}
+                                                    _hover={{ bg: 'gray.50' }}
+                                                    onClick={() => handleOpenEditModal(template)}
+                                                >
+                                                    Edit
+                                                </MenuItem>
+                                                <MenuItem
+                                                    icon={<Trash2 size={15} />}
+                                                    fontSize="sm"
+                                                    color="red.500"
+                                                    borderRadius="md"
+                                                    mx={1.5}
+                                                    px={3}
+                                                    _hover={{ bg: 'red.50' }}
+                                                    onClick={() => handleOpenDeleteModal(template)}
+                                                >
+                                                    Delete
+                                                </MenuItem>
+                                            </MenuList>
+                                        </Menu>
+                                    </Td>
+                                </Tr>
+                            ))}
+                        </Tbody>
+                    </Table>
+                </TableContainer>
             )}
             
             {/* Modals */}
-             
              <CreateUpdateTemplateModal
                 isOpen={isCreateUpdateModalOpen}
                 onClose={handleCloseModals}
@@ -269,7 +388,7 @@ const TemplatesView: React.FC = () => {
                  template={selectedTemplate}
                  onConfirmDelete={handleDeleteTemplate} 
             />
-        </div>
+        </Box>
     );
 };
 

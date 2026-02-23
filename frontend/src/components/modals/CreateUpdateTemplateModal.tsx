@@ -1,66 +1,55 @@
 // src/components/modals/CreateUpdateTemplateModal.tsx
-// --- NEW FILE ---
-
-import React, { useState, useEffect, useCallback } from 'react';
-import Modal from './Modal'; // Adjust path
+import React, { useState, useEffect } from 'react';
+import {
+    Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
+    ModalCloseButton, Button, VStack, FormControl, FormLabel, Input, Select,
+    Textarea, Alert, AlertIcon, HStack, Switch, Text, Tooltip, Tag, Wrap, WrapItem,
+    FormHelperText, Box, useToast,
+} from '@chakra-ui/react';
 import {
     TemplateOut, TemplateCreatePayload, TemplateUpdatePayload,
     TemplateEventTrigger, TemplateType, TEMPLATE_TRIGGER_LABELS, EMAIL_PLACEHOLDERS
-} from '../../types/Template'; // Adjust path
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSave, faTimes, faSpinner, faCopy, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
-import { Tooltip } from 'react-tooltip'; // Assuming usage
-import '../SwitchToggle.css'; // Import toggle styles if needed
-//import '../../FormStyles.css';  Adjusted path for common form styles
+} from '../../types/Template';
+import { Copy, Info } from 'lucide-react';
 
 interface CreateUpdateTemplateModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (templateId: number | null, data: TemplateCreatePayload | TemplateUpdatePayload) => Promise<void>; // Parent handles API call
-    template?: TemplateOut | null; // If present, we are editing
-    
+    onSave: (templateId: number | null, data: TemplateCreatePayload | TemplateUpdatePayload) => Promise<void>;
+    template?: TemplateOut | null;
 }
 
-// Default state for creating
 const defaultFormData: TemplateCreatePayload = {
     name: '',
     type: TemplateType.EMAIL,
-    event_trigger: TemplateEventTrigger.APPOINTMENT_BOOKED_CLIENT, // Sensible default
+    event_trigger: TemplateEventTrigger.APPOINTMENT_BOOKED_CLIENT,
     email_subject: '',
     email_body: '',
     is_active: true,
 };
 
 const CreateUpdateTemplateModal: React.FC<CreateUpdateTemplateModalProps> = ({
-    isOpen,
-    onClose,
-    onSave,
-    template,
+    isOpen, onClose, onSave, template,
 }) => {
     const isEditing = !!template;
     const [formData, setFormData] = useState<TemplateCreatePayload | TemplateUpdatePayload>(defaultFormData);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const toast = useToast();
 
-    // Populate form when template prop changes (for editing) or modal opens
     useEffect(() => {
         if (isOpen) {
             if (isEditing && template) {
-                // Populate with existing data for editing
                 setFormData({
                     name: template.name,
-                    // Don't allow changing type/trigger when editing usually
-                    // type: template.type,
-                    // event_trigger: template.event_trigger,
                     email_subject: template.email_subject || '',
                     email_body: template.email_body,
                     is_active: template.is_active,
                 });
             } else {
-                // Reset to defaults for creating
                 setFormData(defaultFormData);
             }
-            setError(null); // Clear errors when opening
+            setError(null);
             setIsSaving(false);
         }
     }, [isOpen, isEditing, template]);
@@ -68,178 +57,175 @@ const CreateUpdateTemplateModal: React.FC<CreateUpdateTemplateModalProps> = ({
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
         const isCheckbox = type === 'checkbox';
-
         setFormData(prev => ({
             ...prev,
             [name]: isCheckbox ? (e.target as HTMLInputElement).checked : value,
         }));
-        setError(null); // Clear error on input
+        setError(null);
     };
 
-     const copyPlaceholder = (placeholder: string) => {
-         navigator.clipboard.writeText(placeholder).catch(err => console.error('Copy failed: ', err));
-     };
+    const copyPlaceholder = (placeholder: string) => {
+        navigator.clipboard.writeText(placeholder).then(() => {
+            toast({ title: 'Copied!', description: placeholder, status: 'success', duration: 1500, isClosable: true, position: 'top' });
+        }).catch(err => console.error('Copy failed: ', err));
+    };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsSaving(true);
         setError(null);
-
         try {
             const payload = { ...formData };
-             // Clean up fields not needed for update if necessary (backend might ignore them anyway)
-             if(isEditing) {
-                 delete (payload as Partial<TemplateCreatePayload>).type;
-                 delete (payload as Partial<TemplateCreatePayload>).event_trigger;
-             }
-
+            if (isEditing) {
+                delete (payload as Partial<TemplateCreatePayload>).type;
+                delete (payload as Partial<TemplateCreatePayload>).event_trigger;
+            }
             await onSave(template?.id ?? null, payload);
-            // onClose(); // Let parent handle close on success via state update/refresh
         } catch (err: any) {
             const detail = err.response?.data?.detail || err.message || `Failed to ${isEditing ? 'update' : 'create'} template.`;
-             setError(typeof detail === 'string' ? detail : JSON.stringify(detail));
-            console.error("Save failed:", err);
+            setError(typeof detail === 'string' ? detail : JSON.stringify(detail));
         } finally {
             setIsSaving(false);
         }
     };
 
-    if (!isOpen) {
-        return null;
-    }
+    if (!isOpen) return null;
 
-    // Get trigger options for the dropdown (only needed for create)
     const triggerOptions = Object.entries(TEMPLATE_TRIGGER_LABELS) as [TemplateEventTrigger, string][];
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? "Edit Template" : "Create New Template"}>
-            <form onSubmit={handleSubmit} className="template-form">
+        <Modal isOpen={isOpen} onClose={onClose} isCentered size="xl" scrollBehavior="inside">
+            <ModalOverlay bg="blackAlpha.400" backdropFilter="blur(4px)" />
+            <ModalContent borderRadius="xl" mx={4}>
+                <ModalHeader
+                    borderBottomWidth="1px" borderColor="gray.100"
+                    fontSize="lg" fontWeight="700" color="gray.900" letterSpacing="-0.025em"
+                >
+                    {isEditing ? 'Edit Template' : 'Create New Template'}
+                </ModalHeader>
+                <ModalCloseButton borderRadius="full" _hover={{ bg: 'gray.100' }} />
+                <form onSubmit={handleSubmit}>
+                    <ModalBody py={6}>
+                        <VStack spacing={5} align="stretch">
+                            {error && (
+                                <Alert status="error" borderRadius="lg" fontSize="sm">
+                                    <AlertIcon /> {error}
+                                </Alert>
+                            )}
 
-                {/* Placeholders Info */}
-                <div className="placeholders-info-section modal-placeholders">
-                    <h4 data-tooltip-id="modal-placeholder-tooltip">
-                         Available Placeholders <FontAwesomeIcon icon={faInfoCircle} size="sm"/>
-                    </h4>
-                     <Tooltip id="modal-placeholder-tooltip" place="top">
-                        Click placeholder to copy. Use these in Subject and Body.
-                    </Tooltip>
-                     <div className="placeholders-list">
-                         {EMAIL_PLACEHOLDERS.map(p => (
-                             <span key={p.placeholder} className="placeholder-tag" onClick={() => copyPlaceholder(p.placeholder)} title={`Click to copy: ${p.description}`}>
-                                {p.placeholder} <FontAwesomeIcon icon={faCopy} size="xs"/>
-                             </span>
-                         ))}
-                    </div>
-                </div>
+                            {/* Placeholders */}
+                            <Box bg="gray.50" borderRadius="lg" p={4} borderWidth="1px" borderColor="gray.100">
+                                <HStack mb={2}>
+                                    <Text fontSize="sm" fontWeight="600" color="gray.700">
+                                        <Info size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                                        Available Placeholders
+                                    </Text>
+                                </HStack>
+                                <Wrap spacing={2}>
+                                    {EMAIL_PLACEHOLDERS.map(p => (
+                                        <WrapItem key={p.placeholder}>
+                                            <Tooltip label={`${p.description} — Click to copy`} fontSize="xs" hasArrow>
+                                                <Tag
+                                                    size="sm" variant="subtle" colorScheme="brand"
+                                                    cursor="pointer" onClick={() => copyPlaceholder(p.placeholder)}
+                                                    _hover={{ bg: 'brand.100' }}
+                                                    borderRadius="md" px={2} py={1}
+                                                >
+                                                    <HStack spacing={1}>
+                                                        <Text fontSize="xs" fontFamily="mono">{p.placeholder}</Text>
+                                                        <Copy size={10} />
+                                                    </HStack>
+                                                </Tag>
+                                            </Tooltip>
+                                        </WrapItem>
+                                    ))}
+                                </Wrap>
+                            </Box>
 
+                            <FormControl isRequired>
+                                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Template Name</FormLabel>
+                                <Input
+                                    name="name" value={formData.name || ''}
+                                    onChange={handleInputChange}
+                                    borderRadius="lg" bg="gray.50"
+                                    _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                    isDisabled={isSaving}
+                                />
+                                <FormHelperText fontSize="xs" color="gray.500">
+                                    A descriptive name (e.g., "Client Reminder Email").
+                                </FormHelperText>
+                            </FormControl>
 
-                {/* Form Fields */}
-                <div className="form-group">
-                    <label htmlFor="templateName">Template Name *</label>
-                    <input
-                        type="text" id="templateName" name="name"
-                        value={formData.name || ''}
-                        onChange={handleInputChange}
-                        className="form-input"
-                        required
-                        disabled={isSaving}
-                    />
-                     <small className="field-hint">A descriptive name (e.g., "Client Reminder Email").</small>
-                </div>
+                            <FormControl isRequired>
+                                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Trigger Event</FormLabel>
+                                <Select
+                                    name="event_trigger"
+                                    value={!isEditing ? (formData as TemplateCreatePayload).event_trigger : template?.event_trigger}
+                                    onChange={handleInputChange}
+                                    borderRadius="lg" bg="gray.50"
+                                    _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                    isDisabled={isSaving || isEditing}
+                                >
+                                    {triggerOptions.map(([key, label]) => (
+                                        <option key={key} value={key}>{label}</option>
+                                    ))}
+                                </Select>
+                                {isEditing && (
+                                    <FormHelperText fontSize="xs" color="gray.500">
+                                        Trigger event cannot be changed after creation.
+                                    </FormHelperText>
+                                )}
+                            </FormControl>
 
-                <div className="form-group">
-                    <label htmlFor="eventTrigger">Trigger Event *</label>
-                    <select
-                        id="eventTrigger" name="event_trigger"
-                        value={!isEditing ? (formData as TemplateCreatePayload).event_trigger : template?.event_trigger} // Show existing value if editing
-                        onChange={handleInputChange}
-                        className="form-select"
-                        required
-                        disabled={isSaving || isEditing} // Disable when editing - trigger shouldn't change
-                    >
-                        {triggerOptions.map(([key, label]) => (
-                            <option key={key} value={key}>{label}</option>
-                        ))}
-                    </select>
-                     {isEditing && <small className="field-hint">Trigger event cannot be changed after creation.</small>}
-                </div>
+                            <FormControl>
+                                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Email Subject</FormLabel>
+                                <Input
+                                    name="email_subject" value={formData.email_subject || ''}
+                                    onChange={handleInputChange}
+                                    placeholder="e.g., Your Appointment Reminder for {{appointment_date}}"
+                                    borderRadius="lg" bg="gray.50"
+                                    _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                    isDisabled={isSaving}
+                                />
+                            </FormControl>
 
-                <div className="form-group">
-                    <label htmlFor="emailSubject">Email Subject</label>
-                    <input
-                        type="text" id="emailSubject" name="email_subject"
-                        value={formData.email_subject || ''}
-                        onChange={handleInputChange}
-                        className="form-input"
-                        disabled={isSaving}
-                        placeholder="e.g., Your Appointment Reminder for {{appointment_date}}"
-                    />
-                </div>
+                            <FormControl isRequired>
+                                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Email Body</FormLabel>
+                                <Textarea
+                                    name="email_body" value={formData.email_body || ''}
+                                    onChange={handleInputChange} rows={10}
+                                    placeholder="Enter email content here. Use placeholders like {{client_name}}..."
+                                    borderRadius="lg" bg="gray.50"
+                                    _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                    isDisabled={isSaving} fontFamily="mono" fontSize="sm"
+                                />
+                            </FormControl>
 
-                <div className="form-group">
-                    <label htmlFor="emailBody">Email Body *</label>
-                    <textarea
-                        id="emailBody" name="email_body"
-                        value={formData.email_body || ''}
-                        onChange={handleInputChange}
-                        className="form-textarea"
-                        required
-                        disabled={isSaving}
-                        rows={10} // Provide ample space
-                        placeholder="Enter email content here. Use placeholders like {{client_name}}..."
-                    />
-                </div>
-
-                <div className="form-group toggle-group">
-                     <label className="switch-toggle">
-                         <input
-                            type="checkbox"
-                            name="is_active"
-                            checked={formData.is_active ?? true} // Default to true if undefined
-                            onChange={handleInputChange}
-                            disabled={isSaving}
-                        />
-                         <span className="slider round"></span>
-                     </label>
-                     <span className="toggle-label">Active</span>
-                      <small className="field-hint">Inactive templates will not be sent.</small>
-                </div>
-
-
-                {/* Error Display */}
-                {error && <p className="modal-form-error">{error}</p>}
-
-                {/* Actions */}
-                <div className="modal-actions">
-                    <button
-                        type="button"
-                        className="modal-button-cancel"
-                        onClick={onClose}
-                        disabled={isSaving}
-                    >
-                         <FontAwesomeIcon icon={faTimes} /> Cancel
-                    </button>
-                    <button
-                        type="submit"
-                        className="modal-button-confirm"
-                        disabled={isSaving}
-                    >
-                        {isSaving ? (
-                             <><FontAwesomeIcon icon={faSpinner} spin /> Saving...</>
-                        ) : (
-                             <><FontAwesomeIcon icon={faSave} /> {isEditing ? 'Save Changes' : 'Create Template'}</>
-                        )}
-                    </button>
-                </div>
-            </form>
-             {/* Optional: Add some specific modal form styles */}
-            <style>{`
-                 .template-form .modal-placeholders { margin-bottom: 1.5rem; padding: 0.8rem 1rem; font-size: 0.9em;}
-                 .template-form .modal-placeholders h4 { font-size: 1rem; margin-bottom: 0.5rem; }
-                 .template-form .form-textarea { font-family: inherit; }
-                 .toggle-group { display: flex; align-items: center; gap: 0.75rem; margin-top: 1.5rem;}
-                 .toggle-label { font-weight: 500; }
-            `}</style>
+                            <FormControl display="flex" alignItems="center" justifyContent="space-between" bg="gray.50" p={4} borderRadius="lg">
+                                <Box>
+                                    <Text fontSize="sm" fontWeight="600" color="gray.700">Active</Text>
+                                    <Text fontSize="xs" color="gray.500">Inactive templates will not be sent.</Text>
+                                </Box>
+                                <Switch
+                                    name="is_active"
+                                    isChecked={formData.is_active ?? true}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                                    colorScheme="brand" size="lg"
+                                    isDisabled={isSaving}
+                                />
+                            </FormControl>
+                        </VStack>
+                    </ModalBody>
+                    <ModalFooter borderTopWidth="1px" borderColor="gray.100" gap={3}>
+                        <Button variant="outline" onClick={onClose} isDisabled={isSaving} borderRadius="lg" fontWeight="600">
+                            Cancel
+                        </Button>
+                        <Button type="submit" colorScheme="brand" isLoading={isSaving} loadingText="Saving..." borderRadius="lg" fontWeight="600">
+                            {isEditing ? 'Save Changes' : 'Create Template'}
+                        </Button>
+                    </ModalFooter>
+                </form>
+            </ModalContent>
         </Modal>
     );
 };

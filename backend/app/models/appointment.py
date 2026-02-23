@@ -33,7 +33,7 @@ class Appointment(Base):
         PG_ENUM(
             AppointmentStatus,
             name='appointmentstatus',
-            create_type=False,
+            create_type=True, # Set to True to create the ENUM type
             values_callable=lambda obj: [e.value for e in obj]
         ),
         nullable=False,
@@ -56,4 +56,3 @@ class Appointment(Base):
 
     def __repr__(self):
         return f"<Appointment(id={self.id}, client_id={self.client_id}, tenant_id={self.tenant_id}, time='{self.appointment_time}', status='{self.status.value}')>"
-

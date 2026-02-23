@@ -3,8 +3,7 @@
 
 import React from 'react';
 import { BusinessHoursConfig, DayHours, TimeInterval } from '../../types/tenants'; // Adjust path
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faMoon } from '@fortawesome/free-solid-svg-icons';
+import { Moon } from 'lucide-react';
 import './BusinessHoursEditor.css'; // Create this CSS file
 import '../SwitchToggle.css'; // Assuming you have a common toggle style
 
@@ -20,6 +19,39 @@ const DAYS_OF_WEEK = [
 ] as const; // Use "as const" for stricter typing on keys
 
 type DayKey = typeof DAYS_OF_WEEK[number]['key'];
+
+const isFullTime = (value: string): boolean => /^\d{2}:\d{2}$/.test(value);
+
+const normalizeTime = (value: string): string | null => {
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+
+    if (/^\d{1,2}$/.test(trimmed)) {
+        const hour = Number(trimmed);
+        if (hour < 0 || hour > 23) return null;
+        return `${String(hour).padStart(2, '0')}:00`;
+    }
+
+    if (/^\d{3,4}$/.test(trimmed)) {
+        const padded = trimmed.padStart(4, '0');
+        const hour = Number(padded.slice(0, 2));
+        const minute = Number(padded.slice(2, 4));
+        if (hour > 23 || minute > 59) return null;
+        return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    }
+
+    if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
+        const [hourPart, minutePart] = trimmed.split(':');
+        const hour = Number(hourPart);
+        const minute = Number(minutePart);
+        if (hour > 23 || minute > 59) return null;
+        return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    }
+
+    return null;
+};
+
+const isPartialTime = (value: string): boolean => /^\d{0,2}(:\d{0,2})?$/.test(value);
 
 
 // --- Default Hours Structure ---
@@ -121,6 +153,12 @@ const BusinessHoursEditor: React.FC<BusinessHoursEditorProps> = ({
                 const dayConfig = currentConfig[key];
                 // For this UI, we only edit the first interval if it exists
                 const firstInterval = dayConfig.intervals?.[0] ?? { start: '', end: '' };
+                const hasBothTimes = Boolean(firstInterval.start && firstInterval.end);
+                const isInvalidRange =
+                    hasBothTimes &&
+                    isFullTime(firstInterval.start) &&
+                    isFullTime(firstInterval.end) &&
+                    firstInterval.end <= firstInterval.start;
 
                 return (
                     <div key={key} className={`day-row ${!dayConfig.isOpen ? 'day-closed' : ''} ${!isEditing ? 'read-only' : ''}`}>
@@ -142,26 +180,55 @@ const BusinessHoursEditor: React.FC<BusinessHoursEditorProps> = ({
                                 <>
                                     <span className="time-label">From</span>
                                     <input
-                                        type="time"
-                                        className="time-input"
+                                        type="text"
+                                        className={`time-input${isInvalidRange ? ' invalid' : ''}`}
                                         value={firstInterval.start}
-                                        onChange={(e) => handleTimeChange(key, 0, 'start', e.target.value)}
+                                        inputMode="numeric"
+                                        placeholder="09:00"
+                                        onChange={(e) => {
+                                            const nextValue = e.target.value;
+                                            if (isPartialTime(nextValue)) {
+                                                handleTimeChange(key, 0, 'start', nextValue);
+                                            }
+                                        }}
+                                        onBlur={(e) => {
+                                            const normalized = normalizeTime(e.target.value);
+                                            if (normalized !== null) {
+                                                handleTimeChange(key, 0, 'start', normalized);
+                                            }
+                                        }}
                                         disabled={!isEditing}
                                         required={dayConfig.isOpen} // Make required only if day is open
                                     />
                                     <span className="time-label">To</span>
                                     <input
-                                        type="time"
-                                        className="time-input"
+                                        type="text"
+                                        className={`time-input${isInvalidRange ? ' invalid' : ''}`}
                                         value={firstInterval.end}
-                                        onChange={(e) => handleTimeChange(key, 0, 'end', e.target.value)}
+                                        inputMode="numeric"
+                                        placeholder="17:00"
+                                        onChange={(e) => {
+                                            const nextValue = e.target.value;
+                                            if (isPartialTime(nextValue)) {
+                                                handleTimeChange(key, 0, 'end', nextValue);
+                                            }
+                                        }}
+                                        onBlur={(e) => {
+                                            const normalized = normalizeTime(e.target.value);
+                                            if (normalized !== null) {
+                                                handleTimeChange(key, 0, 'end', normalized);
+                                            }
+                                        }}
                                         disabled={!isEditing}
                                         required={dayConfig.isOpen} // Make required only if day is open
                                     />
+                                    {isInvalidRange && (
+                                        <span className="time-error">End time must be after start time.</span>
+                                    )}
                                 </>
                             ) : (
                                 <div className="closed-indicator">
-                                    <FontAwesomeIcon icon={faMoon} /> Closed
+                                    <Moon size={16} /> Closed
                                 </div>
                             )}
                         </div>

@@ -3,22 +3,20 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box, Heading, Tabs, TabList, TabPanels, Tab, TabPanel, Button as ChakraButton,
     Table, Thead, Tbody, Tr, Th, Td, TableContainer, IconButton, Tag as ChakraTag,
-    Flex, Spacer, useDisclosure, Spinner, Center, Text, HStack,
+    Flex, useDisclosure, Text, HStack, Center,
     Menu, MenuButton, MenuList, MenuItem,
-    Select, // Added Select for filter
+    Select,
 } from '@chakra-ui/react';
-import { AddIcon, EditIcon, EmailIcon, CloseIcon } from '@chakra-ui/icons'; // Removed unused icons
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUserSlash, faUserCheck, faEllipsisV } from '@fortawesome/free-solid-svg-icons';
+import { Plus, Pencil, Mail, X, UserX, UserCheck, MoreVertical } from 'lucide-react';
 
-import { useAuth, UserProfile } from '../../auth/authContext';
-import { fetchUsers, updateUser, FetchUsersParams } from '../../api/userApi'; // Import FetchUsersParams
-import { UserOut, UserStatusUpdatePayload, UserUpdatePayload } from '../../types/User';
-import { PaginatedResponse } from '../../types/Pagination';
+import { useAuth } from '../../auth/authContext';
+import { fetchUsers, FetchUsersParams } from '../../api/userApi';
+import { UserOut } from '../../types/User';
+
 import {
-    inviteStaff, listInvitations, resendStaffInvitation, cancelStaffInvitation, updateStaffStatus, ListInvitationsParams
+    listInvitations, resendStaffInvitation, cancelStaffInvitation, updateStaffStatus, ListInvitationsParams
 } from '../../api/staffApi';
-import { InvitationOut, InvitationCreatePayload, InvitationStatus } from '../../types/Invitation';
+import { InvitationOut, InvitationStatus } from '../../types/Invitation';
 
 import RightDrawerModal from '../../components/modals/RightDrawerModal';
 import ConfirmationModal from '../../components/modals/ConfirmationModal';
@@ -95,7 +93,7 @@ const StaffManagementView: React.FC = () => {
         } finally {
             setIsLoadingStaff(false);
         }
-    }, [canManageStaff, userProfile?.role]); // Removed userProfile from deps if tenant_id_filter not used yet for super_admin
+    }, [canManageStaff]); // canManageStaff already derives from userProfile.role
 
 
     const loadInvitations = useCallback(async (page: number, status?: InvitationStatus) => {
@@ -245,7 +243,7 @@ const StaffManagementView: React.FC = () => {
         return <Box p="6"><Text>You do not have permission to manage staff.</Text></Box>;
     }
 
-    // Helper for rendering pagination (can be extracted to a component later)
+    // Helper for rendering pagination
     const renderPagination = (
         currentPage: number,
         totalItems: number,
@@ -256,13 +254,29 @@ const StaffManagementView: React.FC = () => {
         if (totalPages <= 1) return null;
 
         return (
-            <Flex justifyContent="center" mt="6">
-                <HStack>
-                    <ChakraButton onClick={() => onPageChange(currentPage - 1)} isDisabled={currentPage === 1 || isLoading} size="sm">
+            <Flex justifyContent="space-between" alignItems="center" mt="5" px={1}>
+                <Text fontSize="xs" color="gray.500" mb={0}>
+                    Showing page {currentPage} of {totalPages}
+                </Text>
+                <HStack spacing={2}>
+                    <ChakraButton
+                        onClick={() => onPageChange(currentPage - 1)}
+                        isDisabled={currentPage === 1 || isLoading}
+                        size="sm"
+                        variant="outline"
+                        borderRadius="lg"
+                        fontSize="xs"
+                    >
                         Previous
                     </ChakraButton>
-                    <Text fontSize="sm" px="2">Page {currentPage} of {totalPages}</Text>
-                    <ChakraButton onClick={() => onPageChange(currentPage + 1)} isDisabled={currentPage === totalPages || isLoading} size="sm">
+                    <ChakraButton
+                        onClick={() => onPageChange(currentPage + 1)}
+                        isDisabled={currentPage === totalPages || isLoading}
+                        size="sm"
+                        variant="outline"
+                        borderRadius="lg"
+                        fontSize="xs"
+                    >
                         Next
                     </ChakraButton>
                 </HStack>
@@ -272,55 +286,129 @@ const StaffManagementView: React.FC = () => {
 
 
     return (
-        <div className="view-section">
-        <Box p={{ base: "2", md: "4" }} bg={'white'}> {/* Adjusted padding */}
-            <Flex mb="6" alignItems="center" flexWrap="wrap" gap="4" >
-                <Heading as="h1" size="lg" color="gray.700">Staff Management</Heading> {/* Changed size */}
-                <Spacer />
-                <ChakraButton colorScheme="brand" leftIcon={<AddIcon />} onClick={onOpenInviteDrawer} size="md">
+        <Box>
+            <Flex
+                align={{ base: 'flex-start', sm: 'center' }}
+                justify="space-between"
+                direction={{ base: 'column', sm: 'row' }}
+                gap={3}
+                mb={6}
+            >
+                <Box>
+                    <Heading as="h1" size="lg" color="gray.900" fontWeight="700" letterSpacing="-0.02em">
+                        Staff Management
+                    </Heading>
+                    <Text color="gray.500" fontSize="sm" mt={1} mb={0}>
+                        {staffTotal} member{staffTotal !== 1 ? 's' : ''} · {invitationsTotal} invitation{invitationsTotal !== 1 ? 's' : ''}
+                    </Text>
+                </Box>
+                <ChakraButton colorScheme="brand" leftIcon={<Plus size={16} />} onClick={onOpenInviteDrawer} size="md">
                     Invite Staff
                 </ChakraButton>
             </Flex>
 
-            <Tabs variant="soft-rounded" colorScheme="brand" isLazy> {/* Added isLazy for performance */}
-                <TabList mb="4">
-                    <Tab>Staff Members ({staffTotal})</Tab>
-                    <Tab>Invitations ({invitationsTotal})</Tab>
+            <Tabs variant="soft-rounded" colorScheme="brand" isLazy>
+                <TabList mb="5" gap={2}>
+                    <Tab fontSize="sm" fontWeight="500">Staff Members ({staffTotal})</Tab>
+                    <Tab fontSize="sm" fontWeight="500">Invitations ({invitationsTotal})</Tab>
                 </TabList>
                 <TabPanels>
                     <TabPanel p="0">
-                        {isLoadingStaff && <Center h="400px" py="10"><Spinner color="brand.500" size="xl" thickness='4px' speed='0.65s' emptyColor='gray.200'/></Center>}
-                        {staffError && <Text color="red.500" my="4">Error: {staffError}</Text>}
-                        {!isLoadingStaff && !staffError && (!staffMembers || staffMembers.length === 0) && <Text my="4">No staff members found.</Text>}
+                        {isLoadingStaff && (
+                            <Box bg="white" borderRadius="xl" border="1px solid" borderColor="gray.200" overflow="hidden">
+                                <HStack spacing={4} px={5} py={3.5} bg="gray.50" borderBottom="1px solid" borderColor="gray.200">
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                        <Box key={i} h="10px" flex={1} bg="gray.200" borderRadius="md" />
+                                    ))}
+                                </HStack>
+                                {Array.from({ length: 4 }).map((_, i) => (
+                                    <HStack key={i} spacing={4} px={5} py={4} borderBottom="1px solid" borderColor="gray.100">
+                                        <Box h="32px" w="32px" bg="gray.200" borderRadius="full" flexShrink={0} />
+                                        {Array.from({ length: 4 }).map((_, j) => (
+                                            <Box key={j} h="14px" flex={1} bg="gray.100" borderRadius="md" />
+                                        ))}
+                                    </HStack>
+                                ))}
+                            </Box>
+                        )}
+                        {staffError && <Text color="red.500" my="4" fontSize="sm">Error: {staffError}</Text>}
+                        {!isLoadingStaff && !staffError && (!staffMembers || staffMembers.length === 0) && (
+                            <Box bg="white" borderRadius="xl" border="1px solid" borderColor="gray.200">
+                                <Center py={12} flexDir="column" gap={3}>
+                                    <Flex align="center" justify="center" w="56px" h="56px" borderRadius="full" bg="brand.50">
+                                        <Flex align="center" justify="center" w="40px" h="40px" borderRadius="full" bg="brand.100">
+                                            <Plus size={20} color="var(--chakra-colors-brand-500)" />
+                                        </Flex>
+                                    </Flex>
+                                    <Text fontWeight="600" color="gray.800">No staff members yet</Text>
+                                    <Text fontSize="sm" color="gray.500">Invite team members to get started</Text>
+                                </Center>
+                            </Box>
+                        )}
                         {!isLoadingStaff && !staffError && staffMembers && staffMembers.length > 0 && (
                             <>
-                            <TableContainer borderWidth="1px" borderColor="gray.200" borderRadius="md">
-                                <Table variant="simple" size="sm">
-                                    <Thead bg="gray.50">
+                            <TableContainer
+                                bg="white"
+                                borderRadius="xl"
+                                border="1px solid"
+                                borderColor="gray.200"
+                                transition="all 0.2s ease"
+                                _hover={{ shadow: 'sm' }}
+                            >
+                                <Table variant="simple" size="md">
+                                    <Thead>
                                         <Tr>
-                                            <Th>Name</Th><Th>Email</Th><Th>Role</Th><Th>Status</Th><Th>Actions</Th>
+                                            <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>Name</Th>
+                                            <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>Email</Th>
+                                            <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>Role</Th>
+                                            <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>Status</Th>
+                                            <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5} w="60px"></Th>
                                         </Tr>
                                     </Thead>
                                     <Tbody>
                                         {staffMembers.map(staff => (
-                                            <Tr key={staff.id}>
-                                                <Td>{staff.name}</Td>
-                                                <Td>{staff.email}</Td>
-                                                <Td><ChakraTag size="sm" colorScheme={staff.role === 'admin' ? 'purple' : 'gray'}>{staff.role}</ChakraTag></Td>
-                                                <Td>
-                                                    <ChakraTag size="sm" variant="subtle" colorScheme={staff.is_active ? 'green' : 'red'}>
+                                            <Tr key={staff.id} transition="background 0.15s ease" _hover={{ bg: 'gray.50' }}>
+                                                <Td borderColor="gray.100" py={4}>
+                                                    <Flex align="center" gap={3}>
+                                                        <Flex
+                                                            align="center"
+                                                            justify="center"
+                                                            w="36px"
+                                                            h="36px"
+                                                            borderRadius="full"
+                                                            bg="brand.500"
+                                                            color="white"
+                                                            fontSize="xs"
+                                                            fontWeight="700"
+                                                            flexShrink={0}
+                                                        >
+                                                            {staff.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '??'}
+                                                        </Flex>
+                                                        <Text fontWeight="600" color="gray.900" fontSize="sm" mb={0}>{staff.name}</Text>
+                                                    </Flex>
+                                                </Td>
+                                                <Td borderColor="gray.100" py={4}>
+                                                    <Text fontSize="sm" color="gray.600" mb={0}>{staff.email}</Text>
+                                                </Td>
+                                                <Td borderColor="gray.100" py={4}>
+                                                    <ChakraTag size="sm" colorScheme={staff.role === 'admin' ? 'purple' : 'gray'} borderRadius="full" fontWeight="500" fontSize="xs">{staff.role}</ChakraTag>
+                                                </Td>
+                                                <Td borderColor="gray.100" py={4}>
+                                                    <ChakraTag size="sm" variant="subtle" colorScheme={staff.is_active ? 'green' : 'red'} borderRadius="full" fontWeight="500" fontSize="xs">
                                                         {staff.is_active ? 'Active' : 'Inactive'}
                                                     </ChakraTag>
                                                 </Td>
-                                                <Td>
+                                                <Td borderColor="gray.100" py={4}>
                                                     <Menu placement="bottom-end" isLazy>
-                                                        <MenuButton as={IconButton} aria-label="Actions" icon={<FontAwesomeIcon icon={faEllipsisV} />} variant="ghost" size="sm"/>
-                                                        <MenuList minW="150px">
-                                                            <MenuItem icon={<EditIcon fontSize="sm"/>} onClick={() => openEditStaffDrawer(staff)}>Edit Details</MenuItem>
+                                                        <MenuButton as={IconButton} aria-label="Actions" icon={<MoreVertical size={16} />} variant="ghost" size="sm" color="gray.400" _hover={{ color: 'gray.600', bg: 'gray.100' }}/>
+                                                        <MenuList minW="150px" py={1.5} borderRadius="xl" border="1px solid" borderColor="gray.200" shadow="lg">
+                                                            <MenuItem icon={<Pencil size={15} />} fontSize="sm" borderRadius="md" mx={1.5} px={3} _hover={{ bg: 'gray.50' }} onClick={() => openEditStaffDrawer(staff)}>Edit Details</MenuItem>
                                                             <MenuItem 
-                                                                icon={<FontAwesomeIcon icon={staff.is_active ? faUserSlash : faUserCheck} />} 
+                                                                icon={staff.is_active ? <UserX size={15} /> : <UserCheck size={15} />} 
                                                                 onClick={() => handleToggleStaffStatus(staff)}
                                                                 color={staff.is_active ? 'red.500' : 'green.500'}
+                                                                fontSize="sm" borderRadius="md" mx={1.5} px={3}
+                                                                _hover={{ bg: staff.is_active ? 'red.50' : 'green.50' }}
                                                             >
                                                                 {staff.is_active ? 'Deactivate' : 'Activate'}
                                                             </MenuItem>
@@ -338,18 +426,19 @@ const StaffManagementView: React.FC = () => {
                     </TabPanel>
 
                     <TabPanel p="0">
-                         <Flex mb="4" alignItems="center">
-                            <Text mr="3" fontSize="sm">Filter by status:</Text>
+                         <Flex mb="4" alignItems="center" gap={3}>
+                            <Text fontSize="sm" color="gray.500" mb={0}>Filter:</Text>
                             <Select 
                                 placeholder="All Statuses" 
                                 value={invitationStatusFilter || ""}
                                 onChange={(e) => {
                                     const value = e.target.value as InvitationStatus | "";
                                     setInvitationStatusFilter(value === "" ? undefined : value);
-                                    setInvitationsCurrentPage(1); // Reset to page 1 on filter change
-                                    // useEffect will pick up change in invitationStatusFilter and reload
+                                    setInvitationsCurrentPage(1);
                                 }}
-                                w="200px" size="sm" borderRadius="md"
+                                w="180px" size="sm" borderRadius="lg"
+                                bg="white" border="1px solid" borderColor="gray.200"
+                                _hover={{ borderColor: 'gray.300' }}
                             >
                                 <option value="pending">Pending</option>
                                 <option value="accepted">Accepted</option>
@@ -357,26 +446,62 @@ const StaffManagementView: React.FC = () => {
                                 <option value="cancelled">Cancelled</option>
                             </Select>
                         </Flex>
-                        {isLoadingInvitations && <Center py="10"><Spinner color="brand.500" size="lg" /></Center>}
-                        {invitationsError && <Text color="red.500" my="4">Error: {invitationsError}</Text>}
-                        {!isLoadingInvitations && !invitationsError && (!invitations || invitations.length === 0) && <Text my="4">No invitations found matching the criteria.</Text>}
+                        {isLoadingInvitations && (
+                            <Box bg="white" borderRadius="xl" border="1px solid" borderColor="gray.200" overflow="hidden">
+                                {Array.from({ length: 3 }).map((_, i) => (
+                                    <HStack key={i} spacing={4} px={5} py={4} borderBottom="1px solid" borderColor="gray.100">
+                                        {Array.from({ length: 6 }).map((_, j) => (
+                                            <Box key={j} h="14px" flex={1} bg="gray.100" borderRadius="md" />
+                                        ))}
+                                    </HStack>
+                                ))}
+                            </Box>
+                        )}
+                        {invitationsError && <Text color="red.500" my="4" fontSize="sm">Error: {invitationsError}</Text>}
+                        {!isLoadingInvitations && !invitationsError && (!invitations || invitations.length === 0) && (
+                            <Box bg="white" borderRadius="xl" border="1px solid" borderColor="gray.200">
+                                <Center py={10} flexDir="column" gap={2}>
+                                    <Text fontWeight="600" color="gray.800">No invitations found</Text>
+                                    <Text fontSize="sm" color="gray.500">No invitations match the current filter</Text>
+                                </Center>
+                            </Box>
+                        )}
                         {!isLoadingInvitations && !invitationsError && invitations && invitations.length > 0 && (
                              <>
-                             <TableContainer borderWidth="1px" borderColor="gray.200" borderRadius="md">
-                                <Table variant="simple" size="sm">
-                                    <Thead bg="gray.50">
+                             <TableContainer
+                                bg="white"
+                                borderRadius="xl"
+                                border="1px solid"
+                                borderColor="gray.200"
+                                transition="all 0.2s ease"
+                                _hover={{ shadow: 'sm' }}
+                             >
+                                <Table variant="simple" size="md">
+                                    <Thead>
                                         <Tr>
-                                            <Th>Email</Th><Th>Name</Th><Th>Role</Th><Th>Status</Th><Th>Sent</Th><Th>Expires</Th><Th>Actions</Th>
+                                            <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>Email</Th>
+                                            <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>Name</Th>
+                                            <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>Role</Th>
+                                            <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>Status</Th>
+                                            <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>Sent</Th>
+                                            <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>Expires</Th>
+                                            <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5} w="80px"></Th>
                                         </Tr>
                                     </Thead>
                                     <Tbody>
                                         {invitations.map(invite => (
-                                            <Tr key={invite.id}>
-                                                <Td>{invite.email}</Td>
-                                                <Td>{invite.first_name || '-'} {invite.last_name || ''}</Td>
-                                                <Td><ChakraTag size="sm" variant="outline">{invite.role_to_assign}</ChakraTag></Td>
-                                                <Td>
-                                                    <ChakraTag size="sm" variant="subtle" colorScheme={
+                                            <Tr key={invite.id} transition="background 0.15s ease" _hover={{ bg: 'gray.50' }}>
+                                                <Td borderColor="gray.100" py={4}>
+                                                    <Text fontSize="sm" color="gray.700" mb={0}>{invite.email}</Text>
+                                                </Td>
+                                                <Td borderColor="gray.100" py={4}>
+                                                    <Text fontSize="sm" color="gray.700" mb={0}>{invite.first_name || '—'} {invite.last_name || ''}</Text>
+                                                </Td>
+                                                <Td borderColor="gray.100" py={4}>
+                                                    <ChakraTag size="sm" variant="outline" borderRadius="full" fontWeight="500" fontSize="xs">{invite.role_to_assign}</ChakraTag>
+                                                </Td>
+                                                <Td borderColor="gray.100" py={4}>
+                                                    <ChakraTag size="sm" variant="subtle" borderRadius="full" fontWeight="500" fontSize="xs" colorScheme={
                                                         invite.status === 'pending' ? 'yellow' :
                                                         invite.status === 'accepted' ? 'green' :
                                                         invite.status === 'expired' ? 'orange' :
@@ -385,13 +510,17 @@ const StaffManagementView: React.FC = () => {
                                                         {invite.status}
                                                     </ChakraTag>
                                                 </Td>
-                                                <Td>{new Date(invite.created_at).toLocaleDateString()}</Td>
-                                                <Td>{invite.status === 'pending' ? new Date(invite.token_expiry).toLocaleDateString() : '-'}</Td>
-                                                <Td>
+                                                <Td borderColor="gray.100" py={4}>
+                                                    <Text fontSize="sm" color="gray.600" mb={0}>{new Date(invite.created_at).toLocaleDateString()}</Text>
+                                                </Td>
+                                                <Td borderColor="gray.100" py={4}>
+                                                    <Text fontSize="sm" color="gray.600" mb={0}>{invite.status === 'pending' ? new Date(invite.token_expiry).toLocaleDateString() : '—'}</Text>
+                                                </Td>
+                                                <Td borderColor="gray.100" py={4}>
                                                     {invite.status === 'pending' && (
                                                         <HStack spacing="1">
-                                                            <IconButton aria-label="Resend Invitation" icon={<EmailIcon />} size="xs" variant="ghost" colorScheme="blue" onClick={() => handleResendInvitation(invite.id)} title="Resend Invite"/>
-                                                            <IconButton aria-label="Cancel Invitation" icon={<CloseIcon />} size="xs" variant="ghost" colorScheme="red" onClick={() => handleCancelInvitation(invite.id)} title="Cancel Invite"/>
+                                                            <IconButton aria-label="Resend Invitation" icon={<Mail size={16} />} size="xs" variant="ghost" colorScheme="blue" onClick={() => handleResendInvitation(invite.id)} title="Resend Invite"/>
+                                                            <IconButton aria-label="Cancel Invitation" icon={<X size={16} />} size="xs" variant="ghost" colorScheme="red" onClick={() => handleCancelInvitation(invite.id)} title="Cancel Invite"/>
                                                         </HStack>
                                                     )}
                                                 </Td>
@@ -429,7 +558,6 @@ const StaffManagementView: React.FC = () => {
                 />
             )}
         </Box>
-        </div>
     );
 };
 

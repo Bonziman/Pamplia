@@ -2,6 +2,7 @@
 // --- NEW FILE or Add to existing admin API ---
 
 import axios from './axiosInstance'; // Assuming you have a configured axios instance that includes auth token
+import { buildApiUrl } from './apiBase';
 
 // --- Type Definitions ---
 
@@ -45,9 +46,7 @@ export interface ServiceUpdatePayload {
 
 export const fetchManagedServices = async (): Promise<FetchedService[]> => {
     try {
-        const currentHostname = window.location.hostname; 
-        const apiUrl = `http://${currentHostname}:8000/services`;
-        console.log("Fetching managed services from: /services");
+        const apiUrl = buildApiUrl("/services/");
         const response = await axios.get<FetchedService[]>(apiUrl);
         return response.data;
     } catch (error) {
@@ -63,10 +62,7 @@ export const fetchManagedServices = async (): Promise<FetchedService[]> => {
  */
 export const createService = async (payload: ServiceCreatePayload): Promise<FetchedService> => {
   try {
-    const currentHostname = window.location.hostname; 
-        const apiUrl = `http://${currentHostname}:8000/services`;
-     console.log("Creating service (tenant from subdomain):", payload);
-     // Ensure payload object sent to backend doesn't have tenant_id
+     const apiUrl = buildApiUrl("/services/");
      const response = await axios.post<FetchedService>(apiUrl, payload);
      return response.data;
   } catch(error) {
@@ -81,9 +77,7 @@ export const createService = async (payload: ServiceCreatePayload): Promise<Fetc
  */
 export const updateService = async (serviceId: number, payload: ServiceUpdatePayload): Promise<FetchedService> => {
      try {
-        const currentHostname = window.location.hostname; 
-        const apiUrl = `http://${currentHostname}:8000/services/${serviceId}`;
-        console.log(`Updating service ${serviceId}:`, payload);
+        const apiUrl = buildApiUrl(`/services/${serviceId}`);
         const response = await axios.patch<FetchedService>(apiUrl, payload);
         return response.data;
      } catch(error) {
@@ -98,10 +92,7 @@ export const updateService = async (serviceId: number, payload: ServiceUpdatePay
  */
 export const deleteService = async (serviceId: number): Promise<void> => {
      try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/services/${serviceId}`;
-        console.log(`Deleting service ${serviceId}`);
-        // Expects 204 No Content, so no response data processing needed
+        const apiUrl = buildApiUrl(`/services/${serviceId}`);
         await axios.delete(apiUrl);
      } catch(error) {
         console.error(`Error deleting service ${serviceId}:`, error);

@@ -1,23 +1,26 @@
 // src/components/ClientsTable.tsx
-// --- FULL REPLACEMENT - REFACTORED FOR SERVER-SIDE DATA & FILTERS ---
+// --- Enhanced with Chakra UI for consistent design ---
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-    faEllipsisV, faPencilAlt, faTrashAlt, faSort, faSortUp, faSortDown,
-    faTimes, faSpinner, faSearch, faFilter, faUndo
-} from '@fortawesome/free-solid-svg-icons';
-// Assuming react-select for a good multi-select experience. If not using, a simpler multi-select can be built.
-// npm install react-select
-// npm install @types/react-select
-import Select, { MultiValue } from 'react-select'; // For tag filtering
+    MoreVertical, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown,
+    X, Loader2, Search, Filter, RotateCcw, Users
+} from 'lucide-react';
+import Select, { MultiValue } from 'react-select';
+import {
+    Box, Flex, Text, Table, Thead, Tbody, Tr, Th, Td,
+    Avatar, Badge, Tag as ChakraTag, TagLabel,
+    Menu, MenuButton, MenuList, MenuItem as ChakraMenuItem, MenuDivider,
+    IconButton, Button, Input, InputGroup, InputLeftElement,
+    Alert, AlertIcon, AlertDescription,
+    HStack, Icon, Tooltip,
+    Select as ChakraSelect,
+} from '@chakra-ui/react';
+import { TableSkeleton, EmptyState } from './ui';
 
-import { FetchedClient, ClientTag, fetchClients, FetchClientsParams, PaginatedResponse } from '../api/clientApi'; // Ensure PaginatedResponse is exported
-import { FetchedTag, fetchTags as fetchAvailableTenantTagsApi } from '../api/tagApi'; // Renamed import for clarity
-
-import './TableStyles.css';
-import './ClientsTable.css';
+import { FetchedClient, ClientTag, fetchClients, FetchClientsParams, PaginatedResponse } from '../api/clientApi';
+import { FetchedTag, fetchTags as fetchAvailableTenantTagsApi } from '../api/tagApi';
 
 // --- Helper: Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -34,52 +37,74 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 
-// --- Action Menu Component (Keep as is from your version) ---
+// --- Action Menu Component (Chakra UI) ---
 interface ActionMenuProps {
-    client: FetchedClient; // Pass full client for context if needed
+    client: FetchedClient;
     canDelete: boolean;
     onEdit: (client: FetchedClient) => void;
     onDelete: (client: FetchedClient) => void;
 }
 const ActionMenu: React.FC<ActionMenuProps> = ({ client, canDelete, onEdit, onDelete }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
-
-    const handleToggle = (e: React.MouseEvent) => { e.stopPropagation(); setIsOpen(!isOpen); };
-    // Pass the full client object to onEdit/onDelete
-    const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(client); setIsOpen(false); };
-    const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(client); setIsOpen(false); };
-
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                const toggleButton = menuRef.current?.closest('.action-menu-container')?.querySelector('.action-menu-toggle');
-                if (!toggleButton || !toggleButton.contains(event.target as Node)) {
-                    setIsOpen(false);
-                }
-            }
-        };
-        if (isOpen) document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isOpen]);
-
+    if (client.is_deleted) {
+        return (
+            <Text fontSize="xs" color="gray.400" fontStyle="italic">Deleted</Text>
+        );
+    }
     return (
-        <div className="action-menu-container" ref={menuRef}>
-            <button onClick={handleToggle} className="action-menu-toggle" aria-label="Actions" disabled={client.is_deleted}>
-                <FontAwesomeIcon icon={faEllipsisV} />
-            </button>
-            {isOpen && (
-                <div className="action-menu-dropdown">
-                    {!client.is_deleted ? (
-                        <>
-                            <button onClick={handleEdit}><FontAwesomeIcon icon={faPencilAlt} fixedWidth /> Edit</button>
-                            {canDelete && (<button onClick={handleDelete} className="action-delete"><FontAwesomeIcon icon={faTrashAlt} fixedWidth /> Delete</button>)}
-                        </>
-                    ) : (<span className="action-deleted">Deleted</span>)}
-                </div>
-            )}
-        </div>
+        <Menu placement="bottom-end" gutter={4}>
+            <MenuButton
+                as={IconButton}
+                icon={<MoreVertical size={16} />}
+                variant="ghost"
+                size="sm"
+                aria-label="Actions"
+                color="gray.400"
+                _hover={{ color: 'gray.600', bg: 'gray.100' }}
+                borderRadius="lg"
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            />
+            <MenuList
+                minW="160px"
+                py="1.5"
+                borderRadius="xl"
+                border="1px solid"
+                borderColor="gray.200"
+                shadow="lg"
+            >
+                <ChakraMenuItem
+                    fontSize="sm"
+                    icon={<Pencil size={14} />}
+                    onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        onEdit(client);
+                    }}
+                    borderRadius="md"
+                    mx="1.5"
+                    _hover={{ bg: 'gray.50' }}
+                >
+                    Edit
+                </ChakraMenuItem>
+                {canDelete && (
+                    <>
+                        <MenuDivider my="1" />
+                        <ChakraMenuItem
+                            fontSize="sm"
+                            icon={<Trash2 size={14} />}
+                            color="red.500"
+                            onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                onDelete(client);
+                            }}
+                            borderRadius="md"
+                            mx="1.5"
+                            _hover={{ bg: 'red.50' }}
+                        >
+                            Delete
+                        </ChakraMenuItem>
+                    </>
+                )}
+            </MenuList>
+        </Menu>
     );
 };
 
@@ -96,9 +121,8 @@ interface PaginationProps {
 const PaginationControls: React.FC<PaginationProps> = ({
     currentPage, totalPages, onPageChange, itemsPerPage, totalItems, onItemsPerPageChange
 }) => {
-    if (totalItems === 0 && totalPages <=1) return <div className="pagination-controls no-results">No clients found.</div>;
+    if (totalItems === 0 && totalPages <=1) return null;
     if (totalPages <= 1 && totalItems <= itemsPerPage) return null;
-
 
     const pageNumbers = [];
     const maxPagesToShow = 5;
@@ -117,52 +141,87 @@ const PaginationControls: React.FC<PaginationProps> = ({
     const itemEnd = Math.min(currentPage * itemsPerPage, totalItems);
 
     return (
-        <div className="pagination-controls">
-            <div className="pagination-info">
-                Showing {itemStart}-{itemEnd} of {totalItems} clients
-            </div>
-            <div className="pagination-buttons">
-                <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>
-                    {'<'} Previous
-                </button>
+        <Flex
+            align="center"
+            justify="space-between"
+            px="6"
+            py="3"
+            borderTop="1px solid"
+            borderColor="gray.100"
+            flexWrap="wrap"
+            gap="3"
+        >
+            <Text fontSize="sm" color="gray.500">
+                Showing <Text as="span" fontWeight="600" color="gray.700">{itemStart}–{itemEnd}</Text> of{' '}
+                <Text as="span" fontWeight="600" color="gray.700">{totalItems}</Text> clients
+            </Text>
+            <HStack spacing="1">
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    colorScheme="gray"
+                    onClick={() => onPageChange(currentPage - 1)}
+                    isDisabled={currentPage === 1}
+                    borderRadius="lg"
+                    fontSize="xs"
+                >
+                    Previous
+                </Button>
                 {startPage > 1 && (
                     <>
-                        <button onClick={() => onPageChange(1)}>1</button>
-                        {startPage > 2 && <span className="pagination-ellipsis">...</span>}
+                        <Button size="sm" variant="ghost" onClick={() => onPageChange(1)} borderRadius="lg" fontSize="xs" minW="8">1</Button>
+                        {startPage > 2 && <Text fontSize="xs" color="gray.400" px="1">...</Text>}
                     </>
                 )}
                 {pageNumbers.map(number => (
-                    <button
+                    <Button
                         key={number}
+                        size="sm"
+                        variant={currentPage === number ? 'solid' : 'ghost'}
+                        colorScheme={currentPage === number ? 'brand' : 'gray'}
                         onClick={() => onPageChange(number)}
-                        className={currentPage === number ? 'active' : ''}
+                        borderRadius="lg"
+                        fontSize="xs"
+                        minW="8"
                     >
                         {number}
-                    </button>
+                    </Button>
                 ))}
                 {endPage < totalPages && (
                     <>
-                        {endPage < totalPages - 1 && <span className="pagination-ellipsis">...</span>}
-                        <button onClick={() => onPageChange(totalPages)}>{totalPages}</button>
+                        {endPage < totalPages - 1 && <Text fontSize="xs" color="gray.400" px="1">...</Text>}
+                        <Button size="sm" variant="ghost" onClick={() => onPageChange(totalPages)} borderRadius="lg" fontSize="xs" minW="8">{totalPages}</Button>
                     </>
                 )}
-                <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>
-                    Next {'>'}
-                </button>
-            </div>
-            <div className="items-per-page-selector">
-                <label htmlFor="itemsPerPage">Items per page:</label>
-                <select
-                    id="itemsPerPage"
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    colorScheme="gray"
+                    onClick={() => onPageChange(currentPage + 1)}
+                    isDisabled={currentPage === totalPages}
+                    borderRadius="lg"
+                    fontSize="xs"
+                >
+                    Next
+                </Button>
+            </HStack>
+            <HStack spacing="2">
+                <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">Per page:</Text>
+                <ChakraSelect
+                    size="sm"
                     value={itemsPerPage}
                     onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+                    borderRadius="lg"
+                    w="70px"
+                    borderColor="gray.200"
+                    _hover={{ borderColor: 'gray.300' }}
                 >
                     {[10, 25, 50, 100].map(size => (
                         <option key={size} value={size}>{size}</option>
                     ))}
-                </select>
-            </div>
-        </div>
+                </ChakraSelect>
+            </HStack>
+        </Flex>
     );
 };
 
@@ -217,7 +276,7 @@ const InlineTagEditor: React.FC<InlineTagEditorProps> = ({ client, availableTags
                     <span key={tag.id} className="tag assigned-tag" style={{ backgroundColor: tag.color_hex || '#CCCCCC' }}>
                         {tag.tag_name}
                         <button onClick={() => handleRemove(tag.id)} className="remove-tag-btn" disabled={removingTagId === tag.id} aria-label={`Remove tag ${tag.tag_name}`}>
-                            {removingTagId === tag.id ? <FontAwesomeIcon icon={faSpinner} spin size="xs"/> : <FontAwesomeIcon icon={faTimes} size="xs" />}
+                            {removingTagId === tag.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
                         </button>
                     </span>
                 )) : <span className="no-tags-assigned">No tags assigned.</span>}
@@ -229,7 +288,7 @@ const InlineTagEditor: React.FC<InlineTagEditorProps> = ({ client, availableTags
                         <li key={tag.id}>
                             <button onClick={() => handleAssign(tag.id)} disabled={assigningTagId === tag.id} className="assign-tag-btn">
                                 <span className="tag" style={{ backgroundColor: tag.color_hex || '#CCCCCC' }}>{tag.tag_name}</span>
-                                {assigningTagId === tag.id && <FontAwesomeIcon icon={faSpinner} spin size="xs"/>}
+                                {assigningTagId === tag.id && <Loader2 size={12} className="animate-spin" />}
                             </button>
                         </li>
                     )) : (searchTerm && filteredAvailableTags.length === 0 && <li><i>No matching tags to assign</i></li>)}
@@ -386,9 +445,12 @@ const ClientsTable: React.FC<ClientsTableProps> = ({
         setCurrentPage(1); // Reset to first page on sort
     };
 
-    const getSortIcon = (column: SortableClientColumns) => (
-        sortColumn === column ? (sortDirection === 'asc' ? faSortUp : faSortDown) : faSort
-    );
+    const getSortIcon = (column: SortableClientColumns) => {
+        if (sortColumn === column) {
+            return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
+        }
+        return <ArrowUpDown size={14} />;
+    };
 
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSearchTerm(event.target.value);
@@ -460,112 +522,315 @@ const ClientsTable: React.FC<ClientsTableProps> = ({
 
     // --- Render ---
     return (
-        <div className="view-section clients-view">
-            <div className="view-header">
-                <h2>Client Management</h2>
-                <div className="view-controls">
-                     {/* "Show Deleted" is controlled by parent via onToggleShowDeleted prop */}
-                    <label className="checkbox-label">
-                        <input type="checkbox" checked={showDeletedClients} onChange={onToggleShowDeleted} /> Show Deleted
-                    </label>
-                    <button onClick={onAddClient} className="button button-primary">Add New Client</button>
-                </div>
-            </div>
+        <Box>
+            {/* Page Header */}
+            <Flex align="center" justify="space-between" mb="6" flexWrap="wrap" gap="3">
+                <Box>
+                    <Text fontSize="lg" fontWeight="700" color="gray.900" mb="0">
+                        Client Management
+                    </Text>
+                    <Text fontSize="sm" color="gray.500" mb="0">
+                        {totalItems > 0 ? `${totalItems} client${totalItems !== 1 ? 's' : ''} total` : 'Manage your clients'}
+                    </Text>
+                </Box>
+                <HStack spacing="3">
+                    <Flex
+                        as="label"
+                        align="center"
+                        gap="2"
+                        px="3"
+                        py="1.5"
+                        bg="gray.50"
+                        borderRadius="lg"
+                        cursor="pointer"
+                        fontSize="sm"
+                        color="gray.600"
+                        _hover={{ bg: 'gray.100' }}
+                        transition="background 0.15s"
+                    >
+                        <input type="checkbox" checked={showDeletedClients} onChange={onToggleShowDeleted} style={{ accentColor: '#0D9488' }} />
+                        Show Deleted
+                    </Flex>
+                    <Button
+                        colorScheme="brand"
+                        size="sm"
+                        borderRadius="lg"
+                        onClick={onAddClient}
+                        fontWeight="600"
+                    >
+                        Add New Client
+                    </Button>
+                </HStack>
+            </Flex>
 
             {/* --- Filter Controls --- */}
-            <div className="filters-bar client-filters">
-                <div className="filter-group search-filter">
-                    <FontAwesomeIcon icon={faSearch} className="filter-icon" />
-                    <input
-                        type="text"
+            <Flex
+                gap="3"
+                mb="5"
+                flexWrap="wrap"
+                align="center"
+            >
+                <InputGroup maxW="320px" size="sm">
+                    <InputLeftElement pointerEvents="none">
+                        <Search size={14} color="var(--chakra-colors-gray-400)" />
+                    </InputLeftElement>
+                    <Input
                         placeholder="Search by name, email, phone..."
                         value={searchTerm}
                         onChange={handleSearchChange}
-                        className="form-input search-input"
+                        borderRadius="lg"
+                        borderColor="gray.200"
+                        _hover={{ borderColor: 'gray.300' }}
+                        _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
+                        bg="white"
                     />
-                </div>
-                <div className="filter-group tag-filter">
-                    <FontAwesomeIcon icon={faFilter} className="filter-icon" />
-                    <Select<TagOption, true> // `true` for isMulti
+                </InputGroup>
+                <Box minW="260px" flex="1" maxW="400px">
+                    <Select<TagOption, true>
                         isMulti
                         options={tagOptionsForFilter}
                         value={selectedFilterTags}
                         onChange={handleTagFilterChange}
                         placeholder="Filter by tags..."
-                        className="tag-multiselect"
-                        classNamePrefix="react-select"
-                        styles={{ // Optional: basic styling for react-select
-                            control: (base) => ({ ...base, minWidth: '250px' }),
-                            menu: (base) => ({ ...base, zIndex: 5 }), // Ensure dropdown is on top
+                        styles={{
+                            control: (base) => ({
+                                ...base,
+                                minHeight: '32px',
+                                borderRadius: '8px',
+                                borderColor: '#E2E8F0',
+                                fontSize: '14px',
+                                '&:hover': { borderColor: '#CBD5E0' },
+                            }),
+                            menu: (base) => ({ ...base, zIndex: 10, borderRadius: '12px' }),
+                            multiValue: (base) => ({ ...base, borderRadius: '6px', backgroundColor: '#F0FDFA' }),
+                            multiValueLabel: (base) => ({ ...base, color: '#0D9488', fontSize: '12px' }),
+                            multiValueRemove: (base) => ({ ...base, color: '#0D9488', ':hover': { backgroundColor: '#CCFBF1', color: '#0F766E' } }),
                         }}
                     />
-                </div>
-                <button onClick={handleClearFilters} className="button button-secondary clear-filters-btn">
-                    <FontAwesomeIcon icon={faUndo} /> Clear Filters
-                </button>
-            </div>
+                </Box>
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    colorScheme="gray"
+                    onClick={handleClearFilters}
+                    borderRadius="lg"
+                    leftIcon={<RotateCcw size={14} />}
+                    fontWeight="500"
+                >
+                    Clear
+                </Button>
+            </Flex>
 
-            {isLoading && !clients.length ? ( <div className="loading-message">Loading clients...</div> ) : null}
-            {error && ( <div className="error-message">Error: {error} <button onClick={loadClients}>Retry</button></div> )}
+            {/* Loading state */}
+            {isLoading && !clients.length && <TableSkeleton />}
+
+            {/* Error state */}
+            {error && (
+                <Alert status="error" borderRadius="xl" mb="4">
+                    <AlertIcon />
+                    <AlertDescription fontSize="sm" flex="1">{error}</AlertDescription>
+                    <Button size="xs" variant="ghost" onClick={loadClients} ml="2">Retry</Button>
+                </Alert>
+            )}
             
+            {/* Empty states */}
             {!isLoading && !error && clients.length === 0 && (debouncedSearchTerm || selectedFilterTags.length > 0) && (
-                 <div className="no-results-message">No clients match your current filters.</div>
+                <EmptyState
+                    icon={Search}
+                    title="No matching clients"
+                    description="Try adjusting your search or filter criteria."
+                    actionLabel="Clear Filters"
+                    onAction={handleClearFilters}
+                    compact
+                />
             )}
-             {!isLoading && !error && clients.length === 0 && !debouncedSearchTerm && selectedFilterTags.length === 0 && (
-                 <div className="no-results-message">No clients found. <button onClick={onAddClient} className="button-link">Add your first client.</button></div>
+            {!isLoading && !error && clients.length === 0 && !debouncedSearchTerm && selectedFilterTags.length === 0 && (
+                <EmptyState
+                    icon={Users}
+                    title="No clients yet"
+                    description="Add your first client to start managing appointments."
+                    actionLabel="Add New Client"
+                    onAction={onAddClient}
+                />
             )}
 
-
+            {/* Main Table */}
             {clients.length > 0 && (
-                <>
-                    <div className="table-container">
-                        <table className="data-table clients-table">
-                            <thead>
-                                <tr>
-                                    {userProfile.role === 'super_admin' && <th onClick={() => handleSort('id')}>ID <FontAwesomeIcon icon={getSortIcon('id')} /></th>}
-                                    <th onClick={() => handleSort('name')}>Name <FontAwesomeIcon icon={getSortIcon('name')} /></th>
-                                    <th onClick={() => handleSort('email')}>Email <FontAwesomeIcon icon={getSortIcon('email')} /></th>
-                                    <th>Phone</th>
-                                    <th onClick={() => handleSort('is_confirmed')}>Confirmed <FontAwesomeIcon icon={getSortIcon('is_confirmed')} /></th>
-                                    {showDeletedClients && <th>Deleted</th>}
-                                    {/* Removed Tenant ID column as it's usually implicit or for super_admin only if ALL tenants are shown */}
-                                    {/* {userProfile.role === 'super_admin' && <th>Tenant ID</th>}  */}
-                                    <th>Tags</th>
-                                    <th onClick={() => handleSort('created_at')}>Created <FontAwesomeIcon icon={getSortIcon('created_at')} /></th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                <Box
+                    bg="white"
+                    borderRadius="xl"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    overflow="hidden"
+                >
+                    <Box overflowX="auto">
+                        <Table variant="simple" size="sm">
+                            <Thead>
+                                <Tr>
+                                    {userProfile.role === 'super_admin' && (
+                                        <Th
+                                            bg="gray.50"
+                                            fontSize="xs"
+                                            fontWeight="600"
+                                            textTransform="uppercase"
+                                            letterSpacing="0.05em"
+                                            color="gray.500"
+                                            borderBottomColor="gray.200"
+                                            cursor="pointer"
+                                            _hover={{ color: 'gray.700' }}
+                                            onClick={() => handleSort('id')}
+                                            whiteSpace="nowrap"
+                                        >
+                                            <HStack spacing="1"><Text>ID</Text>{getSortIcon('id')}</HStack>
+                                        </Th>
+                                    )}
+                                    <Th bg="gray.50" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" color="gray.500" borderBottomColor="gray.200" cursor="pointer" _hover={{ color: 'gray.700' }} onClick={() => handleSort('last_name')} whiteSpace="nowrap">
+                                        <HStack spacing="1"><Text>Name</Text>{getSortIcon('last_name')}</HStack>
+                                    </Th>
+                                    <Th bg="gray.50" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" color="gray.500" borderBottomColor="gray.200" cursor="pointer" _hover={{ color: 'gray.700' }} onClick={() => handleSort('email')} whiteSpace="nowrap">
+                                        <HStack spacing="1"><Text>Email</Text>{getSortIcon('email')}</HStack>
+                                    </Th>
+                                    <Th bg="gray.50" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" color="gray.500" borderBottomColor="gray.200">Phone</Th>
+                                    <Th bg="gray.50" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" color="gray.500" borderBottomColor="gray.200" cursor="pointer" _hover={{ color: 'gray.700' }} onClick={() => handleSort('is_confirmed')} whiteSpace="nowrap">
+                                        <HStack spacing="1"><Text>Status</Text>{getSortIcon('is_confirmed')}</HStack>
+                                    </Th>
+                                    {showDeletedClients && (
+                                        <Th bg="gray.50" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" color="gray.500" borderBottomColor="gray.200">Archived</Th>
+                                    )}
+                                    <Th bg="gray.50" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" color="gray.500" borderBottomColor="gray.200">Tags</Th>
+                                    <Th bg="gray.50" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" color="gray.500" borderBottomColor="gray.200" cursor="pointer" _hover={{ color: 'gray.700' }} onClick={() => handleSort('created_at')} whiteSpace="nowrap">
+                                        <HStack spacing="1"><Text>Created</Text>{getSortIcon('created_at')}</HStack>
+                                    </Th>
+                                    <Th bg="gray.50" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" color="gray.500" borderBottomColor="gray.200" w="60px"></Th>
+                                </Tr>
+                            </Thead>
+                            <Tbody>
                                 {clients.map((client: FetchedClient) => {
-                                    const clientName = `${client.first_name || ''} ${client.last_name || ''}`.trim() || '(No Name)';
+                                    const firstName = client.first_name || '';
+                                    const lastName = client.last_name || '';
+                                    const clientName = `${firstName} ${lastName}`.trim() || '(No Name)';
+                                    const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?';
                                     return (
-                                        <tr key={client.id} className={client.is_deleted ? 'deleted-row' : ''}>
-                                            {userProfile.role === 'super_admin' && <td>{client.id}</td>}
-                                            <td>
-                                                {client.is_deleted ? ( clientName ) : (
-                                                    <Link to={`/dashboard/clients/${client.id}`} className="client-name-link">
-                                                        {clientName}
-                                                    </Link>
-                                                )}
-                                            </td>
-                                            <td>{client.email || '-'}</td>
-                                            <td>{client.phone_number || '-'}</td>
-                                            <td><span className={`status-badge ${client.is_confirmed ? 'status-confirmed' : 'status-unconfirmed'}`}>{client.is_confirmed ? 'Yes' : 'No'}</span></td>
-                                            {showDeletedClients && <td><span className={`status-badge ${client.is_deleted ? 'status-deleted-active' : 'status-active'}`}>{client.is_deleted ? 'Yes' : 'No'}</span></td>}
-                                            {/* {userProfile.role === 'super_admin' && <td>{client.tenant_id}</td>} */}
-                                            <td className="tags-column-cell" style={{ position: 'relative' }}>
-                                                <div
-                                                    className={`tag-cell ${canAssignTags && !client.is_deleted ? 'editable' : ''}`}
-                                                    onClick={canAssignTags && !client.is_deleted ? (e) => { e.stopPropagation(); handleToggleTagEditor(editingTagsForClientId === client.id ? null : client.id); } : undefined}
-                                                    title={canAssignTags && !client.is_deleted ? "Click to edit tags" : ""}
+                                        <Tr
+                                            key={client.id}
+                                            opacity={client.is_deleted ? 0.5 : 1}
+                                            _hover={{ bg: 'gray.50' }}
+                                            transition="background 0.1s ease"
+                                        >
+                                            {userProfile.role === 'super_admin' && (
+                                                <Td borderBottomColor="gray.100" py="3">
+                                                    <Text fontSize="xs" color="gray.400" fontFamily="mono">#{client.id}</Text>
+                                                </Td>
+                                            )}
+                                            <Td borderBottomColor="gray.100" py="3">
+                                                <HStack spacing="3">
+                                                    <Avatar
+                                                        size="sm"
+                                                        name={clientName}
+                                                        bg="brand.50"
+                                                        color="brand.600"
+                                                        fontSize="xs"
+                                                        fontWeight="600"
+                                                    />
+                                                    <Box>
+                                                        {client.is_deleted ? (
+                                                            <Text fontSize="sm" fontWeight="500" color="gray.500">{clientName}</Text>
+                                                        ) : (
+                                                            <Text
+                                                                as={Link}
+                                                                to={`/dashboard/clients/${client.id}`}
+                                                                fontSize="sm"
+                                                                fontWeight="500"
+                                                                color="gray.800"
+                                                                _hover={{ color: 'brand.500', textDecoration: 'none' }}
+                                                                transition="color 0.15s"
+                                                            >
+                                                                {clientName}
+                                                            </Text>
+                                                        )}
+                                                    </Box>
+                                                </HStack>
+                                            </Td>
+                                            <Td borderBottomColor="gray.100" py="3">
+                                                <Text fontSize="sm" color="gray.600">{client.email || '—'}</Text>
+                                            </Td>
+                                            <Td borderBottomColor="gray.100" py="3">
+                                                <Text fontSize="sm" color="gray.600">{client.phone_number || '—'}</Text>
+                                            </Td>
+                                            <Td borderBottomColor="gray.100" py="3">
+                                                <Badge
+                                                    colorScheme={client.is_confirmed ? 'green' : 'yellow'}
+                                                    variant="subtle"
+                                                    borderRadius="full"
+                                                    px="2.5"
+                                                    py="0.5"
+                                                    fontSize="xs"
+                                                    fontWeight="500"
                                                 >
-                                                    {client.tags?.length > 0 ? client.tags.slice(0, 3).map((tag: ClientTag) => ( // Show max 3 tags initially
-                                                        <span key={tag.id} className="tag" style={{ backgroundColor: tag.color_hex || '#CCCCCC', color: '#fff' }}>
-                                                            {tag.tag_name}
-                                                        </span>
-                                                    )) : <span className="no-tags-assigned">-</span>}
-                                                    {client.tags?.length > 3 && <span className="tag-more">+{client.tags.length - 3} more</span>}
-                                                </div>
+                                                    {client.is_confirmed ? 'Confirmed' : 'Unconfirmed'}
+                                                </Badge>
+                                            </Td>
+                                            {showDeletedClients && (
+                                                <Td borderBottomColor="gray.100" py="3">
+                                                    <Badge
+                                                        colorScheme={client.is_deleted ? 'red' : 'gray'}
+                                                        variant="subtle"
+                                                        borderRadius="full"
+                                                        px="2.5"
+                                                        py="0.5"
+                                                        fontSize="xs"
+                                                    >
+                                                        {client.is_deleted ? 'Yes' : 'No'}
+                                                    </Badge>
+                                                </Td>
+                                            )}
+                                            <Td borderBottomColor="gray.100" py="3" position="relative">
+                                                <Flex
+                                                    gap="1"
+                                                    flexWrap="wrap"
+                                                    align="center"
+                                                    cursor={canAssignTags && !client.is_deleted ? 'pointer' : 'default'}
+                                                    onClick={canAssignTags && !client.is_deleted ? (e: React.MouseEvent) => { e.stopPropagation(); handleToggleTagEditor(editingTagsForClientId === client.id ? null : client.id); } : undefined}
+                                                    role={canAssignTags && !client.is_deleted ? 'button' : undefined}
+                                                    tabIndex={canAssignTags && !client.is_deleted ? 0 : undefined}
+                                                    onKeyDown={canAssignTags && !client.is_deleted ? (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleToggleTagEditor(editingTagsForClientId === client.id ? null : client.id); } } : undefined}
+                                                    _hover={canAssignTags && !client.is_deleted ? { opacity: 0.8 } : {}}
+                                                    transition="opacity 0.15s"
+                                                >
+                                                    {client.tags?.length > 0 ? (
+                                                        <>
+                                                            {client.tags.slice(0, 3).map((tag: ClientTag) => (
+                                                                <ChakraTag
+                                                                    key={tag.id}
+                                                                    size="sm"
+                                                                    borderRadius="full"
+                                                                    bg={tag.color_hex ? `${tag.color_hex}20` : 'gray.100'}
+                                                                    color={tag.color_hex || 'gray.600'}
+                                                                    border="1px solid"
+                                                                    borderColor={tag.color_hex ? `${tag.color_hex}40` : 'gray.200'}
+                                                                    px="2"
+                                                                >
+                                                                    <TagLabel fontSize="2xs" fontWeight="500">{tag.tag_name}</TagLabel>
+                                                                </ChakraTag>
+                                                            ))}
+                                                            {client.tags.length > 3 && (
+                                                                <Tooltip label={client.tags.slice(3).map(t => t.tag_name).join(', ')} fontSize="xs">
+                                                                    <Badge
+                                                                        fontSize="2xs"
+                                                                        colorScheme="gray"
+                                                                        borderRadius="full"
+                                                                        variant="subtle"
+                                                                        px="1.5"
+                                                                    >
+                                                                        +{client.tags.length - 3}
+                                                                    </Badge>
+                                                                </Tooltip>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <Text fontSize="xs" color="gray.400">—</Text>
+                                                    )}
+                                                </Flex>
                                                 {editingTagsForClientId === client.id && (
                                                     <InlineTagEditor
                                                         client={client}
@@ -575,22 +840,26 @@ const ClientsTable: React.FC<ClientsTableProps> = ({
                                                         onClose={() => handleToggleTagEditor(null)}
                                                     />
                                                 )}
-                                            </td>
-                                            <td>{new Date(client.created_at).toLocaleDateString()}</td>
-                                            <td>
+                                            </Td>
+                                            <Td borderBottomColor="gray.100" py="3">
+                                                <Text fontSize="sm" color="gray.500">
+                                                    {new Date(client.created_at).toLocaleDateString()}
+                                                </Text>
+                                            </Td>
+                                            <Td borderBottomColor="gray.100" py="3">
                                                 <ActionMenu
                                                     client={client}
                                                     canDelete={canDeleteClients}
-                                                    onEdit={() => onEditClient(client)}    // Use prop from Dashboard
-                                                    onDelete={() => onDeleteClient(client)}  // Use prop from Dashboard
+                                                    onEdit={() => onEditClient(client)}
+                                                    onDelete={() => onDeleteClient(client)}
                                                 />
-                                            </td>
-                                        </tr>
+                                            </Td>
+                                        </Tr>
                                     );
                                 })}
-                            </tbody>
-                        </table>
-                    </div>
+                            </Tbody>
+                        </Table>
+                    </Box>
                     <PaginationControls
                         currentPage={currentPage}
                         totalPages={totalPages}
@@ -599,9 +868,9 @@ const ClientsTable: React.FC<ClientsTableProps> = ({
                         totalItems={totalItems}
                         onItemsPerPageChange={handleItemsPerPageChange}
                     />
-                </>
+                </Box>
             )}
-        </div>
+        </Box>
     );
 };
 

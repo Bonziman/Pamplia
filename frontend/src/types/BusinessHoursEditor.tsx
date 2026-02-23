@@ -3,8 +3,7 @@
 
 import React from 'react';
 import { BusinessHoursConfig, DayHours, TimeInterval } from './tenants'; // Adjust path
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faMoon } from '@fortawesome/free-solid-svg-icons';
+import { Moon } from 'lucide-react';
 import './BusinessHoursEditor.css'; // Create this CSS file
 import '../SwitchToggle.css'; // Assuming you have a common toggle style
 
@@ -161,7 +160,7 @@ const BusinessHoursEditor: React.FC<BusinessHoursEditorProps> = ({
                                 </>
                             ) : (
                                 <div className="closed-indicator">
-                                    <FontAwesomeIcon icon={faMoon} /> Closed
+                                    <Moon size={16} /> Closed
                                 </div>
                             )}
                         </div>

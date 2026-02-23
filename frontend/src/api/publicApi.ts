@@ -4,6 +4,7 @@
 import axios from "axios";
 import { AvailabilityResponse } from '../types/Availability';
 import axiosInstance from "./axiosInstance";
+import { buildApiUrl } from "./apiBase";
 
 // --- Type Definitions ---
 
@@ -26,47 +27,50 @@ export interface AppointmentCreatePayload {
     status?: string; // Optional: backend should handle default
 }
 
+// --- Helper to extract subdomain from current hostname ---
+const getSubdomainFromHostname = (): string => {
+    const hostname = window.location.hostname;
+    const baseDomain = process.env.REACT_APP_BASE_DOMAIN || '';
+    if (baseDomain && hostname.endsWith(baseDomain) && hostname !== baseDomain) {
+        return hostname.replace(`.${baseDomain}`, '');
+    }
+    // Fallback: first segment of hostname
+    return hostname.split('.')[0];
+};
+
 // --- API Functions ---
 
 /**
- * Fetches services for the tenant identified by the current hostname's subdomain.
- * Calls the backend endpoint: GET /services/tenant
+ * Fetches services for the tenant identified by the subdomain query parameter.
+ * Calls the backend endpoint: GET /services/tenant?subdomain=xxx
  */
 export const fetchTenantServices = async (): Promise<PublicService[]> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/services/tenant/`; // Target backend port & path
-        console.log("Fetching services from:", apiUrl);
-        const response = await axios.get<PublicService[]>(apiUrl);
+        const subdomain = getSubdomainFromHostname();
+        const apiUrl = buildApiUrl("/services/tenant/");
+        const response = await axios.get<PublicService[]>(apiUrl, {
+            params: { subdomain }
+        });
         return response.data;
     } catch (error) {
-        console.error(`Error fetching tenant services:`, error);
-        if (axios.isAxiosError(error) && error.response) {
-             console.error("API Error Status:", error.response.status);
-             console.error("API Error Data:", error.response.data);
-        }
-        return []; // Return empty array on error
+        return [];
     }
 };
 
 
 /**
  * Creates a new public appointment.
- * Calls the backend endpoint: POST /appointments/
+ * Calls the backend endpoint: POST /appointments/?subdomain=xxx
  */
 export const createPublicAppointment = async (appointmentData: AppointmentCreatePayload): Promise<any> => {
      try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/appointments/`; // Target backend port & path
-        console.log("Submitting appointment to:", apiUrl, appointmentData);
-        const response = await axios.post(apiUrl, appointmentData);
+        const subdomain = getSubdomainFromHostname();
+        const apiUrl = buildApiUrl("/appointments/");
+        const response = await axios.post(apiUrl, appointmentData, {
+            params: { subdomain }
+        });
         return response.data;
      } catch(error) {
-        console.error("Error creating appointment:", error);
-        if (axios.isAxiosError(error) && error.response) {
-             console.error("API Error Status:", error.response.status);
-             console.error("API Error Data:", error.response.data);
-        }
         throw error;
      }
 };
@@ -74,37 +78,17 @@ export const createPublicAppointment = async (appointmentData: AppointmentCreate
 export const fetchAvailability = async (
     date: string, // YYYY-MM-DD format
     serviceIds: number[],
-    tenantSubdomain: string // Needed if your API endpoint isn't on the same subdomain as the main app API calls
-                           // OR if the backend determines tenant from host header, this might not be needed here.
-                           // Based on our backend design for /availability, it uses request.Host,
-                           // so tenantSubdomain is NOT strictly needed as a parameter to the API itself,
-                           // but your axiosInstance might need its baseURL adjusted if the public booking page
-                           // is on a different domain/subdomain than where tenant-specific data is fetched.
-
-                           // For now, let's assume axiosInstance is configured to hit the correct base API URL,
-                           // and the subdomain is part of the window.location.hostname when this is called from
-                           // a tenant's public booking page.
+    tenantSubdomain?: string
 ): Promise<AvailabilityResponse> => {
     const serviceIdsString = serviceIds.join(',');
-
-    // The backend /availability endpoint determines the tenant from the Host header.
-    // So, ensure this call is made to the correct tenant-specific URL
-    // e.g., http://yourtenant.localtest.me:8000/availability
-    // Your axiosInstance should be configured to handle this base URL.
-    // If axiosInstance is global and always points to a generic API entry,
-    // and your /availability endpoint is nested under a tenant-specific path
-    // on the backend (e.g. /api/public/{tenantSubdomain}/availability), you'd adjust the URL here.
-    // But our backend /availability is at /availability and gets tenant from Host.
-
-    const currentHostname = window.location.hostname; // This will be like "yourtenant.localtest.me"
-    const apiUrl = `http://${currentHostname}:8000/availability`; // Assuming backend is on port 8000
-
-    console.log(`Fetching availability from: ${apiUrl} with params: date=${date}, service_ids=${serviceIdsString}`);
+    const subdomain = tenantSubdomain || getSubdomainFromHostname();
+    const apiUrl = buildApiUrl("/availability/");
 
     const response = await axiosInstance.get<AvailabilityResponse>(apiUrl, {
         params: {
-            date_query: date, // Match backend query param name "date_query"
-            service_ids_query: serviceIdsString, // Match backend query param name "service_ids_query"
+            date_query: date,
+            service_ids_query: serviceIdsString,
+            subdomain,
         }
     });
     return response.data;

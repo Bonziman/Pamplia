@@ -1,215 +1,243 @@
-/* src/components/TableStyles.css */
+/* src/components/TableStyles.css — Apple-inspired design system */
 
-/* General Styles for Views within Dashboard */
+/* ─── View Container ─── */
 .view-section {
-  padding: 20px;
-  background-color: #fff; /* Or your desired background */
-  border-radius: 8px; /* Match example image */
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); /* Subtle shadow */
-  margin-bottom: 20px;
+  padding: 0;
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  margin-bottom: 0;
 }
 
+/* ─── View Header ─── */
 .view-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #eee;
+  margin-bottom: 24px;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .view-header h2 {
   margin: 0;
-  font-size: 1.5em;
-  color: #333;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.025em;
 }
 
 .view-controls {
   display: flex;
   align-items: center;
-  gap: 15px; /* Spacing between controls */
+  gap: 12px;
 }
 
-/* Basic Button Styles (Define more thoroughly in a global button style) */
+/* ─── Buttons ─── */
 .button {
-  padding: 8px 15px;
-  border-radius: 6px;
+  padding: 9px 18px;
+  border-radius: 10px;
   border: 1px solid transparent;
   cursor: pointer;
-  font-size: 0.9em;
-  font-weight: 500;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .button-primary {
-  background-color: #0d6efd; /* Example Blue */
+  background-color: #0D9488;
   color: white;
-  border-color: #0d6efd;
+  border-color: #0D9488;
+  box-shadow: 0 1px 2px rgba(13, 148, 136, 0.2);
 }
 .button-primary:hover {
-  background-color: #0b5ed7;
-  border-color: #0a58ca;
+  background-color: #0F766E;
+  border-color: #0F766E;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+  transform: translateY(-1px);
+}
+.button-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(13, 148, 136, 0.2);
 }
 
 .button-secondary {
-  background-color: #6c757d; /* Example Gray */
-  color: white;
-  border-color: #6c757d;
+  background-color: #F9FAFB;
+  color: #374151;
+  border-color: #E5E7EB;
 }
 .button-secondary:hover {
-  background-color: #5c636a;
-  border-color: #565e64;
+  background-color: #F3F4F6;
+  border-color: #D1D5DB;
 }
 
 .button-danger {
-  background-color: #dc3545; /* Example Red */
-  color: white;
-  border-color: #dc3545;
+  background-color: #FEF2F2;
+  color: #DC2626;
+  border-color: #FECACA;
 }
 .button-danger:hover {
-  background-color: #bb2d3b;
-  border-color: #b02a37;
+  background-color: #FEE2E2;
+  border-color: #F87171;
 }
 
 .button-small {
-  padding: 4px 8px;
-  font-size: 0.8em;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  border-radius: 8px;
 }
 
 .action-buttons {
-    display: flex;
-    gap: 5px; /* Space between edit/delete buttons */
+  display: flex;
+  gap: 6px;
 }
 
-
-/* Table Styles */
+/* ─── Table Container ─── */
 .table-container {
-  overflow-x: auto; /* Allow horizontal scrolling on small screens */
+  overflow-x: auto;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
+/* ─── Data Table ─── */
 .data-table {
   width: 100%;
-  border-collapse: collapse; /* Use collapse */
-  margin-bottom: 1rem;
-  color: #212529; /* Default text color */
-  font-size: 0.9em;
+  border-collapse: collapse;
+  margin-bottom: 0;
+  color: #374151;
+  font-size: 0.875rem;
 }
 
 .data-table th,
 .data-table td {
-  padding: 12px 15px; /* Consistent padding */
+  padding: 14px 20px;
   text-align: left;
-  vertical-align: middle; /* Align content vertically */
-  border-bottom: 1px solid #dee2e6; /* Lighter border between rows */
+  vertical-align: middle;
+  border-bottom: 1px solid #F3F4F6;
 }
 
 .data-table thead th {
   vertical-align: bottom;
-  border-bottom-width: 2px; /* Thicker border below header */
-  font-weight: 600; /* Slightly bolder header */
-  color: #495057; /* Header text color */
-  white-space: nowrap; /* Prevent header text wrapping */
-  cursor: pointer; /* Indicate sortable */
+  border-bottom: 1px solid #E5E7EB;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: #6B7280;
+  white-space: nowrap;
+  cursor: pointer;
   user-select: none;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background-color: #F9FAFB;
+}
+.data-table thead th:first-child { border-top-left-radius: 12px; }
+.data-table thead th:last-child { border-top-right-radius: 12px; }
+
+.data-table thead th svg {
+  margin-left: 6px;
+  color: #9CA3AF;
+  transition: color 0.15s ease;
+  vertical-align: middle;
+}
+.data-table thead th:hover svg {
+  color: #6B7280;
 }
 
-.data-table thead th .svg-inline--fa { /* FontAwesome sort icons */
-  margin-left: 8px;
-  color: #adb5bd; /* Light gray for sort icons */
-  transition: color 0.2s ease;
+.data-table tbody tr {
+  transition: background-color 0.15s ease;
 }
-.data-table thead th:hover .svg-inline--fa {
-  color: #495057; /* Darken icon on hover */
-}
-
 .data-table tbody tr:hover {
-  background-color: rgba(0, 0, 0, 0.03); /* Subtle hover effect */
+  background-color: #F9FAFB;
+}
+.data-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
-/* Specific Table Styles (Optional - could just use .data-table) */
-.clients-table { /* Add specific overrides if needed */ }
-.services-table { /* Add specific overrides if needed */ }
-.users-table { /* Add specific overrides if needed */ }
-
-/* Deleted Row Style */
+/* ─── Row States ─── */
 .deleted-row {
-  background-color: #f8f9fa; /* Very light gray */
-  color: #6c757d; /* Muted text color */
+  background-color: #F9FAFB;
+  color: #9CA3AF;
   font-style: italic;
 }
 .deleted-row td {
-   border-color: #e9ecef;
+  border-color: #F3F4F6;
 }
 .deleted-row .tag {
-  background-color: #adb5bd !important; /* Override specific tag colors */
-  opacity: 0.7;
+  background-color: #D1D5DB !important;
+  opacity: 0.6;
 }
 
-/* Tag Styles */
+/* ─── Tags ─── */
 .tag-cell {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  /* max-width: 200px; /* Limit width if needed */
 }
 
 .tag {
-  display: inline-block; /* Changed from flex */
-  padding: 3px 8px;
-  font-size: 0.75em; /* Smaller font */
-  font-weight: 500;
-  border-radius: 10px; /* More rounded like example */
-  color: white; /* Default assuming dark backgrounds */
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  color: white;
   white-space: nowrap;
-  line-height: 1.4;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
 }
 
 .tag-more {
-  font-size: 0.8em;
-  color: #555;
-  align-self: center; /* Align with tags */
+  font-size: 0.75rem;
+  color: #6B7280;
+  align-self: center;
   margin-left: 4px;
-}
-
-
-/* Status Badge Styles */
-.status-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 12px; /* Rounded pill shape */
-  font-size: 0.8em;
   font-weight: 500;
+}
+
+/* ─── Status Badges ─── */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
   text-align: center;
-  min-width: 60px; /* Ensure some width */
+  min-width: 60px;
+  justify-content: center;
+  letter-spacing: 0.01em;
 }
-.status-confirmed, /* Client Confirmed */
-.status-active { /* Generic Active - e.g., Product example */
-  background-color: #d1e7dd; /* Light green */
-  color: #0f5132; /* Darker green */
+.status-confirmed,
+.status-active {
+  background-color: #DCFCE7;
+  color: #15803D;
 }
-.status-unconfirmed, /* Client Unconfirmed */
-.status-pending { /* Generic Pending - e.g., Product example */
-  background-color: #fff3cd; /* Light yellow */
-  color: #664d03; /* Darker yellow */
+.status-unconfirmed,
+.status-pending {
+  background-color: #FEF3C7;
+  color: #A16207;
 }
-.status-deleted-active { /* Client Deleted */
-  background-color: #f8d7da; /* Light red */
-  color: #58151c; /* Darker red */
+.status-deleted-active {
+  background-color: #FEE2E2;
+  color: #B91C1C;
 }
-.status-inactive { /* Generic Inactive - e.g., Product example */
-   background-color: #e9ecef; /* Light gray */
-   color: #495057; /* Darker gray */
+.status-inactive {
+  background-color: #F3F4F6;
+  color: #6B7280;
 }
-/* Add other statuses like 'On Sale', 'Bouncing' if needed, matching example */
-.status-on-sale { background-color: #cfe2ff; color: #052c65; } /* Light blue */
-.status-bouncing { background-color: #e2d9f3; color: #2b0a57; } /* Light purple */
+.status-on-sale { background-color: #DBEAFE; color: #1D4ED8; }
+.status-bouncing { background-color: #EDE9FE; color: #6D28D9; }
 
-
-/* Action Menu Styles */
+/* ─── Action Menu ─── */
 .action-menu-container {
   position: relative;
-  display: flex; /* Use flex to center vertically */
-  justify-content: center; /* Center the button */
+  display: flex;
+  justify-content: center;
   align-items: center;
 }
 
@@ -217,176 +245,203 @@
   background: none;
   border: none;
   cursor: pointer;
-  padding: 5px;
-  color: #6c757d; /* Muted color */
-  font-size: 1em; /* Adjust size */
+  padding: 6px;
+  color: #9CA3AF;
+  font-size: 1em;
   line-height: 1;
+  border-radius: 8px;
+  transition: all 0.15s ease;
 }
 .action-menu-toggle:hover {
-  color: #343a40; /* Darken on hover */
+  color: #374151;
+  background-color: #F3F4F6;
 }
 
 .action-menu-dropdown {
   position: absolute;
-  right: 50%; /* Position relative to the center */
-  transform: translateX(50%); /* Center the dropdown */
-  top: calc(100% + 5px); /* Below the button */
+  right: 0;
+  top: calc(100% + 4px);
   background-color: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  z-index: 10;
-  min-width: 120px;
-  padding: 6px 0;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.04);
+  z-index: 20;
+  min-width: 140px;
+  padding: 4px;
   display: flex;
   flex-direction: column;
+  animation: dropdownFadeIn 0.15s ease;
+}
+
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .action-menu-dropdown button,
 .action-menu-dropdown span {
-  display: flex; /* Align icon and text */
+  display: flex;
   align-items: center;
-  gap: 8px; /* Space between icon and text */
+  gap: 8px;
   width: 100%;
   text-align: left;
-  padding: 8px 15px;
+  padding: 8px 12px;
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 0.9em;
+  font-size: 0.875rem;
+  font-weight: 500;
   white-space: nowrap;
-  color: #333;
-  transition: background-color 0.15s ease;
+  color: #374151;
+  border-radius: 8px;
+  transition: background-color 0.1s ease;
 }
 
 .action-menu-dropdown button:hover {
-  background-color: #f8f9fa;
+  background-color: #F3F4F6;
 }
 
-.action-menu-dropdown button .svg-inline--fa {
-  width: 1em; /* Ensure icons align nicely */
-  color: #6c757d; /* Icon color */
+.action-menu-dropdown button svg {
+  width: 16px;
+  height: 16px;
+  color: #6B7280;
 }
 
 .action-menu-dropdown .action-delete {
-  color: #dc3545; /* Red delete text */
+  color: #DC2626;
 }
-.action-menu-dropdown .action-delete .svg-inline--fa {
-  color: #dc3545; /* Red delete icon */
+.action-menu-dropdown .action-delete svg {
+  color: #DC2626;
 }
 .action-menu-dropdown .action-delete:hover {
-  background-color: #f8d7da; /* Light red hover */
+  background-color: #FEF2F2;
 }
 
-.action-menu-dropdown .action-deleted { /* Style for the 'Deleted' text */
-  padding: 8px 15px;
-  font-size: 0.9em;
-  color: #6c757d;
+.action-menu-dropdown .action-deleted {
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  color: #9CA3AF;
   font-style: italic;
-  cursor: default; /* Not clickable */
+  cursor: default;
 }
 
-
-/* Pagination Styles */
+/* ─── Pagination ─── */
 .pagination-controls {
   display: flex;
-  justify-content: flex-end; /* Align to the right like example */
+  justify-content: space-between;
   align-items: center;
-  gap: 5px;
-  margin-top: 20px;
-  padding-top: 15px;
-  border-top: 1px solid #eee;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px 0 0;
+  flex-wrap: wrap;
 }
 
 .pagination-controls button {
   padding: 6px 12px;
-  border: 1px solid #dee2e6;
+  border: 1px solid #E5E7EB;
   background-color: #fff;
-  color: #0d6efd; /* Blue text like example */
+  color: #374151;
   cursor: pointer;
-  border-radius: 4px;
-  font-size: 0.9em;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
 }
 
 .pagination-controls button:hover:not(:disabled) {
-  background-color: #f8f9fa;
+  background-color: #F3F4F6;
+  border-color: #D1D5DB;
 }
 
 .pagination-controls button:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
-  color: #6c757d;
+  opacity: 0.4;
+  color: #9CA3AF;
 }
 
 .pagination-controls button.active {
-  background-color: #0d6efd;
+  background-color: #0D9488;
   color: white;
-  border-color: #0d6efd;
-  font-weight: bold;
+  border-color: #0D9488;
+  font-weight: 600;
 }
 
-.pagination-controls span { /* For Ellipsis */
-  padding: 0 8px;
-  color: #adb5bd;
+.pagination-controls span {
+  padding: 0 6px;
+  color: #D1D5DB;
   align-self: center;
 }
 
-/* Checkbox Label Styles */
+/* ─── Checkbox ─── */
 .checkbox-label {
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  font-size: 0.9em;
-  color: #495057;
+  font-size: 0.875rem;
+  color: #374151;
+  font-weight: 500;
 }
 .checkbox-label input[type="checkbox"] {
   cursor: pointer;
   width: 16px;
   height: 16px;
+  accent-color: #0D9488;
+  border-radius: 4px;
 }
 
-
-/* Loading/Error/Permission Message Styles */
+/* ─── Messages ─── */
 .loading-message,
-.permission-message,
-.error-message {
-  padding: 20px;
+.permission-message {
+  padding: 40px 20px;
   text-align: center;
-  color: #6c757d;
-  font-style: italic;
+  color: #9CA3AF;
+  font-size: 0.9375rem;
 }
 .error-message {
-    color: #721c24;
-    background-color: #f8d7da;
-    border: 1px solid #f5c2c7;
-    border-radius: 4px;
-    margin-bottom: 15px; /* Space below error */
+  color: #B91C1C;
+  background-color: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-
-
-
-
-/* Example: Add to LogInteractionModal.css or FormStyles.css */
+/* ─── Radio Group ─── */
 .radio-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 1.5rem; /* Row and column gap */
+  gap: 0.5rem 1.5rem;
   margin-top: 0.25rem;
 }
 .radio-label {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
   cursor: pointer;
-  margin-bottom: 0.25rem; /* Add spacing if they wrap */
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  color: #374151;
 }
 .radio-label input[type="radio"] {
-  margin-right: 0.1rem; /* Adjust spacing */
   cursor: pointer;
-  /* Consider vertical alignment if needed */
+  accent-color: #0D9488;
   vertical-align: middle;
-  margin-top: -1px; /* Fine-tune alignment */
+  margin-top: -1px;
+}
+
+/* ─── Client Name Link ─── */
+.client-name-link {
+  color: #0D9488;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.15s ease;
+}
+.client-name-link:hover {
+  color: #0F766E;
+  text-decoration: underline;
 }

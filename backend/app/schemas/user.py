@@ -47,3 +47,6 @@ class UserUpdate(BaseModel):
 
 class UserStatusUpdate(BaseModel):
     is_active: bool
+
+class UserPasswordReset(BaseModel):
+    password: str = Field(min_length=8)

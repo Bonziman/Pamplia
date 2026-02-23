@@ -121,7 +121,8 @@ async def invite_staff_member( # Made async to use await for email
     # Example: FRONTEND_URL = "http://localhost:3000" or "https://tenant.pamplia.com"
     # The frontend route for accepting invitations needs to be defined, e.g., /accept-invitation
     tenant_subdomain = current_user.tenant.subdomain if hasattr(current_user.tenant, 'subdomain') else None
-    activation_link = f"http://{tenant_subdomain}.{settings.frontend_url.rstrip('/')}/accept-invitation?token={db_invitation.invitation_token}"
+    protocol = "https" if settings.environment == "production" else "http"
+    activation_link = f"{protocol}://{tenant_subdomain}.{settings.base_domain}/accept-invitation?token={db_invitation.invitation_token}"
     
     email_subject = f"You're invited to join {current_user.tenant.name} on Pamplia" # Tenant name from relationship
     # Create a simple HTML body or use a template rendering engine
@@ -343,7 +344,9 @@ async def resend_staff_invitation( # Made async for email
     invitation.token_expiry = datetime.now(pytimezone.utc) + timedelta(hours=settings.invitation_expiry_hours or 48)
     
     # Resend email
-    activation_link = f"{settings.frontend_url.rstrip('/')}/accept-invitation?token={invitation.invitation_token}"
+    tenant_subdomain = current_user.tenant.subdomain if hasattr(current_user.tenant, 'subdomain') else None
+    protocol = "https" if settings.environment == "production" else "http"
+    activation_link = f"{protocol}://{tenant_subdomain}.{settings.base_domain}/accept-invitation?token={invitation.invitation_token}"
     email_subject = f"Reminder: You're invited to join {current_user.tenant.name} on Pamplia"
     html_body = f"""
     <p>Hello {invitation.first_name or invitation.email},</p>

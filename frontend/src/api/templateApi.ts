@@ -2,6 +2,7 @@
 // --- NEW FILE ---
 
 import axiosInstance from './axiosInstance'; // Use your configured axios instance
+import { buildApiUrl } from './apiBase';
 // Import Template types from your types definition file
 import { TemplateOut, TemplateCreatePayload, TemplateUpdatePayload } from '../types/Template'; // Adjust path as needed
 
@@ -13,8 +14,7 @@ import { TemplateOut, TemplateCreatePayload, TemplateUpdatePayload } from '../ty
  */
 export const fetchTemplates = async (): Promise<TemplateOut[]> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/templates/`;
+        const apiUrl = buildApiUrl("/templates/");
         console.log(`API: Fetching ${apiUrl}`);
         const response = await axiosInstance.get<TemplateOut[]>(apiUrl);
         return response.data;
@@ -30,8 +30,7 @@ export const fetchTemplates = async (): Promise<TemplateOut[]> => {
  */
 export const fetchTemplateById = async (templateId: number): Promise<TemplateOut> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/templates/${templateId}`;
+        const apiUrl = buildApiUrl(`/templates/${templateId}`);
         console.log(`API: Fetching ${apiUrl}`);
         const response = await axiosInstance.get<TemplateOut>(apiUrl);
         return response.data;
@@ -47,8 +46,7 @@ export const fetchTemplateById = async (templateId: number): Promise<TemplateOut
  */
 export const createTemplate = async (payload: TemplateCreatePayload): Promise<TemplateOut> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/templates/`;
+        const apiUrl = buildApiUrl("/templates/");
         console.log(`API: Creating template at ${apiUrl} with payload:`, payload);
         const response = await axiosInstance.post<TemplateOut>(apiUrl, payload);
         return response.data;
@@ -72,8 +70,7 @@ export const updateTemplate = async (templateId: number, payload: TemplateUpdate
          // throw new Error("No changes detected to save.");
      }
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/templates/${templateId}`;
+        const apiUrl = buildApiUrl(`/templates/${templateId}`);
         console.log(`API: Updating template at ${apiUrl} with payload:`, payload);
         const response = await axiosInstance.patch<TemplateOut>(apiUrl, payload);
         return response.data;
@@ -89,8 +86,7 @@ export const updateTemplate = async (templateId: number, payload: TemplateUpdate
  */
 export const deleteTemplate = async (templateId: number): Promise<void> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/templates/${templateId}`;
+        const apiUrl = buildApiUrl(`/templates/${templateId}`);
         // Assuming the backend returns 204 No Content on successful deletion
         // Adjust the URL as per your backend API
         console.log(`API: Deleting template at ${apiUrl}`);

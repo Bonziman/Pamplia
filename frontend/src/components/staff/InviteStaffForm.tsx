@@ -5,7 +5,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import {
     VStack, FormControl, FormLabel, Input, FormErrorMessage, Button as ChakraButton,
-    Select, HStack, Text,
+    Select, HStack, Alert, AlertIcon, Grid, GridItem,
 } from '@chakra-ui/react';
 import { InvitationCreatePayload } from '../../types/Invitation'; // Adjust the import based on your project structure
 import { inviteStaff } from '../../api/staffApi';
@@ -53,28 +53,65 @@ const InviteStaffForm: React.FC<InviteStaffFormProps> = ({ onSubmitSuccess, onCa
 
     return (
         <form onSubmit={handleSubmit(onSubmit)}>
-            <VStack spacing={4} align="stretch">
+            <VStack spacing={5} align="stretch">
                 <FormControl isInvalid={!!errors.email} isRequired>
-                    <FormLabel htmlFor="email">Email Address</FormLabel>
-                    <Input id="email" type="email" {...register('email')} />
+                    <FormLabel htmlFor="email" fontSize="sm" fontWeight="medium" color="gray.600">Email Address</FormLabel>
+                    <Input
+                        id="email"
+                        type="email"
+                        {...register('email')}
+                        placeholder="staff@example.com"
+                        borderRadius="lg"
+                        bg="gray.50"
+                        _focus={{ bg: 'white', borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
+                        _hover={{ borderColor: 'gray.300' }}
+                    />
                     <FormErrorMessage>{errors.email?.message}</FormErrorMessage>
                 </FormControl>
 
-                <FormControl isInvalid={!!errors.first_name} isRequired>
-                    <FormLabel htmlFor="first_name">First Name</FormLabel>
-                    <Input id="first_name" {...register('first_name')} />
-                    <FormErrorMessage>{errors.first_name?.message}</FormErrorMessage>
-                </FormControl>
-
-                <FormControl isInvalid={!!errors.last_name} isRequired>
-                    <FormLabel htmlFor="last_name">Last Name</FormLabel>
-                    <Input id="last_name" {...register('last_name')} />
-                    <FormErrorMessage>{errors.last_name?.message}</FormErrorMessage>
-                </FormControl>
+                <Grid templateColumns="1fr 1fr" gap={4}>
+                    <GridItem>
+                        <FormControl isInvalid={!!errors.first_name} isRequired>
+                            <FormLabel htmlFor="first_name" fontSize="sm" fontWeight="medium" color="gray.600">First Name</FormLabel>
+                            <Input
+                                id="first_name"
+                                {...register('first_name')}
+                                placeholder="First name"
+                                borderRadius="lg"
+                                bg="gray.50"
+                                _focus={{ bg: 'white', borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
+                                _hover={{ borderColor: 'gray.300' }}
+                            />
+                            <FormErrorMessage>{errors.first_name?.message}</FormErrorMessage>
+                        </FormControl>
+                    </GridItem>
+                    <GridItem>
+                        <FormControl isInvalid={!!errors.last_name} isRequired>
+                            <FormLabel htmlFor="last_name" fontSize="sm" fontWeight="medium" color="gray.600">Last Name</FormLabel>
+                            <Input
+                                id="last_name"
+                                {...register('last_name')}
+                                placeholder="Last name"
+                                borderRadius="lg"
+                                bg="gray.50"
+                                _focus={{ bg: 'white', borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
+                                _hover={{ borderColor: 'gray.300' }}
+                            />
+                            <FormErrorMessage>{errors.last_name?.message}</FormErrorMessage>
+                        </FormControl>
+                    </GridItem>
+                </Grid>
 
                 <FormControl isInvalid={!!errors.role_to_assign} isRequired>
-                    <FormLabel htmlFor="role_to_assign">Assign Role</FormLabel>
-                    <Select id="role_to_assign" {...register('role_to_assign')}>
+                    <FormLabel htmlFor="role_to_assign" fontSize="sm" fontWeight="medium" color="gray.600">Assign Role</FormLabel>
+                    <Select
+                        id="role_to_assign"
+                        {...register('role_to_assign')}
+                        borderRadius="lg"
+                        bg="gray.50"
+                        _focus={{ bg: 'white', borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
+                        _hover={{ borderColor: 'gray.300' }}
+                    >
                         <option value="staff">Staff</option>
                         <option value="admin">Admin</option>
                     </Select>
@@ -82,17 +119,28 @@ const InviteStaffForm: React.FC<InviteStaffFormProps> = ({ onSubmitSuccess, onCa
                 </FormControl>
 
                 {serverError && (
-                    <Text color="red.500" fontSize="sm" textAlign="center">{serverError}</Text>
+                    <Alert status="error" borderRadius="lg" fontSize="sm">
+                        <AlertIcon />
+                        {serverError}
+                    </Alert>
                 )}
 
                 <HStack justifyContent="flex-end" spacing={3} mt={4}>
-                    <ChakraButton variant="outline" onClick={onCancel} isDisabled={isSubmitting}>
+                    <ChakraButton
+                        variant="outline"
+                        onClick={onCancel}
+                        isDisabled={isSubmitting}
+                        borderRadius="lg"
+                        fontWeight="600"
+                    >
                         Cancel
                     </ChakraButton>
                     <ChakraButton
                         type="submit"
                         colorScheme="brand"
                         isLoading={isSubmitting}
+                        borderRadius="lg"
+                        fontWeight="600"
                     >
                         Send Invitation
                     </ChakraButton>

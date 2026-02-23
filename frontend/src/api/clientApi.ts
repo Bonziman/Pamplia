@@ -1,6 +1,7 @@
 // src/api/clientApi.ts
 
 import axios from './axiosInstance'; // Use your configured axios instance
+import { buildApiUrl } from './apiBase';
 import { FetchedAppointment } from './appointmentApi';
 
 // --- Type Definitions ---
@@ -98,10 +99,8 @@ export interface FetchClientsParams {
  */
 export const fetchClientById = async (clientId: number, includeDeleted: boolean = false): Promise<FetchedClient> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/clients/${clientId}`; // Ensure no trailing slash if backend route is defined without it
+        const apiUrl = buildApiUrl(`/clients/${clientId}`); // Ensure no trailing slash if backend route is defined without it
         const params = { include_deleted: includeDeleted };
-        console.log(`Fetching client ${clientId} from: ${apiUrl} with params:`, params);
         const response = await axios.get<FetchedClient>(apiUrl, { params });
         return response.data;
     } catch (error) {
@@ -120,8 +119,7 @@ export const fetchClients = async (
     params: FetchClientsParams = {} // Use the new params interface
 ): Promise<PaginatedResponse<FetchedClient>> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/clients/`; // Ensure no trailing slash if backend route is defined without it
+        const apiUrl = buildApiUrl("/clients/"); // Ensure no trailing slash if backend route is defined without it
 
         // Construct query parameters, removing undefined values
         const queryParams: Record<string, any> = {};
@@ -133,7 +131,6 @@ export const fetchClients = async (
         if (params.sortBy) queryParams.sort_by = params.sortBy;
         if (params.sortDirection) queryParams.sort_direction = params.sortDirection;
 
-        console.log("Fetching clients from:", apiUrl, "with params:", queryParams);
         const response = await axios.get<PaginatedResponse<FetchedClient>>(apiUrl, { params: queryParams });
         return response.data;
     } catch (error) {
@@ -148,9 +145,7 @@ export const fetchClients = async (
  */
 export const createClient = async (payload: ClientCreatePayload): Promise<FetchedClient> => {
      try {
-      const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/clients/`;
-        console.log("Creating client:", payload);
+                const apiUrl = buildApiUrl("/clients/");
         const response = await axios.post<FetchedClient>(apiUrl, payload);
         return response.data;
      } catch(error) {
@@ -165,10 +160,7 @@ export const createClient = async (payload: ClientCreatePayload): Promise<Fetche
  */
 export const updateClient = async (clientId: number, payload: ClientUpdatePayload): Promise<FetchedClient> => {
      try {
-        const currentHostname = window.location.hostname;
-        // Assuming your backend PATCH for client might expect a trailing slash like others
-        const apiUrl = `http://${currentHostname}:8000/clients/${clientId}/`; 
-        console.log(`Updating client ${clientId}:`, payload);
+        const apiUrl = buildApiUrl(`/clients/${clientId}`);
         const response = await axios.patch<FetchedClient>(apiUrl, payload);
         return response.data;
      } catch(error) {
@@ -183,10 +175,7 @@ export const updateClient = async (clientId: number, payload: ClientUpdatePayloa
  */
 export const deleteClient = async (clientId: number): Promise<void> => {
      try {
-        const currentHostname = window.location.hostname;
-        // Assuming your backend DELETE for client might expect a trailing slash
-        const apiUrl = `http://${currentHostname}:8000/clients/${clientId}/`; 
-        console.log(`Deleting client ${clientId}`);
+        const apiUrl = buildApiUrl(`/clients/${clientId}`);
         await axios.delete(apiUrl);
      } catch(error) {
         console.error(`Error deleting client ${clientId}:`, error);
@@ -200,9 +189,7 @@ export const deleteClient = async (clientId: number): Promise<void> => {
  */
 export const assignClientTag = async (clientId: number, tagId: number): Promise<FetchedClient> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/clients/${clientId}/tags/${tagId}`; // No trailing slash as per your original client router for this
-        console.log(`Assigning tag ${tagId} to client ${clientId}`);
+        const apiUrl = buildApiUrl(`/clients/${clientId}/tags/${tagId}`);
         const response = await axios.post<FetchedClient>(apiUrl);
         return response.data;
     } catch (error) {
@@ -217,9 +204,7 @@ export const assignClientTag = async (clientId: number, tagId: number): Promise<
  */
 export const removeClientTag = async (clientId: number, tagId: number): Promise<void> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/clients/${clientId}/tags/${tagId}`; // No trailing slash
-        console.log(`Removing tag ${tagId} from client ${clientId}`);
+        const apiUrl = buildApiUrl(`/clients/${clientId}/tags/${tagId}`);
         await axios.delete(apiUrl);
     } catch (error) {
         console.error(`Error removing tag ${tagId} from client ${clientId}:`, error);
@@ -233,9 +218,7 @@ export const removeClientTag = async (clientId: number, tagId: number): Promise<
  */
 export const fetchClientAppointments = async (clientId: number): Promise<FetchedAppointment[]> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/clients/${clientId}/appointments/`; // Assuming trailing slash
-        console.log(`Fetching appointments for client ${clientId} via ${apiUrl}`);
+        const apiUrl = buildApiUrl(`/clients/${clientId}/appointments/`);
         const response = await axios.get<FetchedAppointment[]>(apiUrl);
         return response.data;
     } catch (error) {

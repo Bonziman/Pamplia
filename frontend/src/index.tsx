@@ -5,7 +5,7 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 //import 'mdb-ui-kit/css/mdb.min.css';
 
-import '@fortawesome/fontawesome-free/css/all.min.css';
+// FontAwesome CSS removed — migrated to Lucide React icons
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement

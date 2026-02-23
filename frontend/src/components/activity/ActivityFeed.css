@@ -2,134 +2,122 @@
 
 .activity-feed h3 {
   margin-top: 0;
-  margin-bottom: 1rem;
-  font-size: 1.2rem;
-  border-bottom: 1px solid var(--border-color-light, #eee);
-  padding-bottom: 0.5rem;
+  margin-bottom: 16px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+  border-bottom: 1px solid #F3F4F6;
+  padding-bottom: 10px;
+  letter-spacing: -0.025em;
 }
 
 .log-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0;
 }
 
 .log-entry {
   display: flex;
-  gap: 1rem;
-  padding: 0.8rem 0;
-  border-bottom: 1px solid var(--border-color-light, #eee);
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid #F3F4F6;
 }
-.log-entry:last-child {
-  border-bottom: none;
-}
+.log-entry:last-child { border-bottom: none; }
 
 .log-icon-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start; /* Align icons to top */
-  gap: 0.3rem;
-  flex-basis: 30px; /* Fixed width for icon area */
+  justify-content: flex-start;
+  gap: 4px;
+  flex-basis: 30px;
   flex-shrink: 0;
-  padding-top: 0.1rem;
+  padding-top: 2px;
 }
 
 .log-channel-icon {
-  font-size: 1.2rem;
-  color: var(--primary-color, #0d6efd); /* Default color */
+  font-size: 1.125rem;
+  color: #0D9488;
   opacity: 0.8;
 }
-/* Optional: Specific colors per channel */
-.channel-email .log-channel-icon { color: #0d6efd; }
-.channel-phone .log-channel-icon { color: #198754; }
-.channel-sms .log-channel-icon { color: #ffc107; }
-.channel-in_person .log-channel-icon { color: #6f42c1; }
-.channel-virtual_meeting .log-channel-icon { color: #0dcaf0; }
-.channel-other .log-channel-icon { color: #adb5bd; }
-
+.channel-email .log-channel-icon { color: #0D9488; }
+.channel-phone .log-channel-icon { color: #22C55E; }
+.channel-sms .log-channel-icon { color: #EAB308; }
+.channel-in_person .log-channel-icon { color: #8B5CF6; }
+.channel-virtual_meeting .log-channel-icon { color: #06B6D4; }
+.channel-other .log-channel-icon { color: #9CA3AF; }
 
 .log-direction-icon {
-  font-size: 0.8rem;
-  color: var(--text-muted, #6c757d);
+  font-size: 0.75rem;
+  color: #9CA3AF;
 }
-.direction-outbound .log-direction-icon { color: #dc3545; } /* Example: Red for outbound */
-.direction-inbound .log-direction-icon { color: #198754; } /* Example: Green for inbound */
-
+.direction-outbound .log-direction-icon { color: #EF4444; }
+.direction-inbound .log-direction-icon { color: #22C55E; }
 
 .log-details-col {
   flex-grow: 1;
-  min-width: 0; /* Prevent overflow */
+  min-width: 0;
 }
 
 .log-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.3rem;
-  flex-wrap: wrap; /* Wrap on small screens */
-  gap: 0.5rem;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .log-subject {
   font-weight: 600;
-  color: var(--input-text-color, #212529);
-  font-size: 0.95rem;
-  margin-right: 1rem; /* Space before timestamp */
+  color: #111827;
+  font-size: 0.875rem;
+  margin-right: 12px;
 }
 
 .log-timestamp {
-  font-size: 0.8rem;
-  color: var(--text-secondary, #6c757d);
+  font-size: 0.75rem;
+  color: #9CA3AF;
   white-space: nowrap;
-  flex-shrink: 0; /* Prevent timestamp from wrapping too easily */
+  flex-shrink: 0;
 }
 
 .log-notes {
-  font-size: 0.9rem;
-  color: var(--text-secondary, #495057);
+  font-size: 0.8125rem;
+  color: #6B7280;
   line-height: 1.5;
-  white-space: pre-wrap; /* Preserve whitespace/newlines in notes */
-  word-break: break-word; /* Break long words */
-  margin-bottom: 0.5rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 6px;
 }
 
 .log-footer {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem 1rem; /* Row and column gap */
-  font-size: 0.75rem;
-  color: var(--text-muted, #888);
+  gap: 4px 12px;
+  font-size: 0.6875rem;
+  color: #9CA3AF;
   align-items: center;
 }
-
 .log-footer span {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 4px;
 }
-.log-footer svg {
-  opacity: 0.7;
-}
+.log-footer svg { opacity: 0.6; }
 
 .log-status {
-  font-weight: 500;
-  padding: 0.1rem 0.4rem;
-  border-radius: 0.25rem;
-  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
   text-transform: uppercase;
-  background-color: #e9ecef;
-  color: #495057;
-  border: 1px solid #dee2e6;
+  letter-spacing: 0.03em;
+  background: #F3F4F6;
+  color: #6B7280;
+  border: 1px solid #E5E7EB;
 }
-.status-sent { background-color: #d1e7dd; color: #0f5132; border-color: #badbcc;}
-.status-failed { background-color: #f8d7da; color: #842029; border-color: #f5c2c7;}
-.status-logged { background-color: #cfe2ff; color: #084298; border-color: #b6d4fe;}
-/* Add other status styles */
-
-
-.activity-pagination {
-  margin-top: 1.5rem;
-  justify-content: center; /* Center pagination */
-}
-/* Use styles from ClientProfilePage or define pagination controls */
+.status-sent { background: #DCFCE7; color: #166534; border-color: #BBF7D0; }
+.status-failed { background: #FEE2E2; color: #991B1B; border-color: #FECACA; }
+.status-logged { background: #CCFBF1; color: #115E59; border-color: #99F6E4; }

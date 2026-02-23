@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8085 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8085:8085"
+    environment:
+      - DATABASE_URL=postgresql://pamplia:pamplia@db:5432/pamplia_dev
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=WGIYEJ892hT3WM1jSpYuKqXlg9lulD2_xdpu2ClWvdEM5XA2Vbr4LD7tnb3odH_k
+      - ENVIRONMENT=production
+      - BASE_DOMAIN=pamplia.store
+      - FRONTEND_URL=https://pamplia.store
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - MAIL_SERVER=mail.spacemail.com
+      - MAIL_PORT=465
+      - MAIL_USERNAME=contact@pamplia.store
+      - MAIL_PASSWORD=Bolognaaa@1111
+      - MAIL_FROM_ADDRESS=contact@pamplia.store
+      - MAIL_FROM_NAME=Pamplia
+      - MAIL_USE_SSL=true
+    depends_on:
+      - db
+      - redis
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    ports:
+      - "8086:3000"
+    environment:
+      - REACT_APP_API_URL=https://api.pamplia.store
+      - REACT_APP_BASE_DOMAIN=pamplia.store
+      - WDS_SOCKET_PORT=8086
+    depends_on:
+      - backend
+
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=pamplia
+      - POSTGRES_PASSWORD=pamplia
+      - POSTGRES_DB=pamplia_dev
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:

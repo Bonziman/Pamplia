@@ -34,6 +34,12 @@ class DashboardStats(BaseModel):
     new_clients_period: int = Field(..., description="Count of clients created within the selected period.")
     appointments_change_today: float = Field(..., description="Percentage change in appointments from yesterday to today.")
     revenue_change_today: float = Field(..., description="Percentage change in revenue from yesterday to today.")
+
+    # Super admin global stats (optional for tenant admins)
+    tenants_total: int = Field(0, description="Total number of tenants in the system.")
+    services_total: int = Field(0, description="Total number of services in the system.")
+    clients_total: int = Field(0, description="Total number of clients in the system.")
+    appointments_total: int = Field(0, description="Total number of appointments in the system.")
     class Config:
         # Pydantic V2 uses from_attributes instead of orm_mode
         from_attributes = True

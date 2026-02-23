@@ -46,10 +46,10 @@
 
 /* Handle */
 ::-webkit-scrollbar-thumb {
-  background: #3182ce !important;
+  background: #0D9488 !important;
 }
 
 /* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
-  background: #1669b7 !important;
+  background: #0F766E !important;
 }

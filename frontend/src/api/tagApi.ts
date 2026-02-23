@@ -2,6 +2,7 @@
 // --- NEW FILE ---
 
 import axios from './axiosInstance'; // Your authenticated axios instance
+import { buildApiUrl } from './apiBase';
 
 // --- Type Definitions (Match schemas/tag.py) ---
 
@@ -34,8 +35,7 @@ export interface TagUpdatePayload {
  */
 export const fetchTags = async (): Promise<FetchedTag[]> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/tags/`;
+        const apiUrl = buildApiUrl("/tags/");
         
         const params = {
             skip: 0,
@@ -56,8 +56,7 @@ export const fetchTags = async (): Promise<FetchedTag[]> => {
  */
 export const createTag = async (payload: TagCreatePayload): Promise<FetchedTag> => {
      try {
-      const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/tags/`;
+                const apiUrl = buildApiUrl("/tags/");
         console.log("Creating tag:", payload);
         const response = await axios.post<FetchedTag>(apiUrl, payload);
         return response.data;
@@ -73,11 +72,8 @@ export const createTag = async (payload: TagCreatePayload): Promise<FetchedTag> 
  */
 export const updateTag = async (tagId: number, payload: TagUpdatePayload): Promise<FetchedTag> => {
      try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/tags/${tagId}/`;
-        console.log(`Updating tag ${tagId}:`, payload);
+        const apiUrl = buildApiUrl(`/tags/${tagId}`);
         const response = await axios.patch<FetchedTag>(apiUrl, payload);
-        console.log("Tag updated successfully:", response.data);
         return response.data;
      } catch(error) {
         console.error(`Error updating tag ${tagId}:`, error);
@@ -91,10 +87,8 @@ export const updateTag = async (tagId: number, payload: TagUpdatePayload): Promi
  */
 export const deleteTag = async (tagId: number): Promise<void> => {
      try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/tags/${tagId}/`;
-        console.log(`Deleting tag ${tagId}`);
-        await axios.delete(apiUrl); // Expects 204 No Content
+        const apiUrl = buildApiUrl(`/tags/${tagId}`);
+        await axios.delete(apiUrl);
      } catch(error) {
         console.error(`Error deleting tag ${tagId}:`, error);
         throw error;

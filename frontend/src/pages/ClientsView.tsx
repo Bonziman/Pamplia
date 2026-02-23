@@ -4,6 +4,7 @@
 import React, { useState, useCallback } from 'react'; // Removed useEffect as data loading is in ClientsTable
 import { useOutletContext } from 'react-router-dom';
 import axios from 'axios'; // For error checking
+import { Box, Flex, Heading, Text, Alert, AlertIcon, AlertDescription, Button } from '@chakra-ui/react';
 
 // API Imports for MODALS (createClient, updateClient, deleteClient, assignClientTag, removeClientTag)
 // fetchClients is no longer needed here as ClientsTable handles it.
@@ -146,8 +147,35 @@ const ClientsView: React.FC = () => {
 
 
     return (
-        <>
-            {viewError && <div className="error-message view-error">Error: {viewError} <button onClick={() => setViewError(null)}>Dismiss</button></div>}
+        <Box>
+            <Flex
+                align={{ base: 'flex-start', md: 'center' }}
+                justify="space-between"
+                direction={{ base: 'column', md: 'row' }}
+                gap={3}
+                mb={5}
+            >
+                <Box>
+                    <Heading as="h1" size="lg" color="gray.900" fontWeight="700" letterSpacing="-0.02em">
+                        Clients
+                    </Heading>
+                    <Text fontSize="sm" color="gray.500" mt={1}>
+                        Manage client records, follow-ups, and tags in one place.
+                    </Text>
+                </Box>
+            </Flex>
+
+            {viewError && (
+                <Alert status="error" borderRadius="xl" mb={4} borderWidth="1px" borderColor="red.200" bg="red.50">
+                    <AlertIcon />
+                    <AlertDescription display="flex" alignItems="center" justifyContent="space-between" w="full" gap={3}>
+                        <Text fontSize="sm" color="red.700" mb="0">{viewError}</Text>
+                        <Button size="xs" variant="outline" colorScheme="red" onClick={() => setViewError(null)}>
+                            Dismiss
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+            )}
 
             <ClientsTable
                 // Remove props that ClientsTable now manages internally:
@@ -195,7 +223,7 @@ const ClientsView: React.FC = () => {
                 onConfirm={handleDeleteClientConfirm} // Changed from onSubmit to onConfirm for clarity
                 client={selectedClientForModal}
             />
-        </>
+        </Box>
     );
 };
 

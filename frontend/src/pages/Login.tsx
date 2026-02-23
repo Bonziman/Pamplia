@@ -1,178 +1,312 @@
 // src/pages/Login.tsx
-import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { useAuth } from "../auth/authContext";
+// Full-screen background + glassmorphism card — Apple-inspired
 
-// Import the custom input component
-import NotchedOutlineInput from '../components/NotchedOutlineInput';
-
-// Keep React Bootstrap components for Button, Spinner if desired (Alert removed)
-import Button from 'react-bootstrap/Button';
-import Spinner from 'react-bootstrap/Spinner';
-// import Alert from 'react-bootstrap/Alert'; // No longer needed
-
+import React, { useState, useEffect, FormEvent } from 'react';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import axios from 'axios';
+import { buildApiUrl } from '../api/apiBase';
+import { useAuth } from '../auth/authContext';
+import {
+  Box,
+  Flex,
+  VStack,
+  Heading,
+  Text,
+  Input,
+  InputGroup,
+  InputRightElement,
+  Button,
+  FormControl,
+  FormLabel,
+  Link,
+  Spinner,
+  Alert,
+  AlertIcon,
+  Image,
+  IconButton,
+} from '@chakra-ui/react';
+import { Eye, EyeOff } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { isAuthenticated, isLoading, checkAuthStatus } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ... (useEffect and handleLogin logic remain the same) ...
-    useEffect(() => {
-        if (!isLoading && isAuthenticated) {
-            console.log("[Login Page] User already authenticated. Redirecting...");
-            navigate("/dashboard", { replace: true });
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isLoading, isAuthenticated, navigate]);
+
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const apiUrl = buildApiUrl('/auth/login');
+      const response = await axios.post(apiUrl, { email, password }, { withCredentials: true });
+      const redirectToSubdomain = response.data.redirect_to_subdomain;
+
+      // Always redirect to the tenant's subdomain dashboard
+      const currentHostname = window.location.hostname;
+      const isIpHost = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(currentHostname);
+      const envBaseDomain = process.env.REACT_APP_BASE_DOMAIN;
+      const baseDomain =
+        envBaseDomain && envBaseDomain.trim().length > 0
+          ? envBaseDomain
+          : currentHostname;
+
+      if (redirectToSubdomain && !isIpHost) {
+        const currentProtocol = window.location.protocol;
+        const port = window.location.port;
+        const portString = port ? `:${port}` : '';
+        const targetHost = `${redirectToSubdomain}.${baseDomain}`;
+
+        // If already on the correct subdomain, just navigate in-app
+        if (currentHostname === targetHost) {
+          await checkAuthStatus();
+          navigate('/dashboard');
+        } else {
+          // Redirect to correct tenant subdomain
+          window.location.href = `${currentProtocol}//${targetHost}${portString}/dashboard`;
         }
-    }, [isLoading, isAuthenticated, navigate]);
-
-    const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        setError("");
-        setIsSubmitting(true);
-
-        try {
-            const currentHostname = window.location.hostname;
-            const protocol = window.location.protocol;
-            const apiUrl = `${protocol}//${currentHostname}:8000/auth/login`;
-            console.log("[Login Page] Attempting login to:", apiUrl);
-
-            const response = await axios.post(apiUrl, { email, password }, { withCredentials: true });
-            const redirectToSubdomain = response.data.redirect_to_subdomain;
-            await checkAuthStatus();
-
-            if (redirectToSubdomain) {
-                console.log(`[Login Page] Redirecting to subdomain: ${redirectToSubdomain}`);
-                const currentProtocol = window.location.protocol;
-                const port = window.location.port;
-                const portString = port ? `:${port}` : "";
-                const devBaseDomain = "localtest.me";
-                const newUrl = `${currentProtocol}//${redirectToSubdomain}.${devBaseDomain}${portString}/dashboard`;
-                console.log("[Login Page] Redirecting browser to:", newUrl);
-                window.location.href = newUrl;
-            } else {
-                console.log("[Login Page] Login successful. Navigating to dashboard.");
-                navigate("/dashboard");
-            }
-        } catch (err: any) {
-            console.error("[Login Page] Login failed:", err.response || err);
-            if (err.response) {
-                const status = err.response.status;
-                const detail = err.response.data?.detail || "An unexpected error occurred.";
-                setError(status === 401 ? "Login failed. Check credentials." : `Login failed: ${detail}`);
-            } else if (err.request) {
-                setError("Login failed. No response from server.");
-            } else {
-                setError("Login failed. Setup error.");
-            }
-            setIsSubmitting(false);
-        }
-    };
-
+      } else {
+        await checkAuthStatus();
+        navigate('/dashboard');
+      }
+    } catch (err: any) {
+      if (err.response) {
+        const status = err.response.status;
+        const detail = err.response.data?.detail || 'An unexpected error occurred.';
+        setError(status === 401 ? 'Invalid email or password.' : `Login failed: ${detail}`);
+      } else if (err.request) {
+        setError('Unable to reach server. Please try again.');
+      } else {
+        setError('Something went wrong.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (isLoading) {
     return (
-      <div className="d-flex justify-content-center align-items-center vh-100">
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
-      </div>
+      <Flex minH="100vh" align="center" justify="center" bg="gray.50">
+        <Spinner size="xl" color="brand.500" thickness="3px" />
+      </Flex>
     );
   }
 
-  if (isAuthenticated) { return null; }
+  if (isAuthenticated) return null;
 
   return (
-    
-    <section className="vh-100">
-      
-      <div className="container-fluid">
-        <div className="row">
-          <div className="col-sm-6 text-black">
-             <div className="px-5 ms-xl-4">
-                <i className="fas fa-crow fa-2x me-3 pt-5 mt-xl-4" style={{ color: '#709085' }}></i>
-                <span className="h1 fw-bold mb-0">Logo</span>
-             </div>
+    <Flex
+      minH="100vh"
+      position="relative"
+      overflow="hidden"
+    >
+      {/* Background image */}
+      <Box
+        position="absolute"
+        inset="0"
+        bgImage="url('https://images.unsplash.com/photo-1557683316-973673baf926?w=1920&q=80')"
+        bgSize="cover"
+        bgPosition="center"
+        filter="brightness(0.7)"
+        zIndex={0}
+      />
 
-            <div className="d-flex align-items-center h-custom-2 px-5 ms-xl-4 mt-5 pt-5 pt-xl-0 mt-xl-n5">
-              <form style={{ width: '23rem' }} onSubmit={handleLogin}>
-                <h3 className="fw-normal mb-3 pb-3" style={{ letterSpacing: '1px' }}>Log in</h3>
+      {/* Subtle gradient overlay */}
+      <Box
+        position="absolute"
+        inset="0"
+        bg="linear-gradient(135deg, rgba(13, 148, 136, 0.3) 0%, rgba(17, 24, 39, 0.6) 100%)"
+        zIndex={1}
+      />
 
-                {/* --- Error Display: Simple Red Text --- */}
-                {error && (
-                  <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.875em' }}>
-                    {error}
-                  </div>
-                )}
-
-                {/* Email Input */}
-                <NotchedOutlineInput
-                  id="loginEmail"
-                  label="Email address"
-                  type="email"
-                  name="email"
-                  value={email}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                  required
-                  disabled={isSubmitting}
-                  autoComplete="email" // Good practice for login
-                  autoFocus // Optional: Focus email field on load
-                />
-
-                {/* Password Input - Type set to password triggers toggle */}
-                <NotchedOutlineInput
-                  id="loginPassword"
-                  label="Password"
-                  type="password" // This enables the toggle feature
-                  name="password"
-                  value={password}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                  required
-                  disabled={isSubmitting}
-                  autoComplete="current-password" // Good practice
-                />
-
-                {/* Submit Button */}
-                <div className="pt-1 mb-4 d-grid">
-                  <Button
-                    variant="info"
-                    size="lg"
-                    type="submit"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
-                        Logging in...
-                      </>
-                    ) : (
-                      "Login"
-                    )}
-                  </Button>
-                </div>
-
-                {/* Static Links */}
-                <p className="small mb-5 pb-lg-2"><a className="text-muted" href="#!">Forgot password?</a></p>
-                
-
-              </form>
-            </div>
-          </div>
-          {/* Image column */}
-          <div className="col-sm-6 px-0 d-none d-sm-block">
-            <img
-              src="https://mir-s3-cdn-cf.behance.net/project_modules/source/52ba5a172513857.6480ea0699e71.jpg"
-              alt="Login visual"
-              className="w-100 vh-100"
-              style={{ objectFit: 'cover', objectPosition: 'left' }}
+      {/* Content */}
+      <Flex
+        position="relative"
+        zIndex={2}
+        w="100%"
+        minH="100vh"
+        align="center"
+        justify="center"
+        px={4}
+      >
+        <Box
+          w="100%"
+          maxW="420px"
+          bg="rgba(255, 255, 255, 0.12)"
+          backdropFilter="saturate(180%) blur(24px)"
+          borderRadius="2xl"
+          border="1px solid"
+          borderColor="whiteAlpha.300"
+          p={{ base: 8, md: 10 }}
+          shadow="dark-lg"
+        >
+          {/* Logo */}
+          <Flex justify="center" mb={6}>
+            <Image
+              src="/logo_light.png"
+              alt="Pamplia"
+              h="32px"
+              w="auto"
+              fallback={
+                <Text fontSize="2xl" fontWeight="800" color="white" letterSpacing="-0.5px">
+                  Pamplia
+                </Text>
+              }
             />
-          </div>
-        </div>
-      </div>
-    </section>
+          </Flex>
+
+          <VStack spacing={1} mb={7}>
+            <Heading size="lg" color="white" fontWeight="700" textAlign="center">
+              Welcome back
+            </Heading>
+            <Text fontSize="sm" color="whiteAlpha.700" textAlign="center">
+              Sign in to your account
+            </Text>
+          </VStack>
+
+          {error && (
+            <Alert
+              status="error"
+              borderRadius="lg"
+              mb={5}
+              bg="red.500"
+              color="white"
+              fontSize="sm"
+              py={2.5}
+            >
+              <AlertIcon color="white" />
+              {error}
+            </Alert>
+          )}
+
+          <form onSubmit={handleLogin}>
+            <VStack spacing={4}>
+              <FormControl>
+                <FormLabel color="whiteAlpha.800" fontSize="sm" fontWeight="500" mb={1.5}>
+                  Email
+                </FormLabel>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                  disabled={isSubmitting}
+                  autoComplete="email"
+                  autoFocus
+                  size="lg"
+                  bg="whiteAlpha.100"
+                  border="1px solid"
+                  borderColor="whiteAlpha.300"
+                  color="white"
+                  _placeholder={{ color: 'whiteAlpha.500' }}
+                  _hover={{ borderColor: 'whiteAlpha.400' }}
+                  _focus={{
+                    borderColor: 'brand.400',
+                    boxShadow: '0 0 0 1px var(--chakra-colors-brand-400)',
+                    bg: 'whiteAlpha.150',
+                  }}
+                  borderRadius="xl"
+                  fontSize="sm"
+                  h="48px"
+                />
+              </FormControl>
+
+              <FormControl>
+                <FormLabel color="whiteAlpha.800" fontSize="sm" fontWeight="500" mb={1.5}>
+                  Password
+                </FormLabel>
+                <InputGroup>
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    disabled={isSubmitting}
+                    autoComplete="current-password"
+                    size="lg"
+                    bg="whiteAlpha.100"
+                    border="1px solid"
+                    borderColor="whiteAlpha.300"
+                    color="white"
+                    _placeholder={{ color: 'whiteAlpha.500' }}
+                    _hover={{ borderColor: 'whiteAlpha.400' }}
+                    _focus={{
+                      borderColor: 'brand.400',
+                      boxShadow: '0 0 0 1px var(--chakra-colors-brand-400)',
+                      bg: 'whiteAlpha.150',
+                    }}
+                    borderRadius="xl"
+                    fontSize="sm"
+                    h="48px"
+                    pr="48px"
+                  />
+                  <InputRightElement h="48px" w="48px">
+                    <IconButton
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      icon={showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      variant="unstyled"
+                      color="whiteAlpha.600"
+                      _hover={{ color: 'white' }}
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      size="sm"
+                      onClick={() => setShowPassword(!showPassword)}
+                      tabIndex={-1}
+                    />
+                  </InputRightElement>
+                </InputGroup>
+              </FormControl>
+
+              <Flex w="100%" justify="flex-end">
+                <Link
+                  as={RouterLink}
+                  to="/forgot-password"
+                  fontSize="xs"
+                  color="whiteAlpha.700"
+                  _hover={{ color: 'white', textDecoration: 'none' }}
+                  fontWeight="500"
+                >
+                  Forgot password?
+                </Link>
+              </Flex>
+
+              <Button
+                type="submit"
+                w="100%"
+                size="lg"
+                h="48px"
+                bg="brand.500"
+                color="white"
+                fontWeight="600"
+                fontSize="sm"
+                borderRadius="xl"
+                isLoading={isSubmitting}
+                loadingText="Signing in..."
+                _hover={{ bg: 'brand.600', transform: 'translateY(-1px)' }}
+                _active={{ bg: 'brand.700', transform: 'translateY(0)' }}
+                transition="all 0.15s ease"
+                mt={2}
+              >
+                Sign in
+              </Button>
+            </VStack>
+          </form>
+        </Box>
+      </Flex>
+    </Flex>
   );
 };
 

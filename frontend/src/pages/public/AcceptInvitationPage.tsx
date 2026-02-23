@@ -8,7 +8,7 @@ import {
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
+import { Eye, EyeOff } from 'lucide-react';
 
 import { useAuth } from '../../auth/authContext'; // For login after success
 import { acceptInvitation, ValidateTokenResponse, validateInvitationToken } from '../../api/staffApi'; // Assuming staffApi.ts exists
@@ -94,14 +94,7 @@ const AcceptInvitationPage: React.FC = () => {
             };
             // This API call is successful and the backend SETS THE HTTPONLY COOKIE
             const response = await acceptInvitation(payload); 
-            // response is: { access_token: string, token_type: string, user: UserOut }
 
-            console.log("AcceptInvitationPage: Response from acceptInvitation API:", response);
-
-            // MANUALLY update the AuthContext with the user data received from the API
-            // This makes the app immediately aware of the authenticated user.
-            // The HttpOnly cookie is already set by the browser from the previous API response.
-            // The `response.user` should match the `UserProfile` type structure.
             if (response.user) {
                 manuallySetUserSession(response.user as UserProfile, response.access_token); // Pass token if needed by manuallySetUserSession
             } else {
@@ -186,7 +179,7 @@ const AcceptInvitationPage: React.FC = () => {
                             <InputGroup>
                                 <Input id="password" type={showPassword ? 'text' : 'password'} {...register('password')} />
                                 <InputRightElement>
-                                    <IconButton aria-label={showPassword ? "Hide password" : "Show password"} icon={showPassword ? <ViewOffIcon /> : <ViewIcon />} onClick={handleTogglePassword} variant="ghost"/>
+                                    <IconButton aria-label={showPassword ? "Hide password" : "Show password"} icon={showPassword ? <EyeOff size={16} /> : <Eye size={16} />} onClick={handleTogglePassword} variant="ghost"/>
                                 </InputRightElement>
                             </InputGroup>
                             <FormErrorMessage>{errors.password?.message}</FormErrorMessage>
@@ -197,7 +190,7 @@ const AcceptInvitationPage: React.FC = () => {
                              <InputGroup>
                                 <Input id="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} {...register('confirmPassword')} />
                                 <InputRightElement>
-                                     <IconButton aria-label={showConfirmPassword ? "Hide password" : "Show password"} icon={showConfirmPassword ? <ViewOffIcon /> : <ViewIcon />} onClick={handleToggleConfirmPassword} variant="ghost"/>
+                                     <IconButton aria-label={showConfirmPassword ? "Hide password" : "Show password"} icon={showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />} onClick={handleToggleConfirmPassword} variant="ghost"/>
                                 </InputRightElement>
                             </InputGroup>
                             <FormErrorMessage>{errors.confirmPassword?.message}</FormErrorMessage>

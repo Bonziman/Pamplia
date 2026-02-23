@@ -1,372 +1,303 @@
-.clients-view .view-header { 
-    /* Add valid CSS properties here, for example: */
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.clients-view .view-controls { display: flex; align-items: center; gap: 15px; }
-.clients-view .checkbox-label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
-.clients-view .table-container { overflow-x: auto; } 
-.clients-table th { cursor: pointer; user-select: none; } 
-.clients-table th .svg-inline--fa { margin-left: 5px; color: #aaa; } /* Sort icon style */
-.clients-table .deleted-row { background-color: #f8f8f8; color: #999; font-style: italic; }
-.clients-table .deleted-row .tag { background-color: #ccc !important; } /* Dim tags on deleted rows */
-.tag-cell { display: flex; flex-wrap: wrap; gap: 4px; max-width: 200px; } /* Limit tag width*/
-.tag { padding: 2px 6px; font-size: 0.8em; border-radius: 4px; color: white; white-space: nowrap; }
-.tag-more { font-size: 0.8em; color: #555; }
-.status-badge { padding: 3px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold; text-transform: capitalize; }
-.status-confirmed { background-color: #d4edda; color: #155724; } 
-.status-unconfirmed { background-color: #fff3cd; color: #856404; }
-.status-deleted-active { background-color: #f8d7da; color: #721c24; }
-.status-active { background-color: #d1ecf1; color: #0c5460; } 
-.action-menu-container { position: relative; display: inline-block; }
-.action-menu-toggle { background: none; border: none; cursor: pointer; padding: 5px; color: #555; }
-.action-menu-dropdown {
-    position: absolute;
-    right: 0;
-    top: 100%;
-    background-color: white;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    z-index: 10;
-    min-width: 100px;
-    padding: 5px 0;
-}
-.action-menu-dropdown button, .action-menu-dropdown span {
-    display: block;
-    width: 100%;
-    text-align: left;
-    padding: 8px 12px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 0.9em;
-    white-space: nowrap;
-}
-.action-menu-dropdown button .svg-inline--fa { margin-right: 8px; }
-.action-menu-dropdown button:hover { background-color: #f5f5f5; }
-.action-menu-dropdown .action-delete { color: #dc3545; }
-.action-menu-dropdown .action-delete:hover { background-color: #f8d7da; }
-.action-menu-dropdown .action-deleted { padding: 8px 12px; font-size: 0.9em; color: #6c757d; font-style: italic; }
+/* src/components/ClientsTable.css — Apple-inspired client table */
 
-.pagination-controls { display: flex; justify-content: center; align-items: center; gap: 5px; margin-top: 20px; }
-.pagination-controls button { padding: 5px 10px; border: 1px solid #ccc; background-color: #fff; cursor: pointer; border-radius: 4px; }
-.pagination-controls button:disabled { cursor: not-allowed; opacity: 0.5; }
-.pagination-controls button.active { background-color: #007bff; color: white; border-color: #007bff; }
-.pagination-controls span { padding: 0 5px; color: #aaa; }
-
-/* --- Filter Bar --- */
+/* ─── Filter Bar ─── */
 .filters-bar.client-filters {
-    display: flex;
-    flex-wrap: wrap; /* Allow items to wrap on smaller screens */
-    gap: 15px;
-    padding: 15px;
-    background-color: #f9f9f9; /* Light background for the filter area */
-    border-radius: 6px;
-    margin-bottom: 20px;
-    align-items: center; /* Align items vertically */
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 20px;
+  background-color: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .filter-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .filter-icon {
-    color: #777; /* Icon color */
-    font-size: 1.1em;
+  color: #9CA3AF;
+  flex-shrink: 0;
 }
 
 .form-input.search-input {
-    padding: 8px 12px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 0.9em;
-    min-width: 250px; /* Decent width for search */
-    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  padding: 9px 14px;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  min-width: 260px;
+  color: #374151;
+  background: #F9FAFB;
+  transition: all 0.2s ease;
 }
-
+.form-input.search-input::placeholder {
+  color: #9CA3AF;
+}
 .form-input.search-input:focus {
-    border-color: #007bff; /* Highlight on focus, match your primary color */
-    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); /* Bootstrap-like focus glow */
-    outline: none;
+  border-color: #0D9488;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+  outline: none;
+  background: #FFFFFF;
 }
 
-/* --- React Select Customization for Tag Filter --- */
+/* ─── React Select Brand Styling ─── */
 .tag-multiselect .react-select__control {
-    min-width: 280px; /* Ensure enough space for tags */
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 0.9em;
-    box-shadow: none; /* Remove default react-select shadow if any */
-    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  min-width: 280px;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  box-shadow: none;
+  background: #F9FAFB;
+  transition: all 0.2s ease;
+  min-height: 40px;
 }
-
+.tag-multiselect .react-select__control:hover {
+  border-color: #D1D5DB;
+}
 .tag-multiselect .react-select__control--is-focused {
-    border-color: #007bff !important; /* Use !important to override inline styles if needed */
-    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25) !important;
+  border-color: #0D9488 !important;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1) !important;
+  background: #FFFFFF;
 }
-
-.tag-multiselect .react-select__placeholder {
-    color: #888;
-}
-
+.tag-multiselect .react-select__placeholder { color: #9CA3AF; }
 .tag-multiselect .react-select__multi-value {
-    background-color: #007bff; /* Primary color for selected tags */
-    color: white;
-    border-radius: 3px;
-    font-size: 0.85em;
+  background-color: #CCFBF1;
+  color: #0F766E;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
-
-.tag-multiselect .react-select__multi-value__label {
-    color: white;
-    padding: 2px 5px;
-}
-
+.tag-multiselect .react-select__multi-value__label { color: #0F766E; padding: 2px 6px; }
 .tag-multiselect .react-select__multi-value__remove {
-    color: white;
-    cursor: pointer;
+  color: #0F766E;
+  cursor: pointer;
+  border-radius: 0 6px 6px 0;
 }
 .tag-multiselect .react-select__multi-value__remove:hover {
-    background-color: #0056b3; /* Darker shade of primary for remove hover */
-    color: white;
+  background-color: #99F6E4;
+  color: #115E59;
 }
-
 .tag-multiselect .react-select__menu {
-    z-index: 100; /* Ensure dropdown menu is on top of other content */
-    font-size: 0.9em;
+  z-index: 100;
+  font-size: 0.875rem;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
 }
+.tag-multiselect .react-select__option { padding: 10px 14px; }
+.tag-multiselect .react-select__option--is-focused { background-color: #F3F4F6; color: #374151; }
+.tag-multiselect .react-select__option--is-selected { background-color: #0D9488; color: white; }
 
-.tag-multiselect .react-select__option {
-    padding: 8px 12px;
-}
-.tag-multiselect .react-select__option--is-focused {
-    background-color: #e9ecef; /* Light hover for options */
-    color: #333;
-}
-.tag-multiselect .react-select__option--is-selected {
-    background-color: #007bff; /* Primary color for selected option in dropdown */
-    color: white;
-}
-
-
-/* --- Clear Filters Button --- */
+/* ─── Clear Filters ─── */
 .clear-filters-btn {
-    padding: 8px 15px;
-    font-size: 0.9em;
-    background-color: #6c757d; /* A neutral secondary color */
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
+  padding: 9px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background-color: #F9FAFB;
+  color: #6B7280;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .clear-filters-btn:hover {
-    background-color: #5a6268;
-}
-.clear-filters-btn .svg-inline--fa {
-    margin-right: 6px;
-}
-
-
-/* --- Pagination Controls Enhancements --- */
-.pagination-controls {
-    display: flex;
-    flex-wrap: wrap; /* Allow wrapping on smaller screens */
-    justify-content: space-between; /* Space out elements */
-    align-items: center;
-    gap: 10px; /* Increase gap slightly */
-    margin-top: 25px;
-    padding: 10px;
-    border-top: 1px solid #eee; /* Optional separator line */
+  background-color: #F3F4F6;
+  border-color: #D1D5DB;
+  color: #374151;
 }
 
+/* ─── Pagination Enhancements ─── */
 .pagination-info {
-    font-size: 0.9em;
-    color: #555;
+  font-size: 0.8125rem;
+  color: #6B7280;
+  font-weight: 500;
 }
 
 .pagination-buttons {
-    display: flex;
-    align-items: center;
-    gap: 5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.pagination-controls button,
-.pagination-controls .items-per-page-selector select {
-    padding: 6px 12px; /* Slightly more padding */
-    border: 1px solid #ccc;
-    background-color: #fff;
-    cursor: pointer;
-    border-radius: 4px;
-    font-size: 0.9em;
-    transition: background-color 0.2s, border-color 0.2s;
-}
-.pagination-controls button:hover:not(:disabled) {
-    background-color: #f0f0f0;
-    border-color: #bbb;
-}
-
-.pagination-controls button:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-}
-.pagination-controls button.active {
-    background-color: #007bff; /* Your primary color */
-    color: white;
-    border-color: #007bff;
-}
-.pagination-controls span.pagination-ellipsis {
-    padding: 0 5px;
-    color: #777;
-    align-self: center; /* Align ellipsis better */
+.pagination-ellipsis {
+  padding: 0 4px;
+  color: #D1D5DB;
 }
 
 .items-per-page-selector {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.9em;
-    color: #555;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: #6B7280;
+}
+.items-per-page-selector label {
+  font-weight: 500;
 }
 .items-per-page-selector select {
-    /* Styles inherited or add specific ones */
+  padding: 5px 10px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  color: #374151;
+  background: #fff;
+  cursor: pointer;
 }
 
-
-/* --- No Results Message --- */
+/* ─── No Results ─── */
 .no-results-message {
-    text-align: center;
-    padding: 30px 15px;
-    color: #555;
-    font-size: 1.1em;
-    background-color: #f9f9f9;
-    border-radius: 6px;
-    margin-top: 20px;
+  text-align: center;
+  padding: 48px 20px;
+  color: #6B7280;
+  font-size: 0.9375rem;
+  background-color: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  margin-top: 16px;
 }
-.no-results-message .button-link { /* If you have a button-link class */
-    background: none;
-    border: none;
-    color: #007bff;
-    text-decoration: underline;
-    cursor: pointer;
-    padding: 0;
-    font-size: 1em; /* Match surrounding text */
+.no-results-message .button-link {
+  background: none;
+  border: none;
+  color: #0D9488;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  font-weight: 600;
 }
-.no-results-message .button-link:hover {
-    color: #0056b3;
-}
+.no-results-message .button-link:hover { color: #0F766E; text-decoration: underline; }
 
-/* --- Inline Tag Editor (if any adjustments needed) --- */
+/* ─── Inline Tag Editor ─── */
 .inline-tag-editor-popover {
-    position: absolute;
-    background-color: white;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 100; /* Higher than table actions if needed */
-    min-width: 300px;
-    padding: 15px;
-    right: 0; /* Adjust as needed based on trigger position */
-    /* top: 100%; /* Position below the trigger cell */
-    /* Consider positioning logic if tags cell is far right */
-    transform: translateX(calc(100% - 30px)); /* Example to shift left if too far right */
-    /* If it's opened from the middle of the table, this might need to be more dynamic or centered */
+  position: absolute;
+  background-color: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.06);
+  z-index: 100;
+  min-width: 320px;
+  padding: 20px;
+  right: 0;
+  transform: translateX(calc(100% - 30px));
 }
 .inline-tag-editor-popover h4 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 1.1em;
-    color: #333;
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.01em;
 }
 .inline-tag-editor-close {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: none;
-    border: none;
-    font-size: 1.4em;
-    color: #888;
-    cursor: pointer;
-    padding: 0;
-    line-height: 1;
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: #F3F4F6;
+  border: none;
+  font-size: 1.1rem;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  border-radius: 8px;
+  transition: all 0.15s ease;
 }
-.inline-tag-editor-close:hover {
-    color: #333;
-}
+.inline-tag-editor-close:hover { background: #E5E7EB; color: #374151; }
 
-.current-tags-section, .add-tags-section {
-    margin-bottom: 15px;
-}
+.current-tags-section, .add-tags-section { margin-bottom: 16px; }
 .current-tags-section .tag.assigned-tag {
-    display: inline-flex; /* To align text and remove button */
-    align-items: center;
-    margin-right: 5px;
-    margin-bottom: 5px;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 6px;
+  margin-bottom: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
 }
 .current-tags-section .tag.assigned-tag .remove-tag-btn {
-    background: none;
-    border: none;
-    color: rgba(255,255,255,0.7);
-    margin-left: 6px;
-    padding: 0 3px;
-    cursor: pointer;
-    font-size: 0.9em;
-    line-height: 1;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  margin-left: 6px;
+  padding: 0 2px;
+  cursor: pointer;
+  line-height: 1;
 }
-.current-tags-section .tag.assigned-tag .remove-tag-btn:hover {
-    color: white;
-}
+.current-tags-section .tag.assigned-tag .remove-tag-btn:hover { color: white; }
+.no-tags-assigned { color: #9CA3AF; font-size: 0.8125rem; font-style: italic; }
 
 .tag-search-input {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    box-sizing: border-box; /* Ensure padding doesn't increase width */
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+  font-size: 0.875rem;
+  color: #374151;
+  background: #F9FAFB;
+  transition: all 0.2s ease;
+}
+.tag-search-input:focus {
+  border-color: #0D9488;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+  outline: none;
+  background: #FFFFFF;
 }
 
 .available-tags-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    max-height: 150px; /* Limit height and make scrollable */
-    overflow-y: auto;
-    border: 1px solid #eee;
-    border-radius: 4px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
 }
 .available-tags-list li button.assign-tag-btn {
-    display: block;
-    width: 100%;
-    text-align: left;
-    padding: 8px 10px;
-    background: none;
-    border: none;
-    border-bottom: 1px solid #f5f5f5;
-    cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #F3F4F6;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
 }
-.available-tags-list li:last-child button.assign-tag-btn {
-    border-bottom: none;
+.available-tags-list li:last-child button.assign-tag-btn { border-bottom: none; }
+.available-tags-list li button.assign-tag-btn:hover { background-color: #F9FAFB; }
+.available-tags-list li i { display: block; padding: 10px 12px; color: #9CA3AF; font-size: 0.8125rem; }
+
+/* ─── Tag Cell Editable ─── */
+.tag-cell.editable {
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
 }
-.available-tags-list li button.assign-tag-btn:hover {
-    background-color: #f9f9f9;
-}
-.available-tags-list li button.assign-tag-btn .tag {
-    pointer-events: none; /* So click goes to button */
-}
-.available-tags-list li i { /* "No matching tags" message */
-    display: block;
-    padding: 8px 10px;
-    color: #777;
+.tag-cell.editable:hover {
+  background-color: #F3F4F6;
 }
 
+.clients-view .view-header { margin-bottom: 16px; }
 
-/* Make sure these styles are specific enough or adjust existing .view-header etc. if needed */
-.clients-view .view-header {
-    /* Existing styles are fine */
-    margin-bottom: 0; /* Remove bottom margin if filter bar is directly below */
+/* ─── Animate Spin ─── */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

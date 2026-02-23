@@ -1,6 +1,7 @@
 // src/auth/authContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import axiosInstance from "../api/axiosInstance";
+import { buildApiUrl } from "../api/apiBase";
 
 // --- Interfaces (remain the same) ---
 interface UserFromToken {
@@ -10,7 +11,7 @@ interface UserFromToken {
   exp?: number;
   iat?: number;
 }
-interface UserProfile {
+export interface UserProfile {
   id: number;
   email: string;
   name: string;
@@ -27,7 +28,6 @@ interface AuthContextType {
   checkAuthStatus: () => Promise<void>; // Renamed login to checkAuthStatus
   logout: () => Promise<void>; // Logout now async
   manuallySetUserSession: (userData: UserProfile, token?: string) => void; // For manual session setting
-  setIsAuthenticated: React.Dispatch<React.SetStateAction<boolean>>; // For manual auth state control
 }
 
 interface AuthProviderProps {
@@ -51,8 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true); // Start loading when checking
     try {
       // Construct dynamic URL for profile endpoint
-      const currentHostname = window.location.hostname;
-      const apiUrl = `http://${currentHostname}:8000/users/profile`; // Ensure path matches backend router
+      const apiUrl = buildApiUrl("/users/profile"); // Ensure path matches backend router
       console.log("[AuthContext] Fetching profile from:", apiUrl);
 
       const response = await axiosInstance.get<UserProfile>(apiUrl);
@@ -78,9 +77,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     try {
       // Construct dynamic URL for logout endpoint
-      const currentHostname = window.location.hostname;
       // Use base domain or current? Usually safe to call on current.
-      const apiUrl = `http://${currentHostname}:8000/auth/logout`;
+      const apiUrl = buildApiUrl("/auth/logout");
       await axiosInstance.post(apiUrl); // Call backend to clear cookie
       console.log("[AuthContext] Logout API call successful.");
     } catch (error: any) {

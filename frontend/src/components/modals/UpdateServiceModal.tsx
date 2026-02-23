@@ -1,8 +1,11 @@
-// src/components/UpdateServiceModal.tsx (Using Custom Modal)
-// --- MODIFIED ---
-
+// src/components/modals/UpdateServiceModal.tsx
 import React, { useState, useEffect } from 'react';
-import Modal from './Modal'; // Use your custom Modal component
+import {
+    Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
+    ModalCloseButton, Button, VStack, FormControl, FormLabel, Input, Textarea,
+    Alert, AlertIcon, NumberInput, NumberInputField, Grid, GridItem,
+    InputGroup, InputLeftElement,
+} from '@chakra-ui/react';
 import { FetchedService, ServiceUpdatePayload } from '../../api/serviceApi';
 
 interface UpdateServiceModalProps {
@@ -13,7 +16,6 @@ interface UpdateServiceModalProps {
 }
 
 const UpdateServiceModal: React.FC<UpdateServiceModalProps> = ({ isOpen, onClose, onSubmit, service }) => {
-    // State variables remain the same
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [duration, setDuration] = useState<number | ''>('');
@@ -21,15 +23,13 @@ const UpdateServiceModal: React.FC<UpdateServiceModalProps> = ({ isOpen, onClose
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // useEffect and handleSubmit logic remain the same
     useEffect(() => {
         if (service && isOpen) {
             setName(service.name);
             setDescription(service.description || '');
             setDuration(service.duration_minutes);
             setPrice(service.price);
-            setError(null);
-            setIsSubmitting(false);
+            setError(null); setIsSubmitting(false);
         }
     }, [service, isOpen]);
 
@@ -40,73 +40,103 @@ const UpdateServiceModal: React.FC<UpdateServiceModalProps> = ({ isOpen, onClose
 
         const payload: ServiceUpdatePayload = {};
         if (name !== service.name) payload.name = name;
-        // Handle null vs empty string for description if needed
-        if (description !== (service.description || '')) payload.description = description || undefined; // Send undefined if cleared
+        if (description !== (service.description || '')) payload.description = description || undefined;
         if (duration !== '' && Number(duration) !== service.duration_minutes) payload.duration_minutes = Number(duration);
         if (price !== '' && Number(price) !== service.price) payload.price = Number(price);
 
-
-        if (Object.keys(payload).length === 0) {
-             setError("No changes detected.");
-             return;
-        }
-         if (isNaN(Number(duration)) || isNaN(Number(price))) {
-            setError("Duration and Price must be valid numbers.");
-            return;
-        }
+        if (Object.keys(payload).length === 0) { setError("No changes detected."); return; }
+        if (isNaN(Number(duration)) || isNaN(Number(price))) { setError("Duration and Price must be valid numbers."); return; }
 
         setIsSubmitting(true);
         try {
             await onSubmit(service.id, payload);
-        } catch (err) {
-             console.error("Update error:", err);
-             setError("Failed to update service.");
+        } catch (err: any) {
+            setError(err.response?.data?.detail || "Failed to update service.");
         } finally {
-             setIsSubmitting(false);
+            setIsSubmitting(false);
         }
     };
 
-
-    if (!service) return null; // Don't render modal if no service selected
+    if (!service) return null;
 
     return (
-        // Use your custom Modal component
-        <Modal isOpen={isOpen} onClose={onClose}>
-            <h2>Update Service (ID: {service.id})</h2>
-             {error && <p className="modal-error">{error}</p>}
-            <form onSubmit={handleSubmit} className="modal-form">
-                 {/* Tenant ID Display (Readonly) */}
-                <div className="form-group">
-                    <label htmlFor="tenantId">Tenant ID:</label>
-                    <input id="tenantId" type="number" value={service.tenant_id} readOnly disabled className="form-input"/>
-                </div>
-                {/* Other Form Fields */}
-                 <div className="form-group">
-                    <label htmlFor="serviceName">Name:</label>
-                    <input id="serviceName" type="text" value={name} onChange={(e) => setName(e.target.value)} className="form-input"/>
-                </div>
-                <div className="form-group">
-                    <label htmlFor="serviceDescription">Description:</label>
-                    <textarea id="serviceDescription" value={description} onChange={(e) => setDescription(e.target.value)} className="form-textarea"/>
-                </div>
-                <div className="form-group">
-                    <label htmlFor="serviceDuration">Duration (minutes):</label>
-                    <input id="serviceDuration" type="number" value={duration} onChange={(e) => setDuration(e.target.value === '' ? '' : Number(e.target.value))} className="form-input"/>
-                </div>
-                <div className="form-group">
-                    <label htmlFor="servicePrice">Price:</label>
-                    <input id="servicePrice" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))} className="form-input"/>
-                </div>
-
-                <div className="modal-actions">
-                    <button type="submit" disabled={isSubmitting} className="button button-primary">
-                        {isSubmitting ? 'Updating...' : 'Update Service'}
-                    </button>
-                    <button type="button" onClick={onClose} disabled={isSubmitting} className="button button-secondary">
-                        Cancel
-                    </button>
-                </div>
-            </form>
+        <Modal isOpen={isOpen} onClose={onClose} isCentered size="lg">
+            <ModalOverlay bg="blackAlpha.400" backdropFilter="blur(4px)" />
+            <ModalContent borderRadius="xl" mx={4}>
+                <ModalHeader
+                    borderBottomWidth="1px" borderColor="gray.100"
+                    fontSize="lg" fontWeight="700" color="gray.900" letterSpacing="-0.025em"
+                >
+                    Update Service
+                </ModalHeader>
+                <ModalCloseButton borderRadius="full" _hover={{ bg: 'gray.100' }} />
+                <form onSubmit={handleSubmit}>
+                    <ModalBody py={6}>
+                        <VStack spacing={4} align="stretch">
+                            {error && (
+                                <Alert status="error" borderRadius="lg" fontSize="sm">
+                                    <AlertIcon /> {error}
+                                </Alert>
+                            )}
+                            <FormControl isRequired>
+                                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Service Name</FormLabel>
+                                <Input
+                                    value={name} onChange={(e) => setName(e.target.value)}
+                                    borderRadius="lg" bg="gray.50" _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                    isDisabled={isSubmitting}
+                                />
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Description</FormLabel>
+                                <Textarea
+                                    value={description} onChange={(e) => setDescription(e.target.value)}
+                                    borderRadius="lg" bg="gray.50" _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                    rows={3} resize="vertical" isDisabled={isSubmitting}
+                                />
+                            </FormControl>
+                            <Grid templateColumns="1fr 1fr" gap={4}>
+                                <GridItem>
+                                    <FormControl isRequired>
+                                        <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Duration (minutes)</FormLabel>
+                                        <NumberInput
+                                            value={duration} onChange={(_, val) => setDuration(isNaN(val) ? '' : val)}
+                                            min={1} isDisabled={isSubmitting}
+                                        >
+                                            <NumberInputField
+                                                borderRadius="lg" bg="gray.50"
+                                                _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                            />
+                                        </NumberInput>
+                                    </FormControl>
+                                </GridItem>
+                                <GridItem>
+                                    <FormControl isRequired>
+                                        <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Price</FormLabel>
+                                        <InputGroup>
+                                            <InputLeftElement pointerEvents="none" color="gray.400" fontSize="sm">$</InputLeftElement>
+                                            <Input
+                                                type="number" step="0.01"
+                                                value={price} onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                                                borderRadius="lg" bg="gray.50"
+                                                _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                                isDisabled={isSubmitting}
+                                            />
+                                        </InputGroup>
+                                    </FormControl>
+                                </GridItem>
+                            </Grid>
+                        </VStack>
+                    </ModalBody>
+                    <ModalFooter borderTopWidth="1px" borderColor="gray.100" gap={3}>
+                        <Button variant="outline" onClick={onClose} isDisabled={isSubmitting} borderRadius="lg" fontWeight="600">
+                            Cancel
+                        </Button>
+                        <Button type="submit" colorScheme="brand" isLoading={isSubmitting} loadingText="Saving..." borderRadius="lg" fontWeight="600">
+                            Save Changes
+                        </Button>
+                    </ModalFooter>
+                </form>
+            </ModalContent>
         </Modal>
     );
 };

@@ -5,7 +5,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import {
     VStack, FormControl, FormLabel, Input, FormErrorMessage, Button as ChakraButton,
-    HStack, Text,
+    HStack, Box, Text, Badge, Alert, AlertIcon,
 } from '@chakra-ui/react';
 import { UserOut, UserUpdatePayload } from '../../types/User'; // UserUpdatePayload should allow name
 import { updateUser } from '../../api/userApi'; // Using the general updateUser API
@@ -71,46 +71,54 @@ const EditStaffForm: React.FC<EditStaffFormProps> = ({ staffMember, onSubmitSucc
 
     return (
         <form onSubmit={handleSubmit(onSubmit)}>
-            <VStack spacing={4} align="stretch">
-                <Text fontSize="sm" color="gray.600">
-                    Editing details for: <strong>{staffMember.email}</strong> (Role: {staffMember.role})
-                </Text>
+            <VStack spacing={5} align="stretch">
+                <Box bg="gray.50" borderRadius="xl" p={4} borderWidth="1px" borderColor="gray.100">
+                    <VStack spacing={1} align="start">
+                        <Text fontSize="xs" fontWeight="600" color="gray.500" textTransform="uppercase" letterSpacing="0.05em">Staff Member</Text>
+                        <Text fontSize="sm" fontWeight="600" color="gray.800">{staffMember.email}</Text>
+                        <Badge colorScheme={staffMember.role === 'admin' ? 'purple' : 'brand'} borderRadius="full" px={2} fontSize="xs" mt={1}>
+                            {staffMember.role}
+                        </Badge>
+                    </VStack>
+                </Box>
+
                 <FormControl isInvalid={!!errors.name} isRequired>
-                    <FormLabel htmlFor="name">Full Name</FormLabel>
-                    <Input id="name" {...register('name')} />
+                    <FormLabel htmlFor="name" fontSize="sm" fontWeight="medium" color="gray.600">Full Name</FormLabel>
+                    <Input
+                        id="name"
+                        {...register('name')}
+                        placeholder="Full name"
+                        borderRadius="lg"
+                        bg="gray.50"
+                        _focus={{ bg: 'white', borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
+                        _hover={{ borderColor: 'gray.300' }}
+                    />
                     <FormErrorMessage>{errors.name?.message}</FormErrorMessage>
                 </FormControl>
 
-                {/* 
-                Example if you wanted to include is_active toggle here:
-                (Requires UserUpdatePayload to accept is_active and updateUser API to handle it)
-                <FormControl display="flex" alignItems="center">
-                    <FormLabel htmlFor="is_active_edit" mb="0">
-                        Account Active
-                    </FormLabel>
-                    <Switch 
-                        id="is_active_edit" 
-                        colorScheme="brand"
-                        isChecked={currentIsActive} // Manage this with a local state
-                        onChange={(e) => setCurrentIsActive(e.target.checked)}
-                    />
-                </FormControl>
-                You would need to add `is_active: currentIsActive` to the payload.
-                However, keeping activate/deactivate as a separate, direct action in the table might be clearer.
-                */}
-
                 {serverError && (
-                    <Text color="red.500" fontSize="sm" textAlign="center">{serverError}</Text>
+                    <Alert status="error" borderRadius="lg" fontSize="sm">
+                        <AlertIcon />
+                        {serverError}
+                    </Alert>
                 )}
 
                 <HStack justifyContent="flex-end" spacing={3} mt={4}>
-                    <ChakraButton variant="outline" onClick={onCancel} isDisabled={isSubmitting}>
+                    <ChakraButton
+                        variant="outline"
+                        onClick={onCancel}
+                        isDisabled={isSubmitting}
+                        borderRadius="lg"
+                        fontWeight="600"
+                    >
                         Cancel
                     </ChakraButton>
                     <ChakraButton
                         type="submit"
                         colorScheme="brand"
                         isLoading={isSubmitting}
+                        borderRadius="lg"
+                        fontWeight="600"
                     >
                         Save Changes
                     </ChakraButton>

@@ -83,41 +83,26 @@ def get_client_or_404(
 # --- Create Client (Manual by Staff/Admin/SuperAdmin via Dashboard) ---
 @router.post("/", response_model=schemas.client.ClientOut, status_code=status.HTTP_201_CREATED)
 def create_client_manual(
-    client_data: schemas.client.ClientCreateRequest, # Use the request schema
-    request: Request, # Inject request for subdomain context
+    client_data: schemas.client.ClientCreateRequest,
     db: Session = Depends(database.get_db),
     current_user: User = Depends(get_current_user),
 ):
     print(f"[Create Client Manual] User: {current_user.email}, Role: {current_user.role}")
 
-    # 1. Determine Target Tenant from Subdomain
-    host_header = request.headers.get("Host", "")
-    # (Include the robust subdomain extraction logic used elsewhere)
-    # ... (subdomain extraction and tenant lookup) ...
-    effective_hostname = host_header.split(':')[0]  # Extract hostname from Host header
-    hostname_part = effective_hostname.split('.')[0] # Simplified here, use full logic
-    subdomain_name = hostname_part.split('.')[0] # Simplified here, use full logic
-
-    tenant = db.query(TenantModel).filter(TenantModel.subdomain == subdomain_name).first()
-    if not tenant:
-        print(f"[Create Client Manual] Rejected: Tenant subdomain '{subdomain_name}' not found.")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant portal not found.")
-    tenant_id_from_subdomain = tenant.id
-    print(f"[Create Client Manual] Target Tenant ID from subdomain: {tenant_id_from_subdomain}")
+    # 1. Determine Target Tenant from JWT (user record)
+    target_tenant_id = current_user.tenant_id
+    print(f"[Create Client Manual] Target Tenant ID from JWT: {target_tenant_id}")
 
     # 2. Authorization Check
     if current_user.role not in ["staff", "admin", "super_admin"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions.")
 
-    if current_user.role in ["staff", "admin"] and current_user.tenant_id != tenant_id_from_subdomain:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot create clients for another tenant portal.")
-
     # 3. Check for existing email within the target tenant (if email provided)
     if client_data.email:
         existing_client = db.query(ClientModel).filter(
-            ClientModel.tenant_id == tenant_id_from_subdomain,
+            ClientModel.tenant_id == target_tenant_id,
             ClientModel.email == client_data.email,
-            ClientModel.is_deleted == False # Only check against active clients
+            ClientModel.is_deleted == False
         ).first()
         if existing_client:
             raise HTTPException(
@@ -127,11 +112,10 @@ def create_client_manual(
 
     # 4. Create Client Model instance
     db_client = ClientModel(
-        **client_data.model_dump(exclude_unset=True), # Populate from schema
-        tenant_id=tenant_id_from_subdomain, # Set tenant from subdomain
-        is_confirmed=True, # Manually created clients are confirmed
-        is_deleted=False # Ensure not deleted
-        # confirmation_token/expiry can be left null
+        **client_data.model_dump(exclude_unset=True),
+        tenant_id=target_tenant_id,
+        is_confirmed=True,
+        is_deleted=False
     )
 
     # 5. Save to Database

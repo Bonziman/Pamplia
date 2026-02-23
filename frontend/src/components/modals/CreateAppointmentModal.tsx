@@ -1,28 +1,32 @@
 // src/components/modals/CreateAppointmentModal.tsx
-// --- FULL REPLACEMENT - INTEGRATED AVAILABILITY FETCHING & ENHANCED TIME SELECTION ---
+// --- 2-STEP BOOKING WIZARD ---
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import './CustomCalendar.css'; // Ensure your custom calendar styles are applied
-import { format, startOfDay, parse, isValid, addMinutes } from 'date-fns';
+import './CustomCalendar.css';
+import { format, startOfDay, parse, isValid } from 'date-fns';
 import {
     Box, Button as ChakraButton, FormControl, FormLabel, Input, FormErrorMessage,
     VStack, HStack, Text, Grid, GridItem, Spinner, Center,
-    SimpleGrid, useTheme, Heading,
-    Accordion, AccordionItem, AccordionButton, AccordionPanel, AccordionIcon,
+    SimpleGrid, Heading, Badge, Divider, Icon, Flex, SlideFade,
 } from '@chakra-ui/react';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import {
+    User, Scissors, CalendarDays, Clock, Check, ArrowRight, ArrowLeft,
+    Zap, Sunrise, Sun, Sunset,
+} from 'lucide-react';
 
-import RightDrawerModal from './RightDrawerModal'; // Your existing component
-import { PublicService, AppointmentCreatePayload, createPublicAppointment, fetchAvailability } from '../../api/publicApi';
+import RightDrawerModal from './RightDrawerModal';
+import { AppointmentCreatePayload, createPublicAppointment, fetchAvailability } from '../../api/publicApi';
+import { FetchedService } from '../../api/serviceApi';
 import { AvailabilityResponse } from '../../types/Availability';
 import { useBrandedToast } from '../../hooks/useBrandedToast';
 
 // --- CONSTANTS ---
-const SLOT_STEP_MINUTES = 15; // IMPORTANT: Match your backend's slotting logic
+const SLOT_STEP_MINUTES = 15;
 
 // --- TYPES ---
 type CalendarValue = Date | null;
@@ -42,11 +46,10 @@ interface CreateAppointmentFormData {
     service_ids: number[];
 }
 
-interface TimeSegment {
-  id: string;
-  title: string;
-  slots: string[];
-  slotCount: number;
+interface TimePeriod {
+    label: string;
+    icon: React.ElementType;
+    times: string[];
 }
 
 // --- VALIDATION SCHEMA ---
@@ -64,8 +67,8 @@ const validationSchema = yup.object().shape({
 interface CreateAppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAppointmentCreated: () => void;
-  tenantServices: PublicService[];
+  onAppointmentCreated?: () => void;
+  tenantServices: FetchedService[];
   isLoadingServices: boolean;
   initialDate?: Date | null;
   clientPreInfo?: ClientPreInfo;
@@ -80,18 +83,17 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
   initialDate,
   clientPreInfo
 }) => {
-  const theme = useTheme();
   const toast = useBrandedToast();
-  
+
+  // --- STEP STATE ---
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+
+  // --- AVAILABILITY STATE ---
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [isLoadingTimes, setIsLoadingTimes] = useState<boolean>(false);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
-  
-  const [timeSegments, setTimeSegments] = useState<TimeSegment[]>([]);
-  const [expandedSegmentIndices, setExpandedSegmentIndices] = useState<number[]>([0]);
 
-
-  const { control, register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<CreateAppointmentFormData>({
+  const { control, register, handleSubmit, watch, setValue, reset, trigger, formState: { errors, isSubmitting } } = useForm<CreateAppointmentFormData>({
     resolver: yupResolver(validationSchema),
     defaultValues: {
         client_name: '',
@@ -107,7 +109,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
   const selectedServiceIdsValue = watch('service_ids', []);
   const selectedTimeValue = watch('selected_time');
 
-  // Effect to reset form and prefill when modal opens
+  // --- RESET on modal open ---
   useEffect(() => {
     if (isOpen) {
       let defaultDate = initialDate ? startOfDay(initialDate) : startOfDay(new Date());
@@ -122,17 +124,16 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
         selected_time: '',
         service_ids: [],
       });
-      setAvailableTimes([]); 
-      setTimeSegments([]);
-      setExpandedSegmentIndices([0]);
+      setAvailableTimes([]);
       setAvailabilityError(null);
       setIsLoadingTimes(false);
+      setCurrentStep(1);
     }
   }, [isOpen, initialDate, clientPreInfo, reset]);
 
-  // --- HELPER FUNCTIONS ---
+  // --- HELPERS ---
   const parseTimeToMinutes = useCallback((time: string): number => {
-    if (!time || !time.includes(':')) return 0; // Should not happen with valid "HH:mm"
+    if (!time || !time.includes(':')) return 0;
     const [h, m] = time.split(':').map(Number);
     return h * 60 + m;
   }, []);
@@ -144,65 +145,44 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
   }, []);
 
   const calculateTotalServiceDuration = useCallback((): number => {
-    if (!tenantServices || tenantServices.length === 0 || selectedServiceIdsValue.length === 0) {
-        return 0;
-    }
+    if (!tenantServices || tenantServices.length === 0 || selectedServiceIdsValue.length === 0) return 0;
     return selectedServiceIdsValue.reduce((total, sId) => {
         const service = tenantServices.find(s => s.id === sId);
         return total + (service ? service.duration_minutes : 0);
     }, 0);
   }, [selectedServiceIdsValue, tenantServices]);
 
-  const segmentAvailableTimes = useCallback((times: string[], stepMinutes: number): TimeSegment[] => {
-    if (!times.length) return [];
-    
-    const sortedTimes = [...times].sort((a, b) => parseTimeToMinutes(a) - parseTimeToMinutes(b));
-    const segments: TimeSegment[] = [];
-    let currentSegmentSlots: string[] = [];
-    let segmentCounter = 0;
+  const totalSelectedServiceDuration = useMemo(calculateTotalServiceDuration, [calculateTotalServiceDuration]);
 
-    sortedTimes.forEach((time, index) => {
-        currentSegmentSlots.push(time);
-        const nextTime = sortedTimes[index + 1];
-        let isLastSlotInBlock = false;
+  const totalSelectedPrice = useMemo(() => {
+    return selectedServiceIdsValue.reduce((total, sId) => {
+      const service = tenantServices.find(s => s.id === sId);
+      return total + (service?.price || 0);
+    }, 0);
+  }, [selectedServiceIdsValue, tenantServices]);
 
-        if (!nextTime) {
-            isLastSlotInBlock = true;
-        } else {
-            const currentTimeMins = parseTimeToMinutes(time);
-            const nextTimeMins = parseTimeToMinutes(nextTime);
-            if (nextTimeMins - currentTimeMins > stepMinutes) {
-                isLastSlotInBlock = true;
-            }
-        }
+  // --- CATEGORIZE AVAILABLE TIMES BY PERIOD (no accordion) ---
+  const timePeriods = useMemo<TimePeriod[]>(() => {
+    if (availableTimes.length === 0) return [];
+    const morning: string[] = [];
+    const afternoon: string[] = [];
+    const evening: string[] = [];
 
-        if (isLastSlotInBlock && currentSegmentSlots.length > 0) {
-            const firstSlotTime = currentSegmentSlots[0];
-            const lastSlotInSegment = currentSegmentSlots[currentSegmentSlots.length - 1];
-            
-            const firstSlotHour = parseInt(firstSlotTime.split(':')[0], 10);
-            let category = "Time Block";
-            if (firstSlotHour < 12) category = "Morning";
-            else if (firstSlotHour < 17) category = "Afternoon";
-            else category = "Evening";
-            
-            // For title, show range of first slot to last slot in this identified block
-            const title = `${category} (${firstSlotTime} - ${lastSlotInSegment})`;
-            
-            segments.push({
-                id: `segment-${segmentCounter++}-${firstSlotTime.replace(":", "")}`,
-                title: title,
-                slots: [...currentSegmentSlots],
-                slotCount: currentSegmentSlots.length,
-            });
-            currentSegmentSlots = [];
-        }
+    availableTimes.forEach(time => {
+      const hour = parseInt(time.split(':')[0], 10);
+      if (hour < 12) morning.push(time);
+      else if (hour < 17) afternoon.push(time);
+      else evening.push(time);
     });
-    return segments;
-  }, [parseTimeToMinutes]);
 
+    return [
+      { label: 'Morning', icon: Sunrise, times: morning },
+      { label: 'Afternoon', icon: Sun, times: afternoon },
+      { label: 'Evening', icon: Sunset, times: evening },
+    ].filter(p => p.times.length > 0);
+  }, [availableTimes]);
 
-  // Callback to fetch available times
+  // --- FETCH AVAILABILITY ---
   const fetchTimesForSelection = useCallback(async (date: Date | null, serviceIds: number[]) => {
     if (!isOpen || !date || serviceIds.length === 0) {
       setAvailableTimes([]);
@@ -219,17 +199,16 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
 
     setIsLoadingTimes(true);
     setAvailabilityError(null);
-    setValue('selected_time', ''); 
+    setValue('selected_time', '');
 
     try {
       const dateString = format(date, 'yyyy-MM-dd');
       const response: AvailabilityResponse = await fetchAvailability(dateString, serviceIds);
-      // Ensure slots are sorted, primarily for "Next Available" and consistent segment creation
-      const sortedSlots = response.available_slots.sort((a,b) => parseTimeToMinutes(a) - parseTimeToMinutes(b));
+      const sortedSlots = response.available_slots.sort((a, b) => parseTimeToMinutes(a) - parseTimeToMinutes(b));
       setAvailableTimes(sortedSlots);
 
       if (sortedSlots.length === 0) {
-        setAvailabilityError(`No times found for ${format(date, 'MMM d, yyyy')}. Try different services or date.`);
+        setAvailabilityError(`No available times for ${format(date, 'EEEE, MMM d')}. Try another date.`);
       }
     } catch (error: any) {
       console.error("Failed to fetch available times:", error);
@@ -241,49 +220,16 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     }
   }, [isOpen, setValue, parseTimeToMinutes]);
 
-  // useEffect to trigger fetchTimesForSelection
   useEffect(() => {
     if (selectedDateValue && selectedServiceIdsValue.length > 0) {
-        fetchTimesForSelection(selectedDateValue, selectedServiceIdsValue);
+      fetchTimesForSelection(selectedDateValue, selectedServiceIdsValue);
     } else {
-        setAvailableTimes([]); // Clear times if no date or services
-        setAvailabilityError(null);
-         if (selectedDateValue && selectedServiceIdsValue.length === 0) {
-             setAvailabilityError("Please select at least one service.");
-         } else if (!selectedDateValue && selectedServiceIdsValue.length > 0) {
-             setAvailabilityError("Please select a date.");
-         }
+      setAvailableTimes([]);
+      setAvailabilityError(null);
     }
   }, [selectedDateValue, selectedServiceIdsValue, fetchTimesForSelection]);
 
-  // useEffect to process availableTimes into segments and manage accordion expansion
-  useEffect(() => {
-    if (availableTimes.length > 0) {
-      const newSegments = segmentAvailableTimes(availableTimes, SLOT_STEP_MINUTES);
-      setTimeSegments(newSegments);
-
-      // Determine which segment to expand
-      if (selectedTimeValue) {
-        const segmentIndex = newSegments.findIndex(seg => seg.slots.includes(selectedTimeValue));
-        if (segmentIndex !== -1) {
-          setExpandedSegmentIndices([segmentIndex]);
-        } else if (newSegments.length > 0) {
-          setExpandedSegmentIndices([0]); // Fallback to first if selected slot's segment not found
-        } else {
-          setExpandedSegmentIndices([]);
-        }
-      } else if (newSegments.length > 0) {
-        setExpandedSegmentIndices([0]); // Default to opening the first segment
-      } else {
-        setExpandedSegmentIndices([]);
-      }
-    } else {
-      setTimeSegments([]);
-      setExpandedSegmentIndices([]);
-    }
-  }, [availableTimes, segmentAvailableTimes, selectedTimeValue]);
-
-
+  // --- HANDLERS ---
   const handleServiceToggle = (serviceId: number) => {
     const currentIds = watch('service_ids') || [];
     const newSelectedIds = currentIds.includes(serviceId)
@@ -298,6 +244,11 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     }
   };
 
+  const handleContinue = async () => {
+    const valid = await trigger(['client_name', 'client_email', 'client_phone', 'service_ids']);
+    if (valid) setCurrentStep(2);
+  };
+
   const formatCurrencyLocal = (value: number | null | undefined) => {
     if (value === null || value === undefined) return '-';
     return `${value.toFixed(2)} DH`;
@@ -309,10 +260,6 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
         return;
     }
     try {
-      const dateString = format(data.selected_date, 'yyyy-MM-dd');
-      const dateTimeString = `${dateString} ${data.selected_time}`;
-      
-      // Use date-fns to parse and ensure it's valid
       const parsedDate = parse(data.selected_time, 'HH:mm', data.selected_date);
       const appointmentDateTime = new Date(
         data.selected_date.getFullYear(),
@@ -325,14 +272,12 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
       if (!isValid(appointmentDateTime)) {
          throw new Error("Invalid date or time selected. Please re-check.");
       }
-      // Send appointment time in UTC ISO format
-      const appointmentIsoTime = appointmentDateTime.toISOString();
 
       const payload: AppointmentCreatePayload = {
         client_name: data.client_name,
         client_email: data.client_email,
         client_phone: data.client_phone || undefined,
-        appointment_time: appointmentIsoTime, // This will be UTC if server expects UTC
+        appointment_time: appointmentDateTime.toISOString(),
         service_ids: data.service_ids,
       };
 
@@ -343,205 +288,492 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
           description: "The new appointment has been successfully booked.",
           status: "success",
       });
-      onAppointmentCreated();
+      onAppointmentCreated?.();
       onClose();
 
     } catch (apiError: any) {
-      console.error("Create appointment failed in modal:", apiError);
+      console.error("Create appointment failed:", apiError);
       const message = apiError.response?.data?.detail || apiError.message || "Failed to create appointment.";
-      toast({ title: "Creation Failed", description: message, status: "error" });
+      toast({ title: "Booking Failed", description: message, status: "error" });
     }
   };
-  
+
   const areClientFieldsDisabled = clientPreInfo != null && (!!clientPreInfo.name && !!clientPreInfo.email);
 
-  const renderFooter = () => (
-    <HStack justifyContent="flex-end" w="full" spacing="3">
-        <ChakraButton variant="outline" onClick={onClose} isDisabled={isSubmitting}>Cancel</ChakraButton>
-        <ChakraButton
-            type="submit"
-            form="create-appointment-form-id"
+  // --- STEP-AWARE FOOTER ---
+  const renderFooter = () => {
+    if (currentStep === 1) {
+      return (
+        <HStack w="full" justify="space-between">
+          <ChakraButton
+            variant="ghost"
+            onClick={onClose}
+            isDisabled={isSubmitting}
+            borderRadius="xl"
+            fontWeight="600"
+            color="gray.500"
+          >
+            Cancel
+          </ChakraButton>
+          <ChakraButton
             colorScheme="brand"
-            isLoading={isSubmitting}
-            isDisabled={isLoadingServices || isLoadingTimes || selectedServiceIdsValue.length === 0 || !selectedDateValue || !selectedTimeValue || !watch('client_name') || !watch('client_email')}
+            borderRadius="xl"
+            fontWeight="600"
+            size="lg"
+            px={8}
+            onClick={handleContinue}
+            isDisabled={!watch('client_name') || !watch('client_email') || selectedServiceIdsValue.length === 0}
+            rightIcon={<ArrowRight size={16} />}
+          >
+            Continue
+          </ChakraButton>
+        </HStack>
+      );
+    }
+    return (
+      <HStack w="full" justify="space-between">
+        <ChakraButton
+          variant="ghost"
+          onClick={() => setCurrentStep(1)}
+          borderRadius="xl"
+          fontWeight="600"
+          color="gray.500"
+          leftIcon={<ArrowLeft size={16} />}
         >
-            Create Appointment
+          Back
         </ChakraButton>
-    </HStack>
-  );
-  
-  const totalSelectedServiceDuration = useMemo(calculateTotalServiceDuration, [calculateTotalServiceDuration]);
+        <ChakraButton
+          type="submit"
+          form="create-appointment-form-id"
+          colorScheme="brand"
+          borderRadius="xl"
+          fontWeight="700"
+          size="lg"
+          px={8}
+          isLoading={isSubmitting}
+          isDisabled={isLoadingTimes || !selectedDateValue || !selectedTimeValue}
+        >
+          Confirm Booking
+        </ChakraButton>
+      </HStack>
+    );
+  };
+
+  // --- INPUT STYLE PROPS ---
+  const inputStyleProps = {
+    borderRadius: 'xl' as const,
+    bg: 'gray.50',
+    size: 'lg' as const,
+    fontSize: 'sm',
+    _focus: { bg: 'white', borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' },
+    _hover: { borderColor: 'gray.300' },
+    _placeholder: { color: 'gray.400' },
+  };
 
   return (
     <RightDrawerModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Create New Appointment"
+      title="New Booking"
       footerContent={renderFooter()}
       size="xl"
     >
-      <form onSubmit={handleSubmit(onFormSubmit)} id="create-appointment-form-id">
-        <Grid templateColumns={{ base: "1fr", lg: "1.3fr 1fr" }} gap={{ base: 4, md: 6 }}>
-          {/* ----- Left Column: Client Info & Services ----- */}
-          <GridItem>
-            <VStack spacing={4} align="stretch">
-              <Heading as="h3" size="sm" color="gray.700" fontWeight="semibold">Client Information</Heading>
-              <FormControl isInvalid={!!errors.client_name} isRequired>
-                <FormLabel htmlFor="client_name_create_appt" fontSize="sm">Client Name</FormLabel>
-                <Input id="client_name_create_appt" {...register('client_name')} isDisabled={isSubmitting || areClientFieldsDisabled} placeholder="Full name"/>
-                <FormErrorMessage>{errors.client_name?.message}</FormErrorMessage>
-              </FormControl>
-              <FormControl isInvalid={!!errors.client_email} isRequired>
-                <FormLabel htmlFor="client_email_create_appt" fontSize="sm">Client Email</FormLabel>
-                <Input id="client_email_create_appt" type="email" {...register('client_email')} isDisabled={isSubmitting || areClientFieldsDisabled} placeholder="email@example.com"/>
-                <FormErrorMessage>{errors.client_email?.message}</FormErrorMessage>
-              </FormControl>
-              <FormControl isInvalid={!!errors.client_phone}>
-                <FormLabel htmlFor="client_phone_create_appt" fontSize="sm">Client Phone</FormLabel>
-                <Input id="client_phone_create_appt" type="tel" {...register('client_phone')} isDisabled={isSubmitting || areClientFieldsDisabled} placeholder="(Optional)"/>
-                <FormErrorMessage>{errors.client_phone?.message}</FormErrorMessage>
-              </FormControl>
+      <form
+        onSubmit={handleSubmit(onFormSubmit)}
+        id="create-appointment-form-id"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && currentStep === 1) {
+            e.preventDefault();
+            handleContinue();
+          }
+        }}
+      >
+        {/* ====== PROGRESS BAR ====== */}
+        <HStack spacing={2} mb={7}>
+          <Box flex={1} h="3px" borderRadius="full" bg="brand.500" transition="background 0.4s ease" />
+          <Box flex={1} h="3px" borderRadius="full" bg={currentStep >= 2 ? 'brand.500' : 'gray.200'} transition="background 0.4s ease" />
+        </HStack>
 
-              <Heading as="h3" size="sm" color="gray.700" fontWeight="semibold" mt="3">Select Service(s)</Heading>
-              <FormControl isInvalid={!!errors.service_ids} isRequired>
-                {isLoadingServices ? (
-                    <Center h="100px"><Spinner color="brand.500" /></Center>
-                ) : tenantServices.length > 0 ? (
-                  <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3} mt={1}>
-                    {tenantServices.map(service => (
-                      <Box
-                        key={service.id}
-                        p={3}
-                        borderWidth="1px"
-                        borderRadius="md"
-                        borderColor={selectedServiceIdsValue.includes(service.id) ? 'brand.500' : 'gray.200'}
-                        bg={selectedServiceIdsValue.includes(service.id) ? 'brand.50' : 'white'}
-                        onClick={() => !isSubmitting && handleServiceToggle(service.id)}
-                        cursor="pointer" role="checkbox" aria-checked={selectedServiceIdsValue.includes(service.id)}
-                        tabIndex={0} _hover={{ borderColor: 'brand.300' }}
-                        boxShadow={selectedServiceIdsValue.includes(service.id) ? `0 0 0 1px ${theme.colors.brand[500]}` : 'sm'}
-                        transition="all 0.2s ease-in-out"
-                      >
-                        <Text fontWeight="medium" fontSize="sm">{service.name}</Text>
-                        <Text fontSize="xs" color="gray.500">{service.duration_minutes} mins • {formatCurrencyLocal(service.price)}</Text>
-                      </Box>
-                    ))}
-                  </SimpleGrid>
-                ) : ( <Text color="gray.500" fontSize="sm">No services available for booking.</Text> )}
-                <FormErrorMessage mt={2}>{errors.service_ids?.message}</FormErrorMessage>
-              </FormControl>
+        {/* ====== STEP 1: CLIENT & SERVICES ====== */}
+        {currentStep === 1 && (
+          <SlideFade in offsetY="16px">
+            <VStack spacing={7} align="stretch">
+
+              {/* --- Client Details Section --- */}
+              <Box>
+                <HStack spacing={2.5} mb={4}>
+                  <Flex align="center" justify="center" w={8} h={8} borderRadius="xl" bg="blue.50">
+                    <Icon as={User} boxSize={4} color="blue.500" />
+                  </Flex>
+                  <Box>
+                    <Heading as="h3" size="sm" fontWeight="700" color="gray.800" lineHeight="1.2">Client Details</Heading>
+                    <Text fontSize="xs" color="gray.400">Who is this appointment for?</Text>
+                  </Box>
+                </HStack>
+
+                <VStack spacing={3}>
+                  <Grid templateColumns="1fr 1fr" gap={3} w="full">
+                    <GridItem>
+                      <FormControl isInvalid={!!errors.client_name} isRequired>
+                        <FormLabel fontSize="xs" fontWeight="600" color="gray.500" mb={1}>Full name</FormLabel>
+                        <Input
+                          {...register('client_name')}
+                          placeholder="Jane Smith"
+                          isDisabled={isSubmitting || areClientFieldsDisabled}
+                          {...inputStyleProps}
+                        />
+                        <FormErrorMessage fontSize="xs">{errors.client_name?.message}</FormErrorMessage>
+                      </FormControl>
+                    </GridItem>
+                    <GridItem>
+                      <FormControl isInvalid={!!errors.client_email} isRequired>
+                        <FormLabel fontSize="xs" fontWeight="600" color="gray.500" mb={1}>Email</FormLabel>
+                        <Input
+                          type="email"
+                          {...register('client_email')}
+                          placeholder="jane@email.com"
+                          isDisabled={isSubmitting || areClientFieldsDisabled}
+                          {...inputStyleProps}
+                        />
+                        <FormErrorMessage fontSize="xs">{errors.client_email?.message}</FormErrorMessage>
+                      </FormControl>
+                    </GridItem>
+                  </Grid>
+                  <FormControl isInvalid={!!errors.client_phone}>
+                    <FormLabel fontSize="xs" fontWeight="600" color="gray.500" mb={1}>Phone (optional)</FormLabel>
+                    <Input
+                      type="tel"
+                      {...register('client_phone')}
+                      placeholder="+212 600 000 000"
+                      isDisabled={isSubmitting || areClientFieldsDisabled}
+                      {...inputStyleProps}
+                    />
+                    <FormErrorMessage fontSize="xs">{errors.client_phone?.message}</FormErrorMessage>
+                  </FormControl>
+                </VStack>
+              </Box>
+
+              <Divider borderColor="gray.100" />
+
+              {/* --- Services Section --- */}
+              <Box>
+                <HStack spacing={2.5} mb={4}>
+                  <Flex align="center" justify="center" w={8} h={8} borderRadius="xl" bg="purple.50">
+                    <Icon as={Scissors} boxSize={4} color="purple.500" />
+                  </Flex>
+                  <Box>
+                    <Heading as="h3" size="sm" fontWeight="700" color="gray.800" lineHeight="1.2">Services</Heading>
+                    <Text fontSize="xs" color="gray.400">What would they like?</Text>
+                  </Box>
+                </HStack>
+
+                <FormControl isInvalid={!!errors.service_ids} isRequired>
+                  {isLoadingServices ? (
+                    <Center h="120px">
+                      <VStack spacing={2}>
+                        <Spinner color="brand.500" size="lg" />
+                        <Text fontSize="xs" color="gray.400">Loading services...</Text>
+                      </VStack>
+                    </Center>
+                  ) : tenantServices.length > 0 ? (
+                    <VStack spacing={2}>
+                      {tenantServices.map(service => {
+                        const isSelected = selectedServiceIdsValue.includes(service.id);
+                        return (
+                          <Box
+                            key={service.id}
+                            w="full"
+                            p={4}
+                            borderWidth="2px"
+                            borderRadius="xl"
+                            borderColor={isSelected ? 'brand.500' : 'gray.100'}
+                            bg={isSelected ? 'brand.50' : 'white'}
+                            onClick={() => !isSubmitting && handleServiceToggle(service.id)}
+                            cursor="pointer"
+                            role="checkbox"
+                            aria-checked={isSelected}
+                            tabIndex={0}
+                            _hover={{
+                              borderColor: isSelected ? 'brand.500' : 'gray.300',
+                              bg: isSelected ? 'brand.50' : 'gray.50',
+                            }}
+                            transition="all 0.2s ease"
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleServiceToggle(service.id); } }}
+                          >
+                            <HStack spacing={3} align="center">
+                              {/* Check circle */}
+                              <Flex
+                                align="center" justify="center" flexShrink={0}
+                                w={6} h={6}
+                                borderRadius="full"
+                                borderWidth="2px"
+                                borderColor={isSelected ? 'brand.500' : 'gray.300'}
+                                bg={isSelected ? 'brand.500' : 'transparent'}
+                                transition="all 0.2s ease"
+                              >
+                                {isSelected && <Icon as={Check} boxSize={3.5} color="white" strokeWidth={3} />}
+                              </Flex>
+
+                              {/* Service info */}
+                              <Box flex={1} minW={0}>
+                                <Text fontWeight="600" fontSize="sm" color={isSelected ? 'brand.800' : 'gray.800'} noOfLines={1}>
+                                  {service.name}
+                                </Text>
+                                {service.description && (
+                                  <Text fontSize="xs" color="gray.400" mt={0.5} noOfLines={1}>
+                                    {service.description}
+                                  </Text>
+                                )}
+                                <HStack spacing={1} mt={1}>
+                                  <Icon as={Clock} boxSize={3} color="gray.400" />
+                                  <Text fontSize="xs" color="gray.500">{service.duration_minutes} min</Text>
+                                </HStack>
+                              </Box>
+
+                              {/* Price */}
+                              <Text fontWeight="700" fontSize="sm" color={isSelected ? 'brand.700' : 'gray.600'} flexShrink={0}>
+                                {formatCurrencyLocal(service.price)}
+                              </Text>
+                            </HStack>
+                          </Box>
+                        );
+                      })}
+                    </VStack>
+                  ) : (
+                    <Center h="80px" bg="gray.50" borderRadius="xl">
+                      <Text color="gray.400" fontSize="sm">No services configured yet.</Text>
+                    </Center>
+                  )}
+                  <FormErrorMessage mt={2}>{errors.service_ids?.message}</FormErrorMessage>
+                </FormControl>
+              </Box>
+
+              {/* --- Selection Summary Strip --- */}
+              {selectedServiceIdsValue.length > 0 && (
+                <Box bg="gray.50" px={4} py={3} borderRadius="xl">
+                  <HStack justify="space-between">
+                    <Text fontSize="sm" color="gray.600">
+                      <Text as="span" fontWeight="700" color="gray.800">{selectedServiceIdsValue.length}</Text>
+                      {' '}service{selectedServiceIdsValue.length !== 1 ? 's' : ''}
+                    </Text>
+                    <HStack spacing={3} divider={<Text color="gray.300" fontSize="xs">&middot;</Text>}>
+                      <Text fontSize="sm" fontWeight="700" color="gray.700">{totalSelectedServiceDuration} min</Text>
+                      <Text fontSize="sm" fontWeight="700" color="brand.600">{formatCurrencyLocal(totalSelectedPrice)}</Text>
+                    </HStack>
+                  </HStack>
+                </Box>
+              )}
+
             </VStack>
-          </GridItem>
+          </SlideFade>
+        )}
 
-          {/* ----- Right Column: Date & Time ----- */}
-          <GridItem>
-            <VStack spacing={4} align="stretch">
-              <Heading as="h3" size="sm" color="gray.700" fontWeight="semibold">Select Date & Time</Heading>
-              <FormControl isInvalid={!!errors.selected_date} isRequired>
-                <FormLabel htmlFor="selected_date_hidden_input_ca" srOnly>Selected Date</FormLabel>
-                <Controller
+        {/* ====== STEP 2: DATE & TIME ====== */}
+        {currentStep === 2 && (
+          <SlideFade in offsetY="16px">
+            <VStack spacing={6} align="stretch">
+
+              {/* --- Date Section --- */}
+              <Box>
+                <HStack spacing={2.5} mb={4}>
+                  <Flex align="center" justify="center" w={8} h={8} borderRadius="xl" bg="orange.50">
+                    <Icon as={CalendarDays} boxSize={4} color="orange.500" />
+                  </Flex>
+                  <Box>
+                    <Heading as="h3" size="sm" fontWeight="700" color="gray.800" lineHeight="1.2">Pick a Date</Heading>
+                    <Text fontSize="xs" color="gray.400">When should we schedule?</Text>
+                  </Box>
+                </HStack>
+
+                <FormControl isInvalid={!!errors.selected_date}>
+                  <Controller
                     name="selected_date"
                     control={control}
                     render={({ field }) => (
-                        <Box className="calendar-wrapper" borderWidth="1px" borderColor="gray.200" borderRadius="md" p="1" bg="white" boxShadow="sm">
-                            <Calendar
-                                onChange={(value) => {
-                                    const newDate = value instanceof Date ? startOfDay(value) : Array.isArray(value) && value[0] instanceof Date ? startOfDay(value[0]) : null;
-                                    field.onChange(newDate);
-                                }}
-                                value={field.value}
-                                minDate={startOfDay(new Date())}
-                                tileDisabled={({ date, view }) => view === 'month' && date < startOfDay(new Date())}
-                                className="appointment-calendar-chakra"
-                            />
-                        </Box>
+                      <Box borderRadius="2xl" overflow="hidden" bg="white" boxShadow="sm" borderWidth="1px" borderColor="gray.100" p={2}>
+                        <Calendar
+                          onChange={(value) => {
+                            const newDate = value instanceof Date ? startOfDay(value) : Array.isArray(value) && value[0] instanceof Date ? startOfDay(value[0]) : null;
+                            field.onChange(newDate);
+                          }}
+                          value={field.value}
+                          minDate={startOfDay(new Date())}
+                          tileDisabled={({ date, view }) => view === 'month' && date < startOfDay(new Date())}
+                          className="appointment-calendar-chakra"
+                        />
+                      </Box>
                     )}
-                />
-                <FormErrorMessage>{errors.selected_date?.message}</FormErrorMessage>
-              </FormControl>
+                  />
+                  <FormErrorMessage>{errors.selected_date?.message}</FormErrorMessage>
+                </FormControl>
+              </Box>
 
-              <FormControl isInvalid={!!errors.selected_time} isRequired>
-                <FormLabel htmlFor="selected_time_create_appt" fontSize="sm">
-                    Available Times for {selectedDateValue ? format(selectedDateValue, 'MMM d, yyyy') : 'selected date'}
-                </FormLabel>
-                
-                {/* Next Available Button */}
-                {availableTimes.length > 0 && !isLoadingTimes && !availabilityError && selectedServiceIdsValue.length > 0 && (
-                  <ChakraButton onClick={handleNextAvailable} colorScheme="green" size="sm" mb={3} variant="outline" isFullWidth>
-                    Select Next Available ({availableTimes[0]})
-                  </ChakraButton>
-                )}
-
-                {/* Time Segments Accordion */}
-                {isLoadingTimes ? ( <Center h="100px"><Spinner color="brand.500" /></Center> )
-                : availabilityError ? ( <Text color="red.500" fontSize="sm" mt="1">{availabilityError}</Text> )
-                : selectedDateValue && selectedServiceIdsValue.length > 0 && timeSegments.length > 0 ? (
-                  <Accordion 
-                    allowToggle // Allow deselecting a segment by clicking again, or allowMultiple={false} for only one open
-                    index={expandedSegmentIndices} 
-                    onChange={(indices) => setExpandedSegmentIndices(typeof indices === 'number' ? [indices] : indices as number[])}
-                    borderWidth="1px" borderRadius="md" borderColor="gray.200"
-                  >
-                    {timeSegments.map((segment) => (
-                      <AccordionItem key={segment.id} isDisabled={isSubmitting}>
-                        <h3>
-                          <AccordionButton _expanded={{ bg: 'brand.50', color: 'brand.700' }} _hover={{bg: "gray.50"}}>
-                            <Box flex="1" textAlign="left" fontWeight="medium" fontSize="sm">
-                              {segment.title}
-                            </Box>
-                            <Text fontSize="xs" color="gray.500" mr={2} fontWeight="normal">
-                              {segment.slotCount} slots
-                            </Text>
-                            <AccordionIcon />
-                          </AccordionButton>
-                        </h3>
-                        <AccordionPanel pb={3} pt={2} bg="white">
-                          <SimpleGrid columns={{ base: 3, sm: 4 }} spacing={2}>
-                            {segment.slots.map(time => (
-                              <ChakraButton
-                                key={time}
-                                variant={selectedTimeValue === time ? "solid" : "outline"}
-                                colorScheme={selectedTimeValue === time ? "brand" : "gray"}
-                                fontWeight="normal"
-                                size="sm"
-                                onClick={() => {
-                                  if (!isSubmitting) {
-                                    setValue('selected_time', time, { shouldValidate: true });
-                                  }
-                                }}
-                                isDisabled={isSubmitting}
-                              >
-                                {time}
-                              </ChakraButton>
-                            ))}
-                          </SimpleGrid>
-                        </AccordionPanel>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                ) 
-                : selectedDateValue && selectedServiceIdsValue.length > 0 && !isLoadingTimes ? (
-                    <Text color="gray.500" fontSize="sm" mt="1">No available times found for the selected date/services. Please try different options.</Text>
-                  )
-                : (
-                  <Text color="gray.500" fontSize="sm" mt="1">
-                    { !selectedDateValue ? "Please select a date first." : "Please select at least one service to see times."}
-                  </Text>
-                )}
-
-                {/* Display selected time range */}
-                {selectedTimeValue && totalSelectedServiceDuration > 0 && !isLoadingTimes && (
-                    <Text fontSize="sm" color="blue.600" mt={3} fontWeight="medium" textAlign="center">
-                        Selected Appointment: {selectedTimeValue} - {formatTimeFromMinutes(parseTimeToMinutes(selectedTimeValue) + totalSelectedServiceDuration)}
-                        {' '}
-                        ({totalSelectedServiceDuration} mins)
+              {/* --- Time Section --- */}
+              <Box>
+                <HStack spacing={2.5} mb={3}>
+                  <Flex align="center" justify="center" w={8} h={8} borderRadius="xl" bg="green.50">
+                    <Icon as={Clock} boxSize={4} color="green.500" />
+                  </Flex>
+                  <Box>
+                    <Heading as="h3" size="sm" fontWeight="700" color="gray.800" lineHeight="1.2">
+                      {selectedDateValue ? format(selectedDateValue, 'EEEE, MMM d') : 'Pick a Time'}
+                    </Heading>
+                    <Text fontSize="xs" color="gray.400">
+                      {availableTimes.length > 0 && !isLoadingTimes
+                        ? `${availableTimes.length} slots available`
+                        : 'Choose your preferred time'}
                     </Text>
-                )}
-                <FormErrorMessage>{errors.selected_time?.message}</FormErrorMessage>
-              </FormControl>
+                  </Box>
+                </HStack>
+
+                <FormControl isInvalid={!!errors.selected_time}>
+                  {/* Quick Pick */}
+                  {availableTimes.length > 0 && !isLoadingTimes && !availabilityError && (
+                    <ChakraButton
+                      onClick={handleNextAvailable}
+                      w="full"
+                      mb={4}
+                      py={6}
+                      variant="outline"
+                      borderColor="brand.200"
+                      bg="brand.50"
+                      borderRadius="xl"
+                      fontWeight="600"
+                      fontSize="sm"
+                      color="brand.700"
+                      _hover={{ bg: 'brand.100', borderColor: 'brand.300' }}
+                      leftIcon={<Icon as={Zap} boxSize={4} />}
+                    >
+                      Quick Pick &mdash; Next at {availableTimes[0]}
+                    </ChakraButton>
+                  )}
+
+                  {/* Loading */}
+                  {isLoadingTimes ? (
+                    <Center h="120px">
+                      <VStack spacing={3}>
+                        <Spinner color="brand.500" size="lg" thickness="3px" />
+                        <Text fontSize="sm" color="gray.400">Finding available times...</Text>
+                      </VStack>
+                    </Center>
+
+                  /* Error */
+                  ) : availabilityError ? (
+                    <Box bg="orange.50" p={5} borderRadius="xl" textAlign="center">
+                      <Text color="orange.600" fontSize="sm" fontWeight="500">{availabilityError}</Text>
+                    </Box>
+
+                  /* Time Period Sections */
+                  ) : selectedDateValue && selectedServiceIdsValue.length > 0 && timePeriods.length > 0 ? (
+                    <VStack spacing={5} align="stretch">
+                      {timePeriods.map(period => (
+                        <Box key={period.label}>
+                          <HStack spacing={2} mb={3}>
+                            <Icon as={period.icon} boxSize={4} color="gray.400" />
+                            <Text fontSize="xs" fontWeight="700" color="gray.500" textTransform="uppercase" letterSpacing="0.06em">
+                              {period.label}
+                            </Text>
+                            <Badge bg="gray.100" color="gray.500" borderRadius="full" fontSize="2xs" px={2} fontWeight="600">
+                              {period.times.length}
+                            </Badge>
+                          </HStack>
+                          <SimpleGrid columns={{ base: 3, sm: 4 }} spacing={2}>
+                            {period.times.map(time => {
+                              const isActive = selectedTimeValue === time;
+                              return (
+                                <ChakraButton
+                                  key={time}
+                                  h="44px"
+                                  variant="unstyled"
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  bg={isActive ? 'brand.500' : 'gray.50'}
+                                  color={isActive ? 'white' : 'gray.700'}
+                                  fontWeight={isActive ? '700' : '500'}
+                                  fontSize="sm"
+                                  borderRadius="xl"
+                                  borderWidth="1.5px"
+                                  borderColor={isActive ? 'brand.600' : 'transparent'}
+                                  boxShadow={isActive ? 'md' : 'none'}
+                                  _hover={{
+                                    bg: isActive ? 'brand.600' : 'brand.50',
+                                    borderColor: isActive ? 'brand.600' : 'brand.200',
+                                    transform: 'scale(1.05)',
+                                  }}
+                                  transition="all 0.15s ease"
+                                  onClick={() => !isSubmitting && setValue('selected_time', time, { shouldValidate: true })}
+                                  isDisabled={isSubmitting}
+                                >
+                                  {time}
+                                </ChakraButton>
+                              );
+                            })}
+                          </SimpleGrid>
+                        </Box>
+                      ))}
+                    </VStack>
+
+                  /* Empty state */
+                  ) : selectedDateValue && selectedServiceIdsValue.length > 0 && !isLoadingTimes ? (
+                    <Box bg="gray.50" p={6} borderRadius="xl" textAlign="center">
+                      <Text color="gray.400" fontSize="sm">No times available for this date. Try another.</Text>
+                    </Box>
+                  ) : null}
+
+                  <FormErrorMessage>{errors.selected_time?.message}</FormErrorMessage>
+                </FormControl>
+              </Box>
+
+              {/* --- Booking Summary Card --- */}
+              {selectedTimeValue && totalSelectedServiceDuration > 0 && !isLoadingTimes && (
+                <SlideFade in offsetY="10px">
+                  <Box
+                    bg="brand.50"
+                    p={5}
+                    borderRadius="2xl"
+                    borderWidth="1px"
+                    borderColor="brand.100"
+                  >
+                    <Text fontSize="xs" fontWeight="700" color="brand.600" textTransform="uppercase" letterSpacing="0.06em" mb={3}>
+                      Booking Summary
+                    </Text>
+                    <VStack spacing={2.5} align="stretch">
+                      <HStack spacing={3}>
+                        <Icon as={User} boxSize={4} color="brand.400" />
+                        <Box flex={1} minW={0}>
+                          <Text fontSize="sm" fontWeight="600" color="brand.800" noOfLines={1}>{watch('client_name')}</Text>
+                          <Text fontSize="xs" color="brand.500" noOfLines={1}>{watch('client_email')}</Text>
+                        </Box>
+                      </HStack>
+                      <HStack spacing={3}>
+                        <Icon as={Scissors} boxSize={4} color="brand.400" />
+                        <Text fontSize="sm" color="brand.800" flex={1} noOfLines={1}>
+                          {selectedServiceIdsValue.map(id => tenantServices.find(s => s.id === id)?.name).filter(Boolean).join(' + ')}
+                        </Text>
+                      </HStack>
+                      <Divider borderColor="brand.100" />
+                      <HStack justify="space-between">
+                        <HStack spacing={3}>
+                          <Icon as={CalendarDays} boxSize={4} color="brand.400" />
+                          <Text fontSize="sm" fontWeight="700" color="brand.800">
+                            {selectedDateValue && format(selectedDateValue, 'EEE, MMM d')}
+                            {' \u00B7 '}
+                            {selectedTimeValue} &ndash; {formatTimeFromMinutes(parseTimeToMinutes(selectedTimeValue) + totalSelectedServiceDuration)}
+                          </Text>
+                        </HStack>
+                        <Text fontSize="sm" fontWeight="700" color="brand.700">
+                          {formatCurrencyLocal(totalSelectedPrice)}
+                        </Text>
+                      </HStack>
+                    </VStack>
+                  </Box>
+                </SlideFade>
+              )}
+
             </VStack>
-          </GridItem>
-        </Grid>
+          </SlideFade>
+        )}
       </form>
     </RightDrawerModal>
   );

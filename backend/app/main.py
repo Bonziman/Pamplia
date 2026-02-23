@@ -1,5 +1,6 @@
 # app/main.py
 from fastapi import FastAPI, Request, Depends # Add Request, Depends
+import re
 from fastapi.responses import RedirectResponse # Add RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware # Optional for Prod
@@ -38,19 +39,39 @@ origins_dev = [
     "https://exampletenant.localtest.me:3000",
     "https://exampletenant2.localtest.me:3000",
     "https://string.localtest.me:3000",
+    "http://localtest.me:8086",
+    "https://localtest.me:8086",
+    "http://main.localtest.me:8086",
+    "https://main.localtest.me:8086",
+    "http://141.253.120.119:3000",
+    "http://141.253.120.119:25565",
+    "http://localhost:8086",
+    "http://127.0.0.1:8086",
+    "http://141.253.120.119:8086",
+    "https://141.253.120.119:8086",
+    # Production domain
+    "https://pamplia.store",
+    "http://pamplia.store",
 ]
 origins_prod = [
-    f"https://{settings.base_domain}", # e.g., https://yourapp.com
-    f"https://*.{settings.base_domain}", # e.g., https://*.yourapp.com
+    f"https://{settings.base_domain}",
 ]
 
 origins = origins_dev if settings.environment != "production" else origins_prod
+
+# Always use regex to match any subdomain of base_domain
+escaped_base_domain = re.escape(settings.base_domain)
+if settings.environment != "production":
+    origin_regex = rf"^https?://([a-z0-9-]+\.)?{escaped_base_domain}(:(3000|8086))?$"
+else:
+    origin_regex = rf"^https?://([a-z0-9-]+\.)?{escaped_base_domain}$"
 
 print(f"Configuring CORS for origins: {origins}") # Add log to verify
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,       # Use the calculated origins list
+    allow_origin_regex=origin_regex,
     allow_credentials=True,    # Essential for cookies
     allow_methods=["*"],       # Allow common methods
     allow_headers=["*"],       # Allow common headers, including Content-Type etc.
@@ -97,16 +118,9 @@ class RedirectBaseDomainMiddleware(BaseHTTPMiddleware):
                                     redirect_url = f"{protocol}://{tenant.subdomain}.{base_domain}{port_str}{request.url.path}" # Append original path
                                     if request.url.query:
                                         redirect_url += f"?{request.url.query}" # Append query params
-                                    print(f"[Middleware] Redirecting authenticated base domain user to: {redirect_url}")
                                     return RedirectResponse(url=redirect_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
-                                else:
-                                     print(f"[Middleware] User {user_email} tenant {tenant_id} subdomain not found.")
-                        else:
-                             print("[Middleware] Token valid but missing sub or tenant_id.")
-                    else:
-                         print("[Middleware] Token verification failed.")
-                except Exception as e: # Catch JWTError or DB errors
-                    print(f"[Middleware] Error during redirect check: {e}")
+                except Exception:
+                    pass
                     # Let request proceed if error occurs during check
 
         # If not redirecting, proceed to the next middleware/route

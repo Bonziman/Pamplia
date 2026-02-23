@@ -16,6 +16,10 @@ export interface DashboardStats {
   new_clients_period: number;
   appointments_change_today: number; // Percentage change from yesterday to today
   revenue_change_today: number; // Percentage change from yesterday to today
+  tenants_total: number;
+  services_total: number;
+  clients_total: number;
+  appointments_total: number;
   // Add any other stats the backend might provide
 }
 

@@ -32,6 +32,9 @@ class TenantBase(BaseModel):
     timezone: Optional[str] = Field(None, description="Timezone ID (e.g., 'UTC', 'Africa/Casablanca')") 
     default_currency: Optional[str] = Field(None, max_length=3, description="ISO 4217 currency code (e.g., 'MAD', 'USD')") 
 
+    # Status
+    is_active: Optional[bool] = None
+
     # Policy
     cancellation_policy_text: Optional[str] = None
 
@@ -73,6 +76,7 @@ class TenantInDB(TenantBase):
     id: int
     timezone: str = 'UTC'
     default_currency: str = 'MAD'
+    is_active: bool = True
 
 
 # --- Schema for Output (API Response) ---
@@ -84,3 +88,16 @@ class TenantOut(TenantBase):
     timezone: str # Timezone always has a default
     default_currency: str # Currency always has a default
     reminder_interval_hours: Optional[int]
+    is_active: bool = True
+
+class TenantStats(BaseModel):
+    tenant_id: int
+    revenue_total: float
+    revenue_last_30_days: float
+    appointments_total: int
+    clients_total: int
+    services_total: int
+    users_total: int
+    admins_total: int
+    staff_total: int
+    last_appointment_at: Optional[str] = None

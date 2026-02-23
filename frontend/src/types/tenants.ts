@@ -46,6 +46,8 @@ export interface TenantOut {
   timezone: string; // Required (has default)
   default_currency: string; // Required (has default)
 
+  is_active: boolean;
+
   cancellation_policy_text: string | null;
 
   // Represent JSON fields as appropriate TypeScript types
@@ -63,7 +65,7 @@ export interface TenantOut {
 // All fields are optional. Only include fields that ARE updatable.
 export interface TenantUpdate {
   name?: string; // Usually updatable, maybe restricted by role
-  // subdomain is typically NOT updatable
+  subdomain?: string;
 
   logo_url?: string | null;
   slogan?: string | null;
@@ -81,10 +83,12 @@ export interface TenantUpdate {
   timezone?: string;
   default_currency?: string; // Ensure only valid 3-char codes are sent
 
+  is_active?: boolean;
+
   cancellation_policy_text?: string | null;
 
   // You might allow updating these JSON fields entirely or partially
-  business_hours_config: BusinessHoursConfig | null;
+  business_hours_config?: BusinessHoursConfig | null;
   booking_widget_config?: Record<string, any> | null;
   reminder_interval_hours?: number | null;
 }

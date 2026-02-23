@@ -2,44 +2,42 @@
 
 .client-profile-page {
   display: flex;
-  gap: 30px; /* Space between columns */
-  /*padding: 20px;  Padding around the content */
+  gap: 24px;
 }
 
-/* --- Left Column --- */
+/* Left Column */
 .profile-left-column {
-  flex: 0 0 300px; /* Fixed width for the left column */
+  flex: 0 0 300px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .client-info-card,
 .client-details-card {
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 25px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid #F3F4F6;
   display: flex;
   flex-direction: column;
 }
 
-.client-info-card {
-  align-items: center; /* Center items like avatar, name */
-}
+.client-info-card { align-items: center; }
 
 .profile-avatar-large {
-  width: 100px;
-  height: 100px;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
-  margin-bottom: 15px;
+  margin-bottom: 14px;
   object-fit: cover;
-  border: 3px solid #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 3px solid #F3F4F6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 .profile-avatar-placeholder {
-    font-size: 4em; /* Larger icon */
-    color: #cbd5e0;
+  font-size: 3.5rem;
+  color: #D1D5DB;
 }
 
 .client-name-header {
@@ -48,34 +46,30 @@
   gap: 8px;
   margin-bottom: 8px;
 }
-
 .client-name-header h2 {
   margin: 0;
-  font-size: 1.4em;
-  color: #1a202c; /* Darker heading */
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.025em;
 }
 
 .confirmation-badge {
-  display: inline-flex; /* Use inline-flex */
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 3px 6px;
-  border-radius: 50%; /* Make it circular */
-  font-size: 0.8em;
-  width: 20px; /* Fixed size */
-  height: 20px;
-  cursor: default; /* Indicate it's not clickable */
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  cursor: default;
 }
-.confirmation-badge .svg-inline--fa {
-    font-size: 0.9em; /* Icon size */
-}
-
 .confirmation-badge.confirmed {
-  background-color: #3182ce; /* Blue background */
+  background: #0D9488;
   color: white;
 }
 .confirmation-badge.unconfirmed {
-  background-color: #a0aec0; /* Gray background */
+  background: #D1D5DB;
   color: white;
 }
 
@@ -83,201 +77,217 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   justify-content: center;
 }
-.client-tags-list .tag { /* Reuse tag style */
+.client-tags-list .tag {
   padding: 3px 10px;
-  font-size: 0.8em;
-  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
   color: white;
 }
 
 .add-appointment-btn {
   width: 100%;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
-.client-details-card .detail-item {
-  margin-bottom: 12px;
-  font-size: 0.9em;
-}
+/* Details card */
+.client-details-card .detail-item { margin-bottom: 12px; }
 .client-details-card .detail-label {
   display: block;
-  color: #718096; /* Gray label */
+  color: #9CA3AF;
   margin-bottom: 4px;
-  font-size: 0.85em;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 .client-details-card .detail-value {
-  color: #2d3748;
+  color: #111827;
+  font-size: 0.875rem;
 }
 .client-details-card .detail-value.read-only {
-    padding: 6px 0; /* Add some padding to mimic input */
-    min-height: 20px; /* Ensure height */
-    display: block;
+  padding: 6px 0;
+  min-height: 20px;
+  display: block;
 }
 
 .client-details-card .form-input,
 .client-details-card .form-textarea {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    font-size: 0.9em;
-    box-sizing: border-box; /* Include padding/border in width */
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+  color: #111827;
+  background: #F9FAFB;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+.client-details-card .form-input:focus,
+.client-details-card .form-textarea:focus {
+  border-color: #0D9488;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+  background: #FFFFFF;
 }
 .client-details-card .form-textarea {
-    min-height: 80px;
-    resize: vertical;
+  min-height: 72px;
+  resize: vertical;
 }
 
 .profile-edit-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-    border-top: 1px solid #eee;
-    padding-top: 15px;
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  border-top: 1px solid #F3F4F6;
+  padding-top: 14px;
 }
 .profile-edit-actions .button-secondary {
-    margin-left: auto; /* Pushes cancel to the right */
+  margin-left: auto;
 }
 
-
-/* --- Right Column --- */
+/* Right Column */
 .profile-right-column {
-  flex: 1; /* Takes remaining space */
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .stats-widgets-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive grid */
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
 }
 
 .stat-widget {
-  background-color: #fff;
-  border-radius: 12px;
+  background: #FFFFFF;
+  border-radius: 14px;
   padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid #F3F4F6;
   text-align: center;
 }
 .stat-widget .stat-value {
-  font-size: 2em;
-  font-weight: 600;
-  color: #1a202c;
-  margin-bottom: 5px;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 4px;
 }
 .stat-widget .stat-label {
-  font-size: 0.9em;
-  color: #718096;
+  font-size: 0.8125rem;
+  color: #9CA3AF;
+  font-weight: 500;
 }
-/* Add simple graphic styles later if desired */
-
 
 .appointment-history-card {
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 25px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid #F3F4F6;
 }
 
 .appointment-history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #F3F4F6;
 }
 .appointment-history-header h3 {
-    margin: 0;
-    font-size: 1.2em;
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.025em;
 }
 .appointment-filter select {
-    padding: 6px 10px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    font-size: 0.9em;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #E5E7EB;
+  font-size: 0.875rem;
+  color: #374151;
+  background: #F9FAFB;
 }
-
-.appointments-list {
-    /* Use table for better structure */
+.appointment-filter select:focus {
+  border-color: #0D9488;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
 }
 
 .appointments-history-table {
-    width: 100%;
-    border-collapse: separate; /* Use separate for spacing */
-    border-spacing: 0 10px; /* Vertical space between rows */
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 6px;
 }
-
-.appointments-history-table thead {
-    display: none; /* Hide header, info is in the row */
-}
-
+.appointments-history-table thead { display: none; }
 .appointments-history-table tbody tr {
-    background-color: #f9fafb; /* Light row background */
-    border-radius: 8px; /* Rounded rows */
-    transition: background-color 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  background: #F9FAFB;
+  border-radius: 10px;
+  transition: background 0.15s ease;
 }
-.appointments-history-table tbody tr:hover {
-    background-color: #f1f5f9;
-}
-
+.appointments-history-table tbody tr:hover { background: #F3F4F6; }
 .appointments-history-table td {
-    padding: 15px;
-    vertical-align: middle;
-    border: none; /* Remove default borders */
-    font-size: 0.9em;
+  padding: 14px;
+  vertical-align: middle;
+  border: none;
+  font-size: 0.875rem;
 }
-.appointments-history-table td:first-child { border-radius: 8px 0 0 8px; }
-.appointments-history-table td:last-child { border-radius: 0 8px 8px 0; }
+.appointments-history-table td:first-child { border-radius: 10px 0 0 10px; }
+.appointments-history-table td:last-child { border-radius: 0 10px 10px 0; }
 
 .appt-date-col {
-    text-align: center;
-    font-weight: 500;
-    color: #4a5568;
-    width: 60px; /* Fixed width for date */
+  text-align: center;
+  font-weight: 500;
+  color: #6B7280;
+  width: 56px;
 }
 .appt-date-col .day {
-    display: block;
-    font-size: 1.3em;
-    font-weight: 600;
-    color: #1a202c;
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
 }
 .appt-date-col .month {
-    display: block;
-    font-size: 0.8em;
-    text-transform: uppercase;
+  display: block;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #9CA3AF;
 }
 
 .appt-details-col .service-name {
-    font-weight: 600;
-    color: #2d3748;
-    display: block;
-    margin-bottom: 3px;
+  font-weight: 600;
+  color: #111827;
+  display: block;
+  margin-bottom: 2px;
+  font-size: 0.875rem;
 }
 .appt-details-col .time-range {
-    font-size: 0.9em;
-    color: #718096;
+  font-size: 0.8125rem;
+  color: #9CA3AF;
 }
 
-.appt-status-col {
-    text-align: right;
-}
-
+.appt-status-col { text-align: right; }
 .appt-price-col {
-    text-align: right;
-    font-weight: 500;
-    color: #333;
-    min-width: 70px;
+  text-align: right;
+  font-weight: 600;
+  color: #111827;
+  min-width: 64px;
 }
 
-
-.appointments-history-table .status-badge {
-    /* Adjust styles if needed */
+@media (max-width: 768px) {
+  .client-profile-page {
+    flex-direction: column;
+  }
+  .profile-left-column {
+    flex: none;
+    width: 100%;
+  }
 }

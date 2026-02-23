@@ -9,7 +9,7 @@ from app.dependencies import get_current_user, get_current_tenant_id
 from app.utils.permissions import can_edit_user, is_super_admin, is_admin, is_staff
 from typing import List, Optional
 from app.schemas.pagination import PaginatedResponse # Ensure this is imported
-from app.schemas.user import UserOut # For type hint in PaginatedResponse
+from app.schemas.user import UserOut, UserPasswordReset # For type hint in PaginatedResponse
 
 router = APIRouter(
     prefix="/users",
@@ -78,6 +78,24 @@ def update_user(
     db.refresh(user)
     return user
 
+@router.patch("/{user_id}/reset-password")
+def reset_user_password(
+    user_id: int,
+    payload: UserPasswordReset,
+    db: Session = Depends(database.get_db),
+    current_user: User = Depends(get_current_user)
+):
+    target_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not can_edit_user(current_user, target_user):
+        raise HTTPException(status_code=403, detail="You are not allowed to reset this user's password")
+
+    target_user.password = hash_password(payload.password)
+    db.commit()
+    return {"detail": "Password reset successfully"}
+
 @router.get("/profile", response_model=schemas.user.UserOut)
 def get_profile(current_user: User = Depends(get_current_user)):
     return current_user  # The `current_user` will be automatically mapped to UserOut schema
@@ -133,6 +151,10 @@ def get_all_users_paginated( # Renamed for clarity, or keep original name
         count_query = count_query.filter(User.tenant_id == current_user.tenant_id)
     else: # Staff users should not typically list all users, this endpoint is for admin/super_admin
         raise HTTPException(status_code=403, detail="Not authorized to list users.")
+
+    if not is_super_admin(current_user):
+        query = query.filter(User.role != "super_admin")
+        count_query = count_query.filter(User.role != "super_admin")
 
     if role:
         query = query.filter(User.role == role)

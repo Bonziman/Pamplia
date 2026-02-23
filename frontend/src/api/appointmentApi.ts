@@ -1,6 +1,7 @@
 // src/api/appointmentApi.ts
 import axios from "axios";
 import axiosInstance from "./axiosInstance";
+import { buildApiUrl } from "./apiBase";
 
 export interface SimpleService {
     id: number;
@@ -41,9 +42,7 @@ export interface PaginatedAppointments {
 
 export const fetchAppointments = async (): Promise<FetchedAppointment[]> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/appointments/`;
-        console.log("Fetching appointments from:", apiUrl);
+        const apiUrl = buildApiUrl("/appointments/");
         const response = await axiosInstance.get<FetchedAppointment[]>(apiUrl);
         return response.data;
     } catch (error) {
@@ -59,14 +58,10 @@ export const updateAppointment = async (
     updateData: AppointmentUpdatePayload
 ): Promise<FetchedAppointment> => {
     try {
-        const currentHostname = window.location.hostname;
         // Use the /update/{id} endpoint structure from backend
-        const apiUrl = `http://${currentHostname}:8000/appointments/${id}`;
-        console.log(`Updating appointment ${id} at: ${apiUrl}`, updateData);
-        // Use PATCH method
+        const apiUrl = buildApiUrl(`/appointments/${id}`);
         const response = await axiosInstance.patch<FetchedAppointment>(apiUrl, updateData);
-        console.log(`Appointment ${id} updated successfully:`, response.data);
-        return response.data; // Return updated appointment
+        return response.data;
     } catch (error) {
         console.error(`Error updating appointment ${id}:`, error);
         if (axios.isAxiosError(error) && error.response) {
@@ -80,13 +75,8 @@ export const updateAppointment = async (
 // --- NEW: Delete Appointment Function ---
 export const deleteAppointment = async (id: number): Promise<void> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/appointments/${id}`; // Use DELETE on /{id}
-        console.log(`Deleting appointment ${id} at: ${apiUrl}`);
-        // Use DELETE method - expects 204 No Content on success
+        const apiUrl = buildApiUrl(`/appointments/${id}`);
         await axiosInstance.delete(apiUrl);
-        console.log(`Appointment ${id} deleted successfully.`);
-        // No return value needed for delete
     } catch (error) {
         console.error(`Error deleting appointment ${id}:`, error);
         if (axios.isAxiosError(error) && error.response) {
@@ -105,8 +95,7 @@ export const fetchPaginatedAppointments = async (
     limit: number = 10 // Default page size
 ): Promise<PaginatedAppointments> => { // Return the paginated structure
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/appointments/paginated/`;
+        const apiUrl = buildApiUrl("/appointments/paginated");
         const params: Record<string, any> = { // Use Record for dynamic params
             page: page,
             limit: limit
@@ -122,16 +111,9 @@ export const fetchPaginatedAppointments = async (
             params.status = statusFilter.toLowerCase();
         }
 
-        console.log("Fetching appointments from:", apiUrl, "with params:", params);
         const response = await axiosInstance.get<PaginatedAppointments>(apiUrl, { params });
 
-        // **IMPORTANT**: Ensure backend returns this structure: { items: [...], total: N, page: P, limit: L }
-        // If backend ONLY returns the array of items, you need to adjust here or (better) update backend.
-        // Example mock structure if backend only returns array:
-        // const items = response.data as unknown as FetchedAppointment[]; // Cast if needed
-        // return { items: items, total: 50, page: page, limit: limit }; // Replace 50 with actual total
-        console.log("Fetched paginated appointments:", response.data);
-        return response.data; // Assuming backend returns the correct PaginatedAppointments structure
+        return response.data;
 
     } catch (error) {
         console.error("Error fetching appointments:", error);

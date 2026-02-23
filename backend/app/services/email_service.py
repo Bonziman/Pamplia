@@ -48,10 +48,12 @@ async def send_email( # <--- Make async
 
     def blocking_smtp_send(): # <--- Define the blocking part
         try:
-            with smtplib.SMTP(settings.mail_server, settings.mail_port) as server:
+            use_ssl = settings.mail_use_ssl or settings.mail_port == 465
+            smtp_class = smtplib.SMTP_SSL if use_ssl else smtplib.SMTP
+            with smtp_class(settings.mail_server, settings.mail_port) as server:
                 server.set_debuglevel(0)
                 server.ehlo()
-                if server.has_extn('starttls'):
+                if not use_ssl and server.has_extn('starttls'):
                     server.starttls()
                     server.ehlo()
                 if settings.mail_username and settings.mail_password:

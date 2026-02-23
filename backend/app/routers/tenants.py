@@ -3,15 +3,22 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request # Request potentially needed for other endpoints or future logging
 from sqlalchemy.orm import Session
-from sqlalchemy import exc as SQLAlchemyExceptions
+from sqlalchemy import exc as SQLAlchemyExceptions, func
 from typing import List
+from datetime import datetime, timezone, timedelta
+import re
 
 # Core App Imports (Adjust paths if necessary)
 from app import database, models, schemas
 from app.dependencies import get_current_user
 from app.models.tenant import Tenant as TenantModel
 from app.models.user import User as UserModel
-from app.schemas.tenant import TenantCreate, TenantOut, TenantUpdate
+from app.schemas.tenant import TenantCreate, TenantOut, TenantUpdate, TenantStats
+from app.models.appointment import Appointment as AppointmentModel
+from app.models.client import Client as ClientModel
+from app.models.service import Service as ServiceModel
+from app.models.association_tables import appointment_services_table
+from app.schemas.enums import AppointmentStatus
 import logging 
 
 # --- Setup logger ---
@@ -200,7 +207,7 @@ def update_tenant_me(
     update_occurred = False
     for field, value in update_data_dict.items():
         # Prevent updating critical/immutable fields like subdomain via this endpoint
-        if field in ["subdomain", "id"]: # 'name' might be updatable depending on policy
+        if field in ["subdomain", "id", "is_active"]: # 'name' might be updatable depending on policy
              logger.warning(f"Attempted to update restricted field '{field}' for Tenant ID {tenant_to_update.id} via /me endpoint. Skipping.")
              continue
 
@@ -262,4 +269,117 @@ def get_specific_tenant(
     logger.info(f"Returning details for Tenant ID: {tenant.id} (Name: {tenant.name})")
     return tenant
 
-# adding PATCH /tenants/{tenant_id} for super_admin if needed later
+@router.patch(
+    "/{tenant_id}",
+    response_model=TenantOut,
+    dependencies=[Depends(get_current_active_super_admin)]
+)
+def update_tenant_by_id(
+    tenant_id: int,
+    update_data: TenantUpdate,
+    db: Session = Depends(database.get_db)
+):
+    """
+    Updates details for a specific tenant by ID. Super admin only.
+    """
+    tenant = db.query(TenantModel).filter(TenantModel.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Tenant with ID {tenant_id} not found.")
+
+    update_data_dict = update_data.model_dump(exclude_unset=True)
+    if not update_data_dict:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No update data provided.")
+
+    if "name" in update_data_dict:
+        existing_name = db.query(TenantModel).filter(
+            TenantModel.name == update_data_dict["name"],
+            TenantModel.id != tenant_id
+        ).first()
+        if existing_name:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Tenant name already exists.")
+
+    if "subdomain" in update_data_dict:
+        if not re.match(r'^[a-z0-9]+(?:-[a-z0-9]+)*$', update_data_dict["subdomain"]):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid subdomain format.")
+        existing_subdomain = db.query(TenantModel).filter(
+            TenantModel.subdomain == update_data_dict["subdomain"],
+            TenantModel.id != tenant_id
+        ).first()
+        if existing_subdomain:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Subdomain is already taken.")
+
+    for field, value in update_data_dict.items():
+        if hasattr(tenant, field):
+            setattr(tenant, field, value)
+
+    try:
+        db.commit()
+        db.refresh(tenant)
+        return tenant
+    except SQLAlchemyExceptions.IntegrityError as e:
+        db.rollback()
+        logger.error(f"Database integrity error updating Tenant ID {tenant_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Could not update tenant due to conflicting data.")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Database error updating Tenant ID {tenant_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update tenant due to a server error.")
+
+
+@router.get(
+    "/{tenant_id}/stats",
+    response_model=TenantStats,
+    dependencies=[Depends(get_current_active_super_admin)]
+)
+def get_tenant_stats(
+    tenant_id: int,
+    db: Session = Depends(database.get_db)
+):
+    tenant = db.query(TenantModel).filter(TenantModel.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Tenant with ID {tenant_id} not found.")
+
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+
+    revenue_total_query = db.query(func.sum(ServiceModel.price)).join(
+        appointment_services_table, ServiceModel.id == appointment_services_table.c.service_id
+    ).join(
+        AppointmentModel, AppointmentModel.id == appointment_services_table.c.appointment_id
+    ).filter(
+        AppointmentModel.tenant_id == tenant_id,
+        AppointmentModel.status == AppointmentStatus.DONE
+    )
+
+    revenue_last_30_days_query = db.query(func.sum(ServiceModel.price)).join(
+        appointment_services_table, ServiceModel.id == appointment_services_table.c.service_id
+    ).join(
+        AppointmentModel, AppointmentModel.id == appointment_services_table.c.appointment_id
+    ).filter(
+        AppointmentModel.tenant_id == tenant_id,
+        AppointmentModel.status == AppointmentStatus.DONE,
+        AppointmentModel.appointment_time >= thirty_days_ago
+    )
+
+    appointments_total = db.query(func.count(AppointmentModel.id)).filter(AppointmentModel.tenant_id == tenant_id).scalar() or 0
+    clients_total = db.query(func.count(ClientModel.id)).filter(ClientModel.tenant_id == tenant_id).scalar() or 0
+    services_total = db.query(func.count(ServiceModel.id)).filter(ServiceModel.tenant_id == tenant_id).scalar() or 0
+    users_total = db.query(func.count(UserModel.id)).filter(UserModel.tenant_id == tenant_id).scalar() or 0
+    admins_total = db.query(func.count(UserModel.id)).filter(UserModel.tenant_id == tenant_id, UserModel.role == "admin").scalar() or 0
+    staff_total = db.query(func.count(UserModel.id)).filter(UserModel.tenant_id == tenant_id, UserModel.role == "staff").scalar() or 0
+
+    last_appointment_at = db.query(func.max(AppointmentModel.appointment_time)).filter(
+        AppointmentModel.tenant_id == tenant_id
+    ).scalar()
+
+    return TenantStats(
+        tenant_id=tenant_id,
+        revenue_total=float(revenue_total_query.scalar() or 0.0),
+        revenue_last_30_days=float(revenue_last_30_days_query.scalar() or 0.0),
+        appointments_total=appointments_total,
+        clients_total=clients_total,
+        services_total=services_total,
+        users_total=users_total,
+        admins_total=admins_total,
+        staff_total=staff_total,
+        last_appointment_at=last_appointment_at.isoformat() if last_appointment_at else None
+    )

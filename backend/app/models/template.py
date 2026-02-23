@@ -38,11 +38,11 @@ class Template(Base):
 
     name = Column(String, nullable=False, comment="User-friendly name for the template (e.g., 'Client Booking Confirmation')")
     type = Column(
-        PG_ENUM(TemplateType, name='templatetype', create_type=False), # Assuming type exists if DB reused
+        PG_ENUM(TemplateType, name='templatetype'), # Removed create_type=False
         nullable=False, default=TemplateType.EMAIL, server_default=TemplateType.EMAIL.value
     )
     event_trigger = Column(
-        PG_ENUM(TemplateEventTrigger, name='templateeventtrigger', create_type=False),
+        PG_ENUM(TemplateEventTrigger, name='templateeventtrigger'), # Removed create_type=False
         nullable=False, index=True,
         comment="The specific event that this template is used for"
     )
@@ -66,11 +66,11 @@ class Template(Base):
     tenant = relationship("Tenant") # Define back_populates in Tenant if needed (optional)
 
      # --- Constraints ---
-    __table_args__ = (
+__table_args__ = (
         # A tenant should only have one active template per trigger/type combination
         UniqueConstraint('tenant_id', 'event_trigger', 'type', name='uq_template_tenant_trigger_type'),
         Index("ix_templates_tenant_id_trigger_type", "tenant_id", "event_trigger", "type"),
     )
 
-    def __repr__(self):
+def __repr__(self):
         return f"<Template(id={self.id}, name='{self.name}', tenant_id={self.tenant_id}, trigger='{self.event_trigger.value}')>"

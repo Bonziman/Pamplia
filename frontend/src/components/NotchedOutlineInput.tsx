@@ -90,7 +90,6 @@ const NotchedOutlineInput: React.FC<NotchedOutlineInputProps> = ({
     isPasswordType ? 'has-toggle-icon' : '' // Add class if toggle is present
   ].filter(Boolean).join(' ');
 
-  console.log(`Input ID: ${id}, isPasswordType: ${isPasswordType}`);
   return (
     <div className={containerClasses}>
       <label htmlFor={id} className="label" id={labelId}>

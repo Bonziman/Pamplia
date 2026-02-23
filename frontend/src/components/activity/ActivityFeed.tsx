@@ -4,24 +4,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchClientCommunications } from '../../api/communicationsApi'; 
 import { CommunicationLogOut, PaginatedCommunicationsLogResponse } from '../../types/Communication'; // Adjust path
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-    faPhone, faEnvelope, faSms, faUserFriends, faLaptop, faQuestionCircle, // Channels
-    faArrowRight, faArrowLeft, // Directions
-    faCalendarAlt, faUser, faSpinner // Other context
-} from '@fortawesome/free-solid-svg-icons';
+    Phone, Mail, MessageSquare, Users, Monitor, HelpCircle,
+    ArrowRight, ArrowLeft,
+    Calendar, User, Loader2
+} from 'lucide-react';
 import { Tooltip } from 'react-tooltip'; // If using tooltips
 import './ActivityFeed.css'; // Create this CSS file
 
 // Map Channel to Icon
-const channelIcons = {
-    EMAIL: faEnvelope,
-    SMS: faSms,
-    PHONE: faPhone,
-    SYSTEM: faLaptop, // Or other system icon
-    IN_PERSON: faUserFriends,
-    VIRTUAL_MEETING: faLaptop,
-    OTHER: faQuestionCircle,
+const channelIcons: Record<string, React.ElementType> = {
+    EMAIL: Mail,
+    SMS: MessageSquare,
+    PHONE: Phone,
+    SYSTEM: Monitor, // Or other system icon
+    IN_PERSON: Users,
+    VIRTUAL_MEETING: Monitor,
+    OTHER: HelpCircle,
 };
 
 interface ActivityFeedProps {
@@ -84,7 +83,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ clientId }) => {
             {error && <div className="error-message alert alert-danger">{error}</div>}
 
             {isLoading ? (
-                <div className="loading-message">Loading history... <FontAwesomeIcon icon={faSpinner} spin /></div>
+                <div className="loading-message">Loading history... <Loader2 size={16} className="animate-spin" /></div>
             ) : logs.length === 0 ? (
                 <p className="no-data-message">No communication history found for this client.</p>
             ) : (
@@ -93,11 +92,11 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ clientId }) => {
                         <div key={log.id} className={`log-entry channel-${log.channel.toLowerCase()} direction-${log.direction.toLowerCase()}`}>
                             <div className="log-icon-col">
                                 <span className="log-channel-icon" title={log.channel}>
-                                     <FontAwesomeIcon icon={channelIcons[log.channel] || faQuestionCircle} />
+                                     {(() => { const ChannelIcon = channelIcons[log.channel] || HelpCircle; return <ChannelIcon size={16} />; })()}
                                 </span>
                                 {log.direction !== 'SYSTEM' && (
                                      <span className="log-direction-icon" title={log.direction}>
-                                        <FontAwesomeIcon icon={log.direction === 'OUTBOUND' ? faArrowRight : faArrowLeft} />
+                                        {log.direction === 'OUTBOUND' ? <ArrowRight size={14} /> : <ArrowLeft size={14} />}
                                      </span>
                                 )}
                             </div>
@@ -110,15 +109,15 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ clientId }) => {
                                 <div className="log-footer">
                                      {log.user ? (
                                          <span className="log-user" title={`Logged by: ${log.user.email}`}>
-                                             <FontAwesomeIcon icon={faUser} size="xs"/>
+                                             <User size={12} />
                                              Logged by {log.user.name || log.user.email} {/* Display name or fallback to email */}
                                          </span>
                                      ) : log.user_id ? ( // Fallback if user object isn't present for some reason
                                          <span className="log-user" title={`Logged by User ID: ${log.user_id}`}>
-                                             <FontAwesomeIcon icon={faUser} size="xs"/> Logged by User {log.user_id}
+                                             <User size={12} /> Logged by User {log.user_id}
                                          </span>
                                      ) : null}
-                                     {log.appointment_id && <span className="log-appointment-link" title={`Related to Appointment ID: ${log.appointment_id}`}><FontAwesomeIcon icon={faCalendarAlt} size="xs"/> Appt. #{log.appointment_id}</span>}
+                                     {log.appointment_id && <span className="log-appointment-link" title={`Related to Appointment ID: ${log.appointment_id}`}><Calendar size={12} /> Appt. #{log.appointment_id}</span>}
                                      <span className={`log-status status-${log.status.toLowerCase()}`}>{log.status}</span>
                                 </div>
                             </div>

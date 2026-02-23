@@ -1,79 +1,76 @@
 // src/api/userApi.ts
-import axios from "axios"; // <--- Import the main axios object
-import axiosInstance from "./axiosInstance"; // Keep your configured instance
+import axios from "axios";
+import axiosInstance from "./axiosInstance";
+import { buildApiUrl } from "./apiBase";
+import { PaginatedResponse } from "../types/Pagination";
+import { UserOut, UserUpdatePayload } from "../types/User";
 
-// Define the FetchedUser type
-export interface FetchedUser {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
-    tenant_id: number;
-}
+export type FetchUsersParams = {
+  page?: number;
+  limit?: number;
+  role?: string;
+  is_active?: boolean;
+  tenant_id_filter?: number;
+};
 
+export type CreateUserPayload = {
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+  tenant_id: number;
+};
 
-export const fetchUsers = async (): Promise<FetchedUser[]> => {
+export const fetchUsers = async (params: FetchUsersParams): Promise<PaginatedResponse<UserOut>> => {
   try {
-    // Construct the full dynamic URL targeting the backend port (8000)
-    const currentHostname = window.location.hostname;
-    const apiUrl = `http://${currentHostname}:8000/users/`; // Use backend port 8000
-    console.log("Fetching users list from API URL:", apiUrl);
-
-    // Use axiosInstance to make the request (sends cookies)
-    const response = await axiosInstance.get<FetchedUser[]>(apiUrl);
-    console.log('Raw fetchUsers response.data:', response.data);
+    const apiUrl = buildApiUrl("/users/");
+    const response = await axiosInstance.get<PaginatedResponse<UserOut>>(apiUrl, {
+      params: {
+        page: params.page,
+        limit: params.limit,
+        role: params.role,
+        is_active: params.is_active,
+        tenantId: params.tenant_id_filter,
+      },
+    });
     return response.data;
-  } catch (error) { // error is initially 'unknown'
+  } catch (error) {
     console.error("Error fetching users:", error);
-
-    // --- Type Check for Axios Error ---
-    // Use the main 'axios.isAxiosError' helper
     if (axios.isAxiosError(error)) {
-        // Now TypeScript knows 'error' is an AxiosError inside this block
-        console.error("Axios error details:", error.message);
-        if (error.response) {
-            // Check if response exists
-            console.error("API Error Status:", error.response.status);
-            console.error("API Error Data:", error.response.data);
-        } else if (error.request) {
-            // The request was made but no response was received
-            console.error("No response received:", error.request);
-        }
-    } else {
-        // Handle non-Axios errors (e.g., network issues, JS errors)
-        console.error("Non-Axios error:", error);
+      console.error("Axios error details:", error.message);
     }
-
-    throw error; // Re-throw the original error after logging
+    throw error;
   }
 };
 
-export const updateUser = async (id: number, userData: Partial<FetchedUser>): Promise<FetchedUser> => {
+export const updateUser = async (id: number, userData: UserUpdatePayload): Promise<UserOut> => {
   try {
-    const currentHostname = window.location.hostname;
-    const apiUrl = `http://${currentHostname}:8000/users/update/${id}/`; // Assuming a RESTful endpoint for updates
-    console.log(`Updating user ${id} at API URL:`, apiUrl);
-
-    // Use axiosInstance.put or axiosInstance.patch for updates
-    // PATCH is generally preferred for partial updates
-    const response = await axiosInstance.patch<FetchedUser>(apiUrl, userData);
-
+    const apiUrl = buildApiUrl(`/users/update/${id}`);
+    const response = await axiosInstance.patch<UserOut>(apiUrl, userData);
     return response.data;
   } catch (error) {
     console.error(`Error updating user ${id}:`, error);
+    throw error;
+  }
+};
 
-    if (axios.isAxiosError(error)) {
-        console.error("Axios error details:", error.message);
-        if (error.response) {
-            console.error("API Error Status:", error.response.status);
-            console.error("API Error Data:", error.response.data);
-        } else if (error.request) {
-            console.error("No response received:", error.request);
-        }
-    } else {
-        console.error("Non-Axios error:", error);
-    }
+export const createUser = async (payload: CreateUserPayload): Promise<UserOut> => {
+  try {
+    const apiUrl = buildApiUrl("/users/");
+    const response = await axiosInstance.post<UserOut>(apiUrl, payload);
+    return response.data;
+  } catch (error) {
+    console.error("Error creating user:", error);
+    throw error;
+  }
+};
 
-    throw error; // Re-throw the original error after logging
+export const resetUserPassword = async (id: number, password: string): Promise<void> => {
+  try {
+    const apiUrl = buildApiUrl(`/users/${id}/reset-password`);
+    await axiosInstance.patch(apiUrl, { password });
+  } catch (error) {
+    console.error(`Error resetting password for user ${id}:`, error);
+    throw error;
   }
 };

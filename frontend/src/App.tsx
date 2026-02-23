@@ -1,9 +1,11 @@
 // src/App.tsx
 
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, BrowserRouter } from "react-router-dom";
+import { Routes, Route, BrowserRouter, Navigate } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./auth/authContext";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import BookingPage from "./pages/BookingPage"; 
@@ -13,26 +15,39 @@ import { ChakraProvider } from '@chakra-ui/react';
 import theme from './theme';
 import '@fontsource/inter/index.css';
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,        // 30s — data stays fresh, no background refetch
+      gcTime: 5 * 60_000,       // 5min — keep cache after unmount
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
 const App: React.FC = () => {
   return (
-    <ChakraProvider theme={theme}>
-      <AuthProvider>
-        <BrowserRouter>
-            <Routes>
-            <Route path="/book" element={<BookingPage />} />
-            {/* Changed path to /accept-invitation to support token as a query parameter */}
-            <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
-            {/* Add other routes as needed */}
-            <Route path="/login" element={<Login />} />
-            <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard/*" element={
-              <Dashboard />
-              }/>
-            </Route>
-            </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-    </ChakraProvider>
+    <QueryClientProvider client={queryClient}>
+      <ChakraProvider theme={theme}>
+        <AuthProvider>
+          <BrowserRouter>
+              <Routes>
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/book" element={<BookingPage />} />
+              <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route element={<ProtectedRoute />}>
+                <Route path="/dashboard/*" element={
+                <Dashboard />
+                }/>
+              </Route>
+              </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </ChakraProvider>
+    </QueryClientProvider>
   );
 };
 

@@ -1,6 +1,10 @@
-// src/components/CreateTagModal.tsx (Example Skeleton)
+// src/components/modals/CreateTagModal.tsx
 import React, { useState, useEffect } from 'react';
-import Modal from './Modal';
+import {
+    Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
+    ModalCloseButton, Button, VStack, FormControl, FormLabel, Input,
+    Alert, AlertIcon, HStack, Badge,
+} from '@chakra-ui/react';
 import { TagCreatePayload } from '../../api/tagApi';
 
 interface CreateTagModalProps {
@@ -11,33 +15,27 @@ interface CreateTagModalProps {
 
 const CreateTagModal: React.FC<CreateTagModalProps> = ({ isOpen, onClose, onSubmit }) => {
     const [tagName, setTagName] = useState('');
-    const [colorHex, setColorHex] = useState('#CCCCCC'); // Default color
-    const [iconId, setIconId] = useState(''); // Optional icon
+    const [colorHex, setColorHex] = useState('#0D9488');
+    const [iconId, setIconId] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
-            setTagName('');
-            setColorHex('#CCCCCC');
-            setIconId('');
-            setError(null);
-            setIsSubmitting(false);
+            setTagName(''); setColorHex('#0D9488'); setIconId('');
+            setError(null); setIsSubmitting(false);
         }
     }, [isOpen]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-        if (!tagName) {
-            setError("Tag name is required.");
-            return;
-        }
+        if (!tagName) { setError("Tag name is required."); return; }
         setIsSubmitting(true);
         const payload: TagCreatePayload = {
             tag_name: tagName,
-            color_hex: colorHex || undefined, // Send default or user choice
-            icon_identifier: iconId || undefined
+            color_hex: colorHex || undefined,
+            icon_identifier: iconId || undefined,
         };
         try {
             await onSubmit(payload);
@@ -49,29 +47,75 @@ const CreateTagModal: React.FC<CreateTagModalProps> = ({ isOpen, onClose, onSubm
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose}>
-            <h2>Create New Tag</h2>
-            {error && <p className="modal-error">{error}</p>}
-            <form onSubmit={handleSubmit} className="modal-form">
-                <div className="form-group">
-                    <label htmlFor="tag-name">Tag Name:</label>
-                    <input id="tag-name" type="text" value={tagName} onChange={e => setTagName(e.target.value)} required className="form-input" />
-                </div>
-                <div className="form-group">
-                    <label htmlFor="tag-color">Color:</label>
-                    <input id="tag-color" type="color" value={colorHex} onChange={e => setColorHex(e.target.value)} className="form-input form-input-color" />
-                    <span style={{ marginLeft: '10px', display: 'inline-block', width: '20px', height: '20px', backgroundColor: colorHex, border: '1px solid #ccc' }}></span>
-                </div>
-                <div className="form-group">
-                    <label htmlFor="tag-icon">Icon Identifier (Optional):</label>
-                    <input id="tag-icon" type="text" value={iconId} onChange={e => setIconId(e.target.value)} placeholder="e.g., fa-star" className="form-input" />
-                </div>
-                <div className="modal-actions">
-                    <button type="submit" disabled={isSubmitting} className="button button-primary">{isSubmitting ? 'Creating...' : 'Create Tag'}</button>
-                    <button type="button" onClick={onClose} disabled={isSubmitting} className="button button-secondary">Cancel</button>
-                </div>
-            </form>
+        <Modal isOpen={isOpen} onClose={onClose} isCentered size="md">
+            <ModalOverlay bg="blackAlpha.400" backdropFilter="blur(4px)" />
+            <ModalContent borderRadius="xl" mx={4}>
+                <ModalHeader
+                    borderBottomWidth="1px" borderColor="gray.100"
+                    fontSize="lg" fontWeight="700" color="gray.900" letterSpacing="-0.025em"
+                >
+                    Create New Tag
+                </ModalHeader>
+                <ModalCloseButton borderRadius="full" _hover={{ bg: 'gray.100' }} />
+                <form onSubmit={handleSubmit}>
+                    <ModalBody py={6}>
+                        <VStack spacing={4} align="stretch">
+                            {error && (
+                                <Alert status="error" borderRadius="lg" fontSize="sm">
+                                    <AlertIcon /> {error}
+                                </Alert>
+                            )}
+                            <FormControl isRequired>
+                                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Tag Name</FormLabel>
+                                <Input
+                                    value={tagName} onChange={e => setTagName(e.target.value)}
+                                    placeholder="e.g., VIP, New Client"
+                                    borderRadius="lg" bg="gray.50" _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                    isDisabled={isSubmitting}
+                                />
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Color</FormLabel>
+                                <HStack spacing={3}>
+                                    <Input
+                                        type="color" value={colorHex} onChange={e => setColorHex(e.target.value)}
+                                        w="50px" h="40px" p={1} borderRadius="lg" cursor="pointer"
+                                        isDisabled={isSubmitting}
+                                    />
+                                    <Input
+                                        value={colorHex} onChange={e => setColorHex(e.target.value)}
+                                        placeholder="#000000" maxLength={7} w="120px"
+                                        borderRadius="lg" bg="gray.50" _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                        fontSize="sm" isDisabled={isSubmitting}
+                                    />
+                                    <Badge px={3} py={1} borderRadius="full" bg={colorHex} color="white" fontSize="sm">
+                                        Preview
+                                    </Badge>
+                                </HStack>
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Icon Identifier (Optional)</FormLabel>
+                                <Input
+                                    value={iconId} onChange={e => setIconId(e.target.value)}
+                                    placeholder="e.g., fa-star"
+                                    borderRadius="lg" bg="gray.50" _focus={{ bg: 'white', borderColor: 'brand.500' }}
+                                    isDisabled={isSubmitting}
+                                />
+                            </FormControl>
+                        </VStack>
+                    </ModalBody>
+                    <ModalFooter borderTopWidth="1px" borderColor="gray.100" gap={3}>
+                        <Button variant="outline" onClick={onClose} isDisabled={isSubmitting} borderRadius="lg" fontWeight="600">
+                            Cancel
+                        </Button>
+                        <Button type="submit" colorScheme="brand" isLoading={isSubmitting} loadingText="Creating..." borderRadius="lg" fontWeight="600">
+                            Create Tag
+                        </Button>
+                    </ModalFooter>
+                </form>
+            </ModalContent>
         </Modal>
     );
 };
+
 export default CreateTagModal;

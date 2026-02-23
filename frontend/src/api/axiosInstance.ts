@@ -25,4 +25,21 @@ axiosInstance.interceptors.request.use(
 );
 */
 
+// Response interceptor: handle 401 (session expired) by redirecting to /login
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Don't redirect on public pages or login itself
+      const publicPaths = ['/login', '/accept-invitation', '/book', '/forgot-password'];
+      const currentPath = window.location.pathname;
+      const isPublicPage = publicPaths.some(p => currentPath.startsWith(p));
+      if (!isPublicPage) {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default axiosInstance;

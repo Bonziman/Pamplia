@@ -101,40 +101,30 @@ def get_tag_or_404(db: Session, tag_id: int) -> TagModel:
 @router.post("/", response_model=schemas.tag.TagOut, status_code=status.HTTP_201_CREATED)
 def create_tag(
     tag_data: schemas.tag.TagCreate,
-    request: Request, # Needed for subdomain context
     db: Session = Depends(database.get_db),
     current_user: User = Depends(get_current_user)
 ):
     logger.info(f"[Create Tag] User: {current_user.email}, Role: {current_user.role}")
 
-    # 1. Determine Target Tenant from Subdomain
-    tenant_id_from_subdomain = get_tenant_id_from_request(request, db)
+    # 1. Determine Target Tenant from JWT (user record)
+    target_tenant_id = current_user.tenant_id
 
-    # 2. Authorization Check (Role + Tenant Match)
-    """if current_user.role not in ["admin", "super_admin", "staff"]:
-        logger.warning(f"[Create Tag] Rejected: User role '{current_user.role}' not authorized.")
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions.")"""
-
-    if current_user.role == "admin" and current_user.tenant_id != tenant_id_from_subdomain:
-        logger.warning(f"[Create Tag] Rejected: Admin Tenant ({current_user.tenant_id}) mismatch with Subdomain Tenant ({tenant_id_from_subdomain}).")
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot create tags for another tenant portal.")
-
-    # 3. Check for existing tag name within the target tenant
+    # 2. Check for existing tag name within the target tenant
     existing_tag = db.query(TagModel).filter(
-        TagModel.tenant_id == tenant_id_from_subdomain,
+        TagModel.tenant_id == target_tenant_id,
         TagModel.tag_name == tag_data.tag_name
     ).first()
     if existing_tag:
-        logger.warning(f"[Create Tag] Rejected: Tag name '{tag_data.tag_name}' already exists for Tenant ID {tenant_id_from_subdomain}.")
+        logger.warning(f"[Create Tag] Rejected: Tag name '{tag_data.tag_name}' already exists for Tenant ID {target_tenant_id}.")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"A tag with the name '{tag_data.tag_name}' already exists."
         )
 
-    # 4. Create Tag Model instance
+    # 3. Create Tag Model instance
     db_tag = TagModel(
         **tag_data.model_dump(exclude_unset=True),
-        tenant_id=tenant_id_from_subdomain # Set tenant from subdomain
+        tenant_id=target_tenant_id
     )
 
     # 5. Save to Database

@@ -2,6 +2,7 @@
 // --- NEW FILE ---
 
 import axiosInstance from './axiosInstance'; // Use your configured axios instance
+import { buildApiUrl } from './apiBase';
 import { DashboardStats, StatsPeriod, RevenueChartData } from '../types/Dashboard'; // Import types (adjust path)
 
 
@@ -13,12 +14,9 @@ import { DashboardStats, StatsPeriod, RevenueChartData } from '../types/Dashboar
  */
 export const fetchDashboardStats = async (period: StatsPeriod = 'last_7_days'): Promise<DashboardStats> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/dashboard?period=${period}`;
-        console.log("Fetching dashboard stats from:", apiUrl);
-        // Use query parameters to send the period
+        const apiUrl = buildApiUrl('/dashboard/');
         const response = await axiosInstance.get<DashboardStats>(apiUrl, {
-            params: { period: period }
+            params: { period }
         });
         return response.data;
     } catch (error) {
@@ -36,9 +34,7 @@ export const fetchRevenueChartData = async (
     // period: 'last_7_days' | 'last_30_days' = 'last_7_days' // Make it flexible later
 ): Promise<RevenueChartData> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/dashboard/revenue-trend`;
-        console.log("Fetching revenue chart data from:", apiUrl);
+        const apiUrl = buildApiUrl("/dashboard/revenue-trend");
         const response = await axiosInstance.get<RevenueChartData>(apiUrl);
         return response.data;
     } catch (error) {

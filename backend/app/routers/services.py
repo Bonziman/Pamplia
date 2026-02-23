@@ -1,7 +1,7 @@
 # app/routers/services.py
 # --- FULL REPLACEMENT ---
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import exc as SQLAlchemyExceptions
 from typing import List, Optional # Import Optional for update schema
@@ -41,79 +41,31 @@ def check_service_permission(current_user: User, service: ServiceModel, action: 
     print(f"[Permission Check] User ({current_user.email}) granted for {action} on Service ID {service.id}.")
 
 
-# --- Create Service (Authenticated, Tenant-Scoped/Super Admin) ---
+# --- Create Service (Authenticated, Tenant-Scoped via JWT) ---
 @router.post("/", response_model=ServiceOut, status_code=status.HTTP_201_CREATED)
 def create_service(
-    service_data: ServiceCreate, # Use the updated schema (no tenant_id)
-    request: Request,           # Inject Request object
+    service_data: ServiceCreate,
     db: Session = Depends(database.get_db),
     current_user: User = Depends(get_current_user)
 ):
     print(f"[Create Service] User: {current_user.email}, Role: {current_user.role}, User Tenant: {current_user.tenant_id}")
 
-    # --- 1. Determine Tenant from Subdomain ---
-    host_header = request.headers.get("Host", "")
-    effective_hostname = host_header if host_header else ""
-    if not effective_hostname:
-         print("[Create Service] Rejected: Host header missing")
-         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Host header missing")
-
-    hostname_part = effective_hostname.split(':')[0]
-    # Use the same robust subdomain check logic as in GET /services/tenant/
-    base_domain_config = settings.base_domain
-    is_ip_address = all(part.isdigit() for part in hostname_part.split('.'))
-    is_base_domain = hostname_part == base_domain_config
-    has_subdomain = '.' in hostname_part and not is_base_domain and not is_ip_address
-
-    if not has_subdomain:
-        print(f"[Create Service] Rejected: Request not from a valid tenant subdomain: {hostname_part}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Services must be created via a valid tenant portal subdomain."
-        )
-
-    subdomain_name = hostname_part.split('.')[0]
-    print(f"[Create Service] Attempt on subdomain: {subdomain_name}")
-
-    # Find tenant matching the subdomain
-    tenant = db.query(TenantModel).filter(TenantModel.subdomain == subdomain_name).first()
-    if not tenant:
-        print(f"[Create Service] Rejected: Tenant subdomain not found: {subdomain_name}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tenant portal specified by subdomain not found."
-        )
-    tenant_id_from_subdomain = tenant.id
-    print(f"[Create Service] Found Target Tenant ID: {tenant_id_from_subdomain} for subdomain {subdomain_name}")
-
-
-    # --- 2. Authorization Checks ---
-    # Role Check: Only admin or super_admin can create services
+    # --- 1. Authorization Checks ---
     if current_user.role not in ["admin", "super_admin"]:
-        print(f"[Create Service] Rejected: User role '{current_user.role}' not authorized.")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User role not authorized to create services."
         )
 
-    # Tenant Scope Check for Admins: Admin's tenant must match the subdomain's tenant
-    if current_user.role == "admin" and current_user.tenant_id != tenant_id_from_subdomain:
-        print(f"[Create Service] Rejected: Admin ({current_user.email}, Tenant {current_user.tenant_id}) attempting action on different tenant portal (Subdomain Tenant {tenant_id_from_subdomain}).")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Administrators can only create services for their own tenant portal."
-        )
-    # Super admin can proceed regardless of their own tenant_id
-
-    print(f"[Create Service] Authorization successful for User {current_user.email} on Tenant {tenant_id_from_subdomain}.")
+    # --- 2. Determine tenant from JWT (user record) ---
+    target_tenant_id = current_user.tenant_id
 
     # --- 3. Create Service Model instance ---
-    # tenant_id is now derived from the subdomain, not service_data
     db_service = ServiceModel(
         name=service_data.name,
         description=service_data.description,
         duration_minutes=service_data.duration_minutes,
-        tenant_id=tenant_id_from_subdomain, # Use the ID from the subdomain
+        tenant_id=target_tenant_id,
         price=service_data.price
     )
 
@@ -197,14 +149,12 @@ def update_service(
 
     # Role Check: Only admin or super_admin can update services
     if current_user.role not in ["admin", "super_admin"]:
-        print(f"[Update Service ID: {service_id}] Rejected: User role '{current_user.role}' not authorized.")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User role not authorized to update services."
         )
 
     update_data_dict = update_data.model_dump(exclude_unset=True)
-    print(f"[Update Service ID: {service_id}] Applying updates: {update_data_dict}")
 
     if not update_data_dict:
          raise HTTPException(
@@ -214,7 +164,6 @@ def update_service(
 
     # Prevent changing tenant_id via update
     if "tenant_id" in update_data_dict:
-        print(f"[Update Service ID: {service_id}] Rejected: Attempt to change tenant_id.")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot change the tenant of a service.")
 
     for field, value in update_data_dict.items():
@@ -223,11 +172,9 @@ def update_service(
     try:
         db.commit()
         db.refresh(service)
-        print(f"[Update Service ID: {service_id}] Update successful.")
         return service
-    except Exception as e:
+    except Exception:
         db.rollback()
-        print(f"[Update Service ID: {service_id}] Database Error during update: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not update service.")
 
 
@@ -238,7 +185,6 @@ def delete_service(
     db: Session = Depends(database.get_db),
     current_user: User = Depends(get_current_user)
 ):
-    print(f"[Delete Service ID: {service_id}] User: {current_user.email}, Role: {current_user.role}")
     service = db.query(ServiceModel).filter(ServiceModel.id == service_id).first()
 
     if not service:
@@ -248,7 +194,6 @@ def delete_service(
 
     # Role Check: Only admin or super_admin can delete services
     if current_user.role not in ["admin", "super_admin"]:
-        print(f"[Delete Service ID: {service_id}] Rejected: User role '{current_user.role}' not authorized.")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User role not authorized to delete services."
@@ -287,50 +232,19 @@ def delete_service(
 
 
 # --- Retrieve Services for Public Tenant Portal (Public, Subdomain Aware) ---
-@router.get("/tenant/", response_model=List[ServiceOut]) # Added trailing slash for consistency
+@router.get("/tenant/", response_model=List[ServiceOut])
 def get_services_for_request_tenant(
-    request: Request, # Inject the request object
+    subdomain: str = Query(..., description="Tenant subdomain"),
     db: Session = Depends(database.get_db)
 ):
     """
-    Retrieves services for the tenant associated with the subdomain
-    extracted from the Host header of the incoming request.
+    Retrieves services for the tenant identified by subdomain query parameter.
     Intended for public booking pages. NO AUTHENTICATION REQUIRED.
     """
-    # 1. Determine Tenant from Subdomain (Same logic as POST /appointments/)
-    host_header = request.headers.get("Host", "")
-    effective_hostname = host_header if host_header else ""
-    if not effective_hostname:
-         print("[Get Services /tenant] Rejected: Host header missing")
-         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Host header missing")
+    from app.dependencies import resolve_tenant_by_subdomain
+    tenant = resolve_tenant_by_subdomain(subdomain, db)
+    print(f"[Get Services /tenant] Found Tenant ID: {tenant.id} for subdomain {subdomain}")
 
-    hostname_part = effective_hostname.split(':')[0] # Get part before port
-    # Handle cases like 'localhost', '127.0.0.1', or just the base domain
-    base_domain_config = settings.base_domain
-    is_ip_address = all(part.isdigit() for part in hostname_part.split('.')) # Basic IP check
-    is_base_domain = hostname_part == base_domain_config
-    has_subdomain = '.' in hostname_part and not is_base_domain and not is_ip_address
-
-    if not has_subdomain:
-        print(f"[Get Services /tenant] Rejected: Request not from a valid tenant subdomain: {hostname_part}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot determine tenant services. Access via the tenant portal subdomain."
-        )
-
-    subdomain_name = hostname_part.split('.')[0]
-    print(f"[Get Services /tenant] Attempt on subdomain: {subdomain_name}")
-
-    # 2. Find tenant matching the subdomain
-    tenant = db.query(TenantModel).filter(TenantModel.subdomain == subdomain_name).first()
-    if not tenant:
-        print(f"[Get Services /tenant] Rejected: Tenant subdomain not found: {subdomain_name}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant portal not found.")
-    tenant_id_from_subdomain = tenant.id
-    print(f"[Get Services /tenant] Found Tenant ID: {tenant_id_from_subdomain} for subdomain {subdomain_name}")
-
-    # 3. Fetch services belonging to that tenant's ID
-    services = db.query(ServiceModel).filter(ServiceModel.tenant_id == tenant_id_from_subdomain).all()
-
-    print(f"[Get Services /tenant] Found {len(services)} services for Tenant ID {tenant_id_from_subdomain}")
+    services = db.query(ServiceModel).filter(ServiceModel.tenant_id == tenant.id).all()
+    print(f"[Get Services /tenant] Found {len(services)} services for Tenant ID {tenant.id}")
     return services

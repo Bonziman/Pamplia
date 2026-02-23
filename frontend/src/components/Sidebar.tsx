@@ -1,280 +1,449 @@
 // src/components/Sidebar.tsx
-// --- REFACTORED WITH CHAKRA UI ---
+// Apple-inspired sidebar with Lucide icons & Chakra UI
 
 import React, { useRef, useEffect } from 'react';
-// Removed Link from react-router-dom as we are using onNavigate prop with Chakra Buttons
 import {
-    Box,
-    Flex,
-    VStack,
-    Button,
-    Text,
-    IconButton,
-    Image,
-    Icon as ChakraIcon, // To wrap FontAwesomeIcon or use Chakra icons
-    Collapse, // For the settings menu
-    useTheme, // To access theme values directly if needed
-    useColorModeValue,
-    Divider,
+  Box,
+  Flex,
+  VStack,
+  Text,
+  IconButton,
+  Image,
+  Collapse,
+  Tooltip,
 } from '@chakra-ui/react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-    faCalendarDays, faUsers, faTags, faArrowLeft, faArrowRight,
-    faAddressBook, faCog, faSignOutAlt, faPalette, faThLarge, faFileInvoice,
-    faChevronUp, faChevronDown
-} from '@fortawesome/free-solid-svg-icons'; // Your existing icons
+  LayoutDashboard,
+  Calendar,
+  Users,
+  UserCog,
+  Tag,
+  Briefcase,
+  Settings,
+  LogOut,
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronUp,
+  ChevronDown,
+  Tags,
+  Building2,
+  FileText,
+  Palette,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-// Helper component for Nav items to reduce repetition
+// ─── NavItem ─────────────────────────────────────────────────────────────────
 interface NavItemProps {
-    icon: any; // FontAwesome icon definition
-    label: string;
-    isActive: boolean;
-    isCollapsed: boolean;
-    onClick: () => void;
-    title?: string;
+  icon: LucideIcon;
+  label: string;
+  isActive: boolean;
+  isCollapsed: boolean;
+  onClick: () => void;
+  title?: string;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ icon, label, isActive, isCollapsed, onClick, title }) => {
-    // Directly use theme values for clarity
-    const activeColor = useColorModeValue('brand.500', 'brand.300'); 
-    const inactiveTextColor = useColorModeValue('ui.sidebarText', 'ui.sidebarText'); // Will resolve to #FFFFFF
-    const inactiveIconColor = useColorModeValue('ui.sidebarIcon', 'ui.sidebarText'); // Will resolve to brand.500
+const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, isActive, isCollapsed, onClick, title }) => {
+  const content = (
+    <Box
+      as="button"
+      onClick={onClick}
+      display="flex"
+      alignItems="center"
+      w="100%"
+      h="42px"
+      px={isCollapsed ? 0 : 3}
+      justifyContent={isCollapsed ? 'center' : 'flex-start'}
+      borderRadius="lg"
+      bg={isActive ? 'ui.sidebarActive' : 'transparent'}
+      color={isActive ? 'brand.400' : 'ui.sidebarMuted'}
+      fontWeight={isActive ? '600' : '500'}
+      fontSize="sm"
+      cursor="pointer"
+      border="none"
+      transition="all 0.15s ease"
+      _hover={{
+        bg: isActive ? 'ui.sidebarActive' : 'ui.sidebarHover',
+        color: isActive ? 'brand.400' : 'ui.sidebarText',
+      }}
+      aria-current={isActive ? 'page' : undefined}
+    >
+      <Icon size={isCollapsed ? 22 : 18} style={{ flexShrink: 0 }} />
+      {!isCollapsed && (
+        <Text ml="3" fontSize="sm" whiteSpace="nowrap" mb="0">
+          {label}
+        </Text>
+      )}
+    </Box>
+  );
 
+  if (isCollapsed) {
     return (
-        <Button
-            onClick={onClick}
-            variant="ghost" 
-            justifyContent="flex-start"
-            alignItems="center"
-            w="100%"
-            h="48px"
-            px={isCollapsed ? "0" : "4"} 
-            bg={isActive ? 'ui.sidebarActiveBg' : 'transparent'}
-            _hover={{
-                bg: 'ui.sidebarActiveBg', 
-                '.navitem-icon': { color: activeColor }, 
-                '.navitem-text': { color: activeColor }, 
-            }}
-            title={isCollapsed ? title || label : undefined}
-            aria-current={isActive ? 'page' : undefined}
-            display="flex"
-        >
-            <Flex
-                align="center"
-                justifyContent={isCollapsed ? "center" : "flex-start"}
-                w="100%"
-            >
-                <ChakraIcon
-                    className="navitem-icon" 
-                    as={FontAwesomeIcon}
-                    icon={icon}
-                    boxSize="20px"
-                    color={isActive ? activeColor : "white"} 
-                    mr={isCollapsed ? "0" : "3"}
-                    transition="margin 0.2s ease-in-out, color 0.2s ease-in-out"
-                />
-                {!isCollapsed && (
-                    <Text
-                        marginBottom="0px"
-                        className="navitem-text" 
-                        fontSize="md"
-                        fontWeight="medium"
-                        color={isActive ? activeColor : inactiveTextColor} // This should make it white
-                        transition="color 0.2s ease-in-out"
-                    >
-                        {label}
-                    </Text>
-                )}
-            </Flex>
-        </Button>
+      <Tooltip label={title || label} placement="right" hasArrow openDelay={200}>
+        {content}
+      </Tooltip>
     );
+  }
+
+  return content;
 };
 
+// ─── Settings Sub-Item ───────────────────────────────────────────────────────
+interface SettingsItemProps {
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+  isActive?: boolean;
+}
 
+const SettingsItem: React.FC<SettingsItemProps> = ({ icon: Icon, label, onClick, isActive }) => (
+  <Box
+    as="button"
+    onClick={onClick}
+    display="flex"
+    alignItems="center"
+    w="100%"
+    h="36px"
+    px="3"
+    pl="10"
+    borderRadius="md"
+    bg={isActive ? 'ui.sidebarActive' : 'transparent'}
+    color={isActive ? 'brand.400' : 'ui.sidebarMuted'}
+    fontSize="sm"
+    fontWeight="normal"
+    cursor="pointer"
+    border="none"
+    transition="all 0.15s ease"
+    _hover={{ bg: 'ui.sidebarHover', color: 'ui.sidebarText' }}
+  >
+    <Icon size={15} style={{ flexShrink: 0 }} />
+    <Text ml="2.5" mb="0" whiteSpace="nowrap">{label}</Text>
+  </Box>
+);
+
+// ─── Sidebar Props ───────────────────────────────────────────────────────────
 interface SidebarProps {
-    isCollapsed: boolean;
-    toggleSidebar: () => void;
-    userRole: string | undefined;
-    activeView: string;
-    onNavigate: (path: string) => void;
-    // userName: string; // userName from Figma seems to be in Header, not sidebar bottom
-    // userAvatarUrl?: string | null; // Ditto
-    isSettingsMenuOpen: boolean;
-    toggleSettingsMenu: () => void;
-    onLogout: () => void;
+  isCollapsed: boolean;
+  toggleSidebar: () => void;
+  userRole: string | undefined;
+  tenantId?: number;
+  activeView: string;
+  onNavigate: (path: string) => void;
+  isSettingsMenuOpen: boolean;
+  toggleSettingsMenu: () => void;
+  onLogout: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
-    isCollapsed,
-    toggleSidebar,
-    userRole,
-    activeView,
-    onNavigate,
-    isSettingsMenuOpen,
-    toggleSettingsMenu,
-    onLogout
+  isCollapsed,
+  toggleSidebar,
+  userRole,
+  activeView,
+  onNavigate,
+  isSettingsMenuOpen,
+  toggleSettingsMenu,
+  onLogout,
 }) => {
-    const settingsMenuRef = useRef<HTMLDivElement>(null); // For click outside settings menu
+  const settingsMenuRef = useRef<HTMLDivElement>(null);
 
-    // Permissions (can be memoized if complex)
-    const canViewUsers = userRole === "super_admin" || userRole === "admin";
-    const canManageServices = userRole === "super_admin" || userRole === "admin";
-    const canManageClients = userRole === "super_admin" || userRole === "admin" || userRole === "staff";
-    const canManageTagDefinitions = userRole === "super_admin" || userRole === "admin"; // Typically admin+
-    const canAccessTenantSettings = userRole === "super_admin" || userRole === "admin";
+  // Permissions
+  const isSuperAdmin = userRole === 'super_admin';
+  const canViewUsers = isSuperAdmin || userRole === 'admin';
+  const canManageServices = userRole === 'admin';
+  const canManageClients = userRole === 'admin' || userRole === 'staff';
+  const canManageTagDefinitions = userRole === 'admin';
+  const canAccessTenantSettings = userRole === 'admin';
 
-    // UseEffect for settings menu click outside (similar to your logic)
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
-                if (isSettingsMenuOpen) {
-                    toggleSettingsMenu();
-                }
-            }
-        };
-        if (isSettingsMenuOpen && !isCollapsed) { // Only enable when menu is open and sidebar not collapsed
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isSettingsMenuOpen, toggleSettingsMenu, isCollapsed]);
+  // Click-outside handler for settings menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
+        if (isSettingsMenuOpen) toggleSettingsMenu();
+      }
+    };
+    if (isSettingsMenuOpen && !isCollapsed) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isSettingsMenuOpen, toggleSettingsMenu, isCollapsed]);
 
-    const sidebarWidth = isCollapsed ? "80px" : "260px";
-    const sidebarBg = useColorModeValue('ui.sidebarBg', 'gray.800');
+  const sidebarWidth = isCollapsed ? '72px' : '240px';
 
-    return (
-        <Box
-            borderRadius={'0px 18px 18px 0'}
-            as="aside"
-            bg={sidebarBg}
-            color="gray.100"
-            w={sidebarWidth}
-            minH="100vh" // Full height
-            transition="width 0.2s ease-in-out"
-            marginRight="28px"
-            position="fixed" // Or "sticky" if parent layout supports it
-            top="0"
-            left="0"
-            zIndex="sticky" // Ensure it's above content but below modals typically
-            overflowY="auto" // Allow scrolling if content exceeds height
-            boxShadow="md" // Subtle shadow
-            css={{ // For custom scrollbar styling (optional)
-                '&::-webkit-scrollbar': { width: '6px' },
-                '&::-webkit-scrollbar-thumb': { bg: 'gray.600', borderRadius: '0px 18px 18px 0' },
-            }}
-        >
-            <VStack spacing={0} align="stretch" h="100%"> {/* Main vertical stack */}
-                {/* Top Section: Logo & Toggle */}
-                <Flex
-                    paddingInline="20px"
-                    align="center"
-                    justify={isCollapsed ? "center" : "space-between"}
-                    h="92px" // Match header height
-                    
-                    borderBottomWidth="1px"
-                    borderColor="gray.700" // Darker border for dark bg
-                >
-                    {!isCollapsed && (
-                        <Image src="/logo_light.png" alt="Pamplia Logo" h="auto" w="150px" />
-                        
-                    )}
-                    <IconButton
-                        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                        icon={<ChakraIcon as={FontAwesomeIcon} icon={isCollapsed ? faArrowRight : faArrowLeft} />}
-                        onClick={toggleSidebar}
-                        variant="ghost"
-                        color="ui.sidebarText"
-                        _hover={{ bg: 'ui.sidebarActiveBg', color: 'brand.500' }}
-                        size="md"
-                        ml={isCollapsed ? 0 : "auto"} // Push to right when expanded
-                    />
-                    
-                </Flex>
+  const isSettingsActive = ['settings-tags', 'settings-business', 'settings-templates'].includes(activeView);
 
-                {/* Navigation Section */}
-                <VStack as="nav" spacing="1" p={isCollapsed ? "2" : "4"} flex="1" overflowY="auto" color={"ui.sidebarText"}>
-                    {/* Nav items here, use NavItem component */}
-                    <NavItem icon={faThLarge} label="Dashboard" isActive={activeView === 'overview' || activeView === 'dashboard'} isCollapsed={isCollapsed} onClick={() => onNavigate('/dashboard')} />
-                    <NavItem icon={faCalendarDays} label="Calendar" isActive={activeView === 'calendar'} isCollapsed={isCollapsed} onClick={() => onNavigate('calendar')} />
-                    {canManageClients && <NavItem icon={faAddressBook} label="Clients" isActive={activeView === 'clients'} isCollapsed={isCollapsed} onClick={() => onNavigate('clients')} />}
-                    {/* For "Staff", use the Users icon or a dedicated staff icon */}
-                    {canViewUsers && <NavItem icon={faUsers} label="Staff" isActive={activeView === 'users' || activeView === 'staff'} isCollapsed={isCollapsed} onClick={() => onNavigate('users')} title="Staff Management"/>}
-                    {canManageServices && <NavItem icon={faTags} label="Services" isActive={activeView === 'services'} isCollapsed={isCollapsed} onClick={() => onNavigate('services')} />}
-                    {/* Remove duplicate Dashboard from screenshot */}
-                </VStack>
-                
+  return (
+    <Box
+      as="aside"
+      bg="ui.sidebarBg"
+      w={sidebarWidth}
+      minH="100vh"
+      position="fixed"
+      top="0"
+      left="0"
+      zIndex="sticky"
+      transition="width 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+      display={{ base: 'none', lg: 'flex' }}
+      flexDirection="column"
+      borderRight="1px solid"
+      borderColor="whiteAlpha.100"
+      overflowX="hidden"
+      overflowY="auto"
+      css={{
+        '&::-webkit-scrollbar': { width: '4px' },
+        '&::-webkit-scrollbar-thumb': {
+          background: 'rgba(255,255,255,0.1)',
+          borderRadius: '4px',
+        },
+      }}
+    >
+      {/* Logo & collapse toggle */}
+      <Flex
+        align="center"
+        justify={isCollapsed ? 'center' : 'space-between'}
+        h="64px"
+        px={isCollapsed ? 2 : 5}
+        flexShrink={0}
+        borderBottom="1px solid"
+        borderColor="whiteAlpha.100"
+      >
+        {!isCollapsed && (
+          <Image
+            src="/logo_light.png"
+            alt="Pamplia"
+            h="28px"
+            w="auto"
+            objectFit="contain"
+          />
+        )}
+        <IconButton
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          icon={isCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+          onClick={toggleSidebar}
+          variant="unstyled"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          color="ui.sidebarMuted"
+          _hover={{ color: 'ui.sidebarText' }}
+          size="sm"
+          minW="unset"
+        />
+      </Flex>
 
-                {/* Bottom Section: Settings & Logout */}
-                <Box mt="auto" p={isCollapsed ? "2" : "4"} borderTopWidth="1px" borderColor="gray.700" bottom="0px" position="absolute" width="100%">
-                    <Box ref={settingsMenuRef}> {/* Ref for click-outside */}
-                        <Collapse in={isSettingsMenuOpen && !isCollapsed} animateOpacity>
-                            <VStack spacing="1" py="2" align="stretch">
-                                {canManageTagDefinitions && (
-                                    <Button variant="ghost" color="ui.sidebarText" justifyContent="flex-start" w="100%" onClick={() => onNavigate('settings-tags')} leftIcon={<ChakraIcon as={FontAwesomeIcon} icon={faTags} color="ui.sidebarIcon" />}>
-                                        Manage Tags
-                                    </Button>
-                                )}
-                                {canAccessTenantSettings && (
-                                    <Button variant="ghost" color="ui.sidebarText" justifyContent="flex-start" w="100%" onClick={() => onNavigate('settings-business')} leftIcon={<ChakraIcon as={FontAwesomeIcon} icon={faCog} color="ui.sidebarIcon" />}>
-                                        Business Settings
-                                    </Button>
-                                )}
-                                 {canAccessTenantSettings && (
-                                    <Button variant="ghost" color="ui.sidebarText" justifyContent="flex-start" w="100%" onClick={() => onNavigate('settings-templates')} leftIcon={<ChakraIcon as={FontAwesomeIcon} icon={faFileInvoice} color="ui.sidebarIcon" />}>
-                                        Templates
-                                    </Button>
-                                )}
-                                <Button variant="ghost" color="ui.sidebarText" justifyContent="flex-start" w="100%" onClick={() => alert("Appearance settings clicked")} leftIcon={<ChakraIcon as={FontAwesomeIcon} icon={faPalette} color="ui.sidebarIcon" />}>
-                                    Appearance
-                                </Button>
-                                {/* Add other settings items here */}
-                            </VStack>
-                        </Collapse>
+      {/* Navigation */}
+      <VStack
+        as="nav"
+        spacing="1"
+        px={isCollapsed ? 2 : 3}
+        pt="4"
+        pb="2"
+        flex="1"
+        align="stretch"
+      >
+        <NavItem
+          icon={LayoutDashboard}
+          label="Dashboard"
+          isActive={activeView === 'overview' || activeView === 'dashboard'}
+          isCollapsed={isCollapsed}
+          onClick={() => onNavigate('/dashboard')}
+        />
 
-                        <Button
-                            onClick={toggleSettingsMenu}
-                            isDisabled={isCollapsed}
-                            variant="ghost"
-                            w="100%"
-                            justifyContent={isCollapsed ? "center" : "flex-start"}
-                            alignItems="center"
-                            color="ui.sidebarText"
-                            _hover={{ bg: 'ui.sidebarActiveBg', color: 'brand.500' }}
-                            h="48px"
-                            mt="1" // Margin top if settings menu is above
-                        >
-                            <Flex align="center" w="100%" justify={isCollapsed ? "center" : "space-between"}>
-                                <Flex align="center">
-                                    <ChakraIcon as={FontAwesomeIcon} icon={faCog} boxSize="20px" color="ui.sidebarIcon" mr={isCollapsed ? "0" : "3"} />
-                                    {!isCollapsed && <Text fontSize="md" fontWeight="medium" color="ui.sidebarText">Settings</Text>}
-                                </Flex>
-                                {!isCollapsed && <ChakraIcon as={FontAwesomeIcon} icon={isSettingsMenuOpen ? faChevronUp : faChevronDown} />}
-                            </Flex>
-                        </Button>
-                    </Box>
+        {isSuperAdmin && (
+          <NavItem
+            icon={Building2}
+            label="Tenants"
+            isActive={activeView === 'tenants'}
+            isCollapsed={isCollapsed}
+            onClick={() => onNavigate('tenants')}
+          />
+        )}
 
-                    <Button
-                        onClick={onLogout}
-                        variant="ghost"
-                        w="100%"
-                        justifyContent={isCollapsed ? "center" : "flex-start"}
-                        alignItems="center"
-                        color="ui.sidebarText"
-                        _hover={{ bg: 'ui.sidebarActiveBg', color: 'brand.500' }} // Or a different color for logout hover
-                        h="48px"
-                        mt="1"
-                    >
-                        <Flex align="center">
-                            <ChakraIcon as={FontAwesomeIcon} icon={faSignOutAlt} boxSize="20px" color="ui.sidebarIcon" mr={isCollapsed ? "0" : "3"} />
-                            {!isCollapsed && <Text fontSize="md" fontWeight="medium" color="ui.sidebarText">Log out</Text>}
-                        </Flex>
-                    </Button>
-                </Box>
-                
+        {!isSuperAdmin && (
+          <NavItem
+            icon={Calendar}
+            label="Calendar"
+            isActive={activeView === 'calendar'}
+            isCollapsed={isCollapsed}
+            onClick={() => onNavigate('calendar')}
+          />
+        )}
+
+        {!isSuperAdmin && canManageClients && (
+          <NavItem
+            icon={Users}
+            label="Clients"
+            isActive={activeView === 'clients'}
+            isCollapsed={isCollapsed}
+            onClick={() => onNavigate('clients')}
+          />
+        )}
+
+        {canViewUsers && (
+          <NavItem
+            icon={UserCog}
+            label={isSuperAdmin ? 'Users' : 'Staff'}
+            isActive={activeView === 'users' || activeView === 'staff'}
+            isCollapsed={isCollapsed}
+            onClick={() => onNavigate('users')}
+            title={isSuperAdmin ? 'User Management' : 'Staff Management'}
+          />
+        )}
+
+        {!isSuperAdmin && canManageServices && (
+          <NavItem
+            icon={Briefcase}
+            label="Services"
+            isActive={activeView === 'services'}
+            isCollapsed={isCollapsed}
+            onClick={() => onNavigate('services')}
+          />
+        )}
+      </VStack>
+
+      {/* Bottom: Settings & Logout */}
+      <Box
+        px={isCollapsed ? 2 : 3}
+        pb="4"
+        pt="2"
+        borderTop="1px solid"
+        borderColor="whiteAlpha.100"
+        flexShrink={0}
+      >
+        <Box ref={settingsMenuRef}>
+          <Collapse in={isSettingsMenuOpen && !isCollapsed} animateOpacity>
+            <VStack spacing="0.5" py="1" align="stretch">
+              {canManageTagDefinitions && (
+                <SettingsItem
+                  icon={Tags}
+                  label="Manage Tags"
+                  onClick={() => onNavigate('settings-tags')}
+                  isActive={activeView === 'settings-tags'}
+                />
+              )}
+              {canAccessTenantSettings && (
+                <SettingsItem
+                  icon={Building2}
+                  label="Business Settings"
+                  onClick={() => onNavigate('settings-business')}
+                  isActive={activeView === 'settings-business'}
+                />
+              )}
+              {canAccessTenantSettings && (
+                <SettingsItem
+                  icon={FileText}
+                  label="Templates"
+                  onClick={() => onNavigate('settings-templates')}
+                  isActive={activeView === 'settings-templates'}
+                />
+              )}
+              <SettingsItem
+                icon={Palette}
+                label="Appearance"
+                onClick={() => {}}
+              />
             </VStack>
+          </Collapse>
+
+          {/* Settings toggle */}
+          {isCollapsed ? (
+            <Tooltip label="Settings" placement="right" hasArrow openDelay={200}>
+              <Box
+                as="button"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                w="100%"
+                h="42px"
+                borderRadius="lg"
+                bg={isSettingsActive ? 'ui.sidebarActive' : 'transparent'}
+                color={isSettingsActive ? 'brand.400' : 'ui.sidebarMuted'}
+                cursor="pointer"
+                border="none"
+                transition="all 0.15s ease"
+                _hover={{ bg: 'ui.sidebarHover', color: 'ui.sidebarText' }}
+                onClick={toggleSettingsMenu}
+              >
+                <Settings size={22} />
+              </Box>
+            </Tooltip>
+          ) : (
+            <Box
+              as="button"
+              onClick={toggleSettingsMenu}
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+              w="100%"
+              h="42px"
+              px="3"
+              borderRadius="lg"
+              bg={isSettingsActive ? 'ui.sidebarActive' : 'transparent'}
+              color={isSettingsActive ? 'brand.400' : 'ui.sidebarMuted'}
+              fontSize="sm"
+              fontWeight="500"
+              cursor="pointer"
+              border="none"
+              transition="all 0.15s ease"
+              _hover={{ bg: 'ui.sidebarHover', color: 'ui.sidebarText' }}
+            >
+              <Flex align="center">
+                <Settings size={18} />
+                <Text ml="3" mb="0">Settings</Text>
+              </Flex>
+              {isSettingsMenuOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </Box>
+          )}
         </Box>
-    );
+
+        {/* Logout */}
+        {isCollapsed ? (
+          <Tooltip label="Log out" placement="right" hasArrow openDelay={200}>
+            <Box
+              as="button"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              w="100%"
+              h="42px"
+              mt="1"
+              borderRadius="lg"
+              bg="transparent"
+              color="ui.sidebarMuted"
+              cursor="pointer"
+              border="none"
+              transition="all 0.15s ease"
+              _hover={{ bg: 'red.900', color: 'red.400' }}
+              onClick={onLogout}
+            >
+              <LogOut size={22} />
+            </Box>
+          </Tooltip>
+        ) : (
+          <Box
+            as="button"
+            onClick={onLogout}
+            display="flex"
+            alignItems="center"
+            w="100%"
+            h="42px"
+            px="3"
+            mt="1"
+            borderRadius="lg"
+            bg="transparent"
+            color="ui.sidebarMuted"
+            fontSize="sm"
+            fontWeight="500"
+            cursor="pointer"
+            border="none"
+            transition="all 0.15s ease"
+            _hover={{ bg: 'red.900', color: 'red.400' }}
+          >
+            <LogOut size={18} />
+            <Text ml="3" mb="0">Log out</Text>
+          </Box>
+        )}
+      </Box>
+    </Box>
+  );
 };
 
 export default Sidebar;

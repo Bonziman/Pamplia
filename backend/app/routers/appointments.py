@@ -80,35 +80,16 @@ async def create_appointment( # <--- Make endpoint async
 ):
     logger.info(f"[Create Appointment] Received request.")
 
-    # 1. Determine Tenant from Subdomain (Robust Check)
-    # (Using the robust subdomain extraction logic)
-    host_header = request.headers.get("Host", "")
-    effective_hostname = host_header.split(':')[0] if host_header else ""
-    if not effective_hostname:
-         logger.error("[Create Appointment] Host header missing")
-         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Host header missing")
+    # 1. Determine Tenant from subdomain query parameter
+    subdomain_param = request.query_params.get("subdomain")
+    if not subdomain_param:
+        logger.error("[Create Appointment] Missing subdomain parameter")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Subdomain parameter is required.")
 
-    base_domain_config = settings.base_domain
-    is_ip_address = all(part.isdigit() for part in effective_hostname.split('.'))
-    # Adjusted check for has_subdomain
-    has_subdomain_format = effective_hostname.endswith(f".{base_domain_config}") and effective_hostname != base_domain_config
-
-    if not has_subdomain_format or is_ip_address:
-        logger.warning(f"[Create Appointment] Rejected: Request host '{effective_hostname}' is not a valid tenant subdomain.")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Appointments must be created via a valid tenant portal subdomain.")
-
-    subdomain_name = effective_hostname.replace(f".{base_domain_config}", "")
-    if not subdomain_name or '.' in subdomain_name:
-         logger.warning(f"[Create Appointment] Rejected: Invalid subdomain '{subdomain_name}' from host '{effective_hostname}'.")
-         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid tenant portal subdomain format.")
-
-    logger.info(f"[Create Appointment] Attempt on subdomain: {subdomain_name}")
-    tenant = db.query(TenantModel).filter(TenantModel.subdomain == subdomain_name).first()
-    if not tenant:
-        logger.warning(f"[Create Appointment] Tenant subdomain not found: {subdomain_name}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking portal not found.")
+    from app.dependencies import resolve_tenant_by_subdomain
+    tenant = resolve_tenant_by_subdomain(subdomain_param, db)
     tenant_id_from_subdomain = tenant.id
-    logger.info(f"[Create Appointment] Target Tenant ID: {tenant_id_from_subdomain} for subdomain {subdomain_name}")
+    logger.info(f"[Create Appointment] Target Tenant ID: {tenant_id_from_subdomain} for subdomain {subdomain_param}")
 
     # --- Client Lookup / Create / Reactivate Logic ---
     # (Same logic as before to find or create/update 'target_client')

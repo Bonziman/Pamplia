@@ -2,6 +2,7 @@
 // --- NEW FILE ---
 
 import axiosInstance from './axiosInstance'; // Use your configured axios instance
+import { buildApiUrl } from './apiBase';
 import {
     ManualLogCreatePayload,
     CommunicationLogOut,
@@ -16,9 +17,7 @@ import {
  */
 export const createManualLog = async (payload: ManualLogCreatePayload): Promise<CommunicationLogOut> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/communications/manual/`;
-        console.log("API: Posting manual log:", payload);
+        const apiUrl = buildApiUrl("/communications/manual");
         const response = await axiosInstance.post<CommunicationLogOut>(apiUrl, payload);
         return response.data;
     } catch (error) {
@@ -37,9 +36,7 @@ export const fetchClientCommunications = async (
     limit: number = 6 // Default to 6 based on requirements
 ): Promise<PaginatedCommunicationsLogResponse> => {
     try {
-        const currentHostname = window.location.hostname;
-        const apiUrl = `http://${currentHostname}:8000/clients/${clientId}/communications/`;
-        console.log(`API: Fetching communications for client ${clientId}, page ${page}, limit ${limit}`);
+        const apiUrl = buildApiUrl(`/clients/${clientId}/communications/`);
         const response = await axiosInstance.get<PaginatedCommunicationsLogResponse>(
             apiUrl,
             {
