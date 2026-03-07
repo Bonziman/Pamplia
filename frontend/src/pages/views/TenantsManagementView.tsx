@@ -55,6 +55,9 @@ const TenantsManagementView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [billingFilter, setBillingFilter] = useState('');
+  const [selectedTenantIds, setSelectedTenantIds] = useState<number[]>([]);
+  const [isApplyingBulkAction, setIsApplyingBulkAction] = useState(false);
 
   const [selectedTenant, setSelectedTenant] = useState<TenantOut | null>(null);
   const [tenantStats, setTenantStats] = useState<any>(null);
@@ -127,16 +130,40 @@ const TenantsManagementView: React.FC = () => {
   }, [loadTenants]);
 
   const filteredTenants = useMemo(() => {
+    const now = new Date();
+    const sevenDaysAhead = new Date();
+    sevenDaysAhead.setDate(sevenDaysAhead.getDate() + 7);
+
     return tenants.filter((tenant: TenantOut) => {
       const matchesSearch =
         tenant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tenant.subdomain.toLowerCase().includes(searchQuery.toLowerCase());
+
       const matchesStatus = statusFilter
         ? (statusFilter === 'active' ? tenant.is_active : !tenant.is_active)
         : true;
-      return matchesSearch && matchesStatus;
+
+      let matchesBilling = true;
+      const nextDueAt = tenant.next_due_at ? new Date(tenant.next_due_at) : null;
+
+      if (billingFilter === 'due_soon') {
+        matchesBilling = !!nextDueAt && nextDueAt >= now && nextDueAt <= sevenDaysAhead;
+      } else if (billingFilter === 'overdue') {
+        matchesBilling = !!nextDueAt && nextDueAt < now;
+      } else if (billingFilter) {
+        matchesBilling = (tenant.billing_status || 'trial') === billingFilter;
+      }
+
+      return matchesSearch && matchesStatus && matchesBilling;
     });
-  }, [tenants, searchQuery, statusFilter]);
+  }, [tenants, searchQuery, statusFilter, billingFilter]);
+
+  const selectedCount = selectedTenantIds.length;
+
+  const areAllVisibleSelected = useMemo(() => {
+    if (filteredTenants.length === 0) return false;
+    return filteredTenants.every((tenant) => selectedTenantIds.includes(tenant.id));
+  }, [filteredTenants, selectedTenantIds]);
 
   const handleOpenDetails = async (tenant: TenantOut) => {
     setSelectedTenant(tenant);
@@ -318,6 +345,90 @@ const TenantsManagementView: React.FC = () => {
     }
   };
 
+  const handleToggleTenantSelection = (tenantId: number) => {
+    setSelectedTenantIds((prev) => (
+      prev.includes(tenantId) ? prev.filter((id) => id !== tenantId) : [...prev, tenantId]
+    ));
+  };
+
+  const handleToggleSelectVisible = () => {
+    if (areAllVisibleSelected) {
+      const visibleIds = new Set(filteredTenants.map((tenant) => tenant.id));
+      setSelectedTenantIds((prev) => prev.filter((id) => !visibleIds.has(id)));
+      return;
+    }
+
+    const union = new Set<number>(selectedTenantIds);
+    filteredTenants.forEach((tenant) => union.add(tenant.id));
+    setSelectedTenantIds(Array.from(union));
+  };
+
+  const applyBulkUpdate = async (
+    updater: (tenant: TenantOut) => Partial<TenantOut>,
+    successTitle: string,
+    partialFailureTitle: string
+  ) => {
+    if (selectedTenantIds.length === 0) {
+      toast({ title: 'No tenants selected', description: 'Select at least one tenant first.', status: 'warning' });
+      return;
+    }
+
+    const selectedTenants = tenants.filter((tenant) => selectedTenantIds.includes(tenant.id));
+    if (selectedTenants.length === 0) return;
+
+    setIsApplyingBulkAction(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const tenant of selectedTenants) {
+      try {
+        await updateTenantById(tenant.id, updater(tenant));
+        successCount += 1;
+      } catch {
+        errorCount += 1;
+      }
+    }
+
+    await loadTenants();
+    setSelectedTenantIds([]);
+    setIsApplyingBulkAction(false);
+
+    if (errorCount === 0) {
+      toast({ title: successTitle, description: `${successCount} tenant(s) updated.`, status: 'success' });
+      return;
+    }
+
+    toast({
+      title: partialFailureTitle,
+      description: `${successCount} updated, ${errorCount} failed.`,
+      status: 'warning'
+    });
+  };
+
+  const handleBulkSuspend = async () => {
+    await applyBulkUpdate(
+      () => ({ is_active: false, billing_status: 'suspended' }),
+      'Selected tenants suspended',
+      'Some tenants could not be suspended'
+    );
+  };
+
+  const handleBulkMarkOverdue = async () => {
+    await applyBulkUpdate(
+      () => ({ billing_status: 'overdue' }),
+      'Selected tenants marked overdue',
+      'Some tenants could not be marked overdue'
+    );
+  };
+
+  const handleBulkActivate = async () => {
+    await applyBulkUpdate(
+      () => ({ is_active: true, billing_status: 'active' }),
+      'Selected tenants activated',
+      'Some tenants could not be activated'
+    );
+  };
+
   return (
     <div className="view-section">
       <Box p={{ base: '2', md: '4' }} bg="white">
@@ -340,7 +451,32 @@ const TenantsManagementView: React.FC = () => {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </Select>
+          <Select value={billingFilter} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBillingFilter(e.target.value)} maxW="220px">
+            <option value="">All billing states</option>
+            <option value="trial">Trial</option>
+            <option value="active">Active</option>
+            <option value="overdue">Overdue</option>
+            <option value="suspended">Suspended</option>
+            <option value="due_soon">Due in 7 days</option>
+          </Select>
+          <HStack spacing="2">
+            <ChakraButton size="sm" variant="outline" isDisabled={selectedCount === 0 || isApplyingBulkAction} onClick={handleBulkActivate}>
+              Bulk Activate
+            </ChakraButton>
+            <ChakraButton size="sm" variant="outline" colorScheme="orange" isDisabled={selectedCount === 0 || isApplyingBulkAction} onClick={handleBulkMarkOverdue}>
+              Mark Overdue
+            </ChakraButton>
+            <ChakraButton size="sm" colorScheme="red" isDisabled={selectedCount === 0 || isApplyingBulkAction} onClick={handleBulkSuspend}>
+              Suspend Selected
+            </ChakraButton>
+          </HStack>
         </Flex>
+
+        {selectedCount > 0 && (
+          <Text fontSize="sm" color="gray.500" mb="3">
+            {selectedCount} tenant(s) selected
+          </Text>
+        )}
 
         {isLoading && (
           <Center h="240px">
@@ -361,6 +497,13 @@ const TenantsManagementView: React.FC = () => {
             <Table variant="simple" size="sm">
               <Thead bg="gray.50">
                 <Tr>
+                  <Th>
+                    <Checkbox
+                      isChecked={areAllVisibleSelected}
+                      onChange={handleToggleSelectVisible}
+                      aria-label="Select all visible tenants"
+                    />
+                  </Th>
                   <Th>Name</Th>
                   <Th>Subdomain</Th>
                   <Th>Status</Th>
@@ -372,8 +515,20 @@ const TenantsManagementView: React.FC = () => {
                 </Tr>
               </Thead>
               <Tbody>
-                {filteredTenants.map((tenant) => (
+                {filteredTenants.map((tenant) => {
+                  const nextDueAt = tenant.next_due_at ? new Date(tenant.next_due_at) : null;
+                  const isOverdue = !!nextDueAt && nextDueAt < new Date();
+                  const isDueSoon = !!nextDueAt && !isOverdue && (nextDueAt.getTime() - Date.now()) <= (7 * 24 * 60 * 60 * 1000);
+
+                  return (
                   <Tr key={tenant.id}>
+                    <Td>
+                      <Checkbox
+                        isChecked={selectedTenantIds.includes(tenant.id)}
+                        onChange={() => handleToggleTenantSelection(tenant.id)}
+                        aria-label={`Select ${tenant.name}`}
+                      />
+                    </Td>
                     <Td>{tenant.name}</Td>
                     <Td>{tenant.subdomain}</Td>
                     <Td>
@@ -397,7 +552,13 @@ const TenantsManagementView: React.FC = () => {
                         {tenant.billing_status || 'trial'}
                       </Tag>
                     </Td>
-                    <Td>{tenant.next_due_at ? new Date(tenant.next_due_at).toLocaleDateString() : '-'}</Td>
+                    <Td>
+                      <HStack spacing="2">
+                        <Text>{tenant.next_due_at ? new Date(tenant.next_due_at).toLocaleDateString() : '-'}</Text>
+                        {isOverdue && <Tag size="sm" colorScheme="red">Overdue</Tag>}
+                        {!isOverdue && isDueSoon && <Tag size="sm" colorScheme="orange">Due Soon</Tag>}
+                      </HStack>
+                    </Td>
                     <Td>{tenant.timezone}</Td>
                     <Td>{tenant.default_currency}</Td>
                     <Td textAlign="right">
@@ -427,7 +588,7 @@ const TenantsManagementView: React.FC = () => {
                       </HStack>
                     </Td>
                   </Tr>
-                ))}
+                );})}
               </Tbody>
             </Table>
           </TableContainer>
