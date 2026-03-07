@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Enum, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -57,3 +57,28 @@ class ClientSubscription(Base):
     tenant = relationship("Tenant")
     client = relationship("Client")
     membership = relationship("Membership", back_populates="client_subscriptions")
+
+
+class PaymentMethod(enum.Enum):
+    CASH = "cash"
+    BANK = "bank"
+    PAYPAL = "paypal"
+    OTHER = "other"
+
+
+class TenantPaymentRecord(Base):
+    __tablename__ = "tenant_payment_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    amount = Column(Float, nullable=False)
+    currency = Column(String(3), nullable=False, default="MAD", server_default="MAD")
+    payment_method = Column(String, nullable=False, default=PaymentMethod.CASH.value, server_default=PaymentMethod.CASH.value)
+    paid_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    period_start = Column(DateTime(timezone=True), nullable=False)
+    period_end = Column(DateTime(timezone=True), nullable=False)
+    notes = Column(Text, nullable=True)
+
+    tenant = relationship("Tenant", back_populates="payment_records")
+    created_by_user = relationship("User")

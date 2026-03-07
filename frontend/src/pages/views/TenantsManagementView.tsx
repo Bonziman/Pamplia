@@ -39,11 +39,12 @@ import {
   ModalHeader,
   ModalOverlay,
   Tag,
+  Checkbox,
 } from '@chakra-ui/react';
 import { ExternalLink, Plus, MoreVertical } from 'lucide-react';
-import { createTenant, fetchTenantStats, fetchTenants, updateTenantById } from '../../api/tenantApi';
+import { createTenant, createTenantPayment, fetchTenantPayments, fetchTenantStats, fetchTenants, updateTenantById } from '../../api/tenantApi';
 import { fetchUsers, resetUserPassword, updateUser } from '../../api/userApi';
-import { TenantOut } from '../../types/tenants';
+import { TenantOut, TenantPaymentRecord } from '../../types/tenants';
 import { UserOut } from '../../types/User';
 import { useBrandedToast } from '../../hooks/useBrandedToast';
 
@@ -58,12 +59,15 @@ const TenantsManagementView: React.FC = () => {
   const [selectedTenant, setSelectedTenant] = useState<TenantOut | null>(null);
   const [tenantStats, setTenantStats] = useState<any>(null);
   const [tenantUsers, setTenantUsers] = useState<UserOut[]>([]);
+  const [tenantPayments, setTenantPayments] = useState<TenantPaymentRecord[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
   const createModal = useDisclosure();
   const editModal = useDisclosure();
   const detailDrawer = useDisclosure();
   const resetModal = useDisclosure();
+  const paymentModal = useDisclosure();
 
   const [createForm, setCreateForm] = useState({ name: '', subdomain: '' });
   const [editForm, setEditForm] = useState({
@@ -78,6 +82,15 @@ const TenantsManagementView: React.FC = () => {
 
   const [resetUser, setResetUser] = useState<UserOut | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState('');
+  const [paymentForm, setPaymentForm] = useState({
+    amount: '',
+    currency: 'MAD',
+    payment_method: 'cash',
+    period_start: '',
+    period_end: '',
+    notes: '',
+    activate_tenant: true,
+  });
 
   const deriveBaseDomain = (hostname: string) => {
     if (!hostname) return '';
@@ -129,15 +142,18 @@ const TenantsManagementView: React.FC = () => {
     setSelectedTenant(tenant);
     setTenantStats(null);
     setTenantUsers([]);
+    setTenantPayments([]);
     setIsLoadingDetails(true);
     detailDrawer.onOpen();
     try {
-      const [statsResponse, usersResponse] = await Promise.all([
+      const [statsResponse, usersResponse, paymentsResponse] = await Promise.all([
         fetchTenantStats(tenant.id),
         fetchUsers({ page: 1, limit: 10, tenant_id_filter: tenant.id }),
+        fetchTenantPayments(tenant.id, 10),
       ]);
       setTenantStats(statsResponse);
       setTenantUsers(usersResponse.items || []);
+      setTenantPayments(paymentsResponse);
     } catch (err: any) {
       toast({ title: 'Failed to load tenant details', description: err.response?.data?.detail || err.message, status: 'error' });
     } finally {
@@ -215,6 +231,64 @@ const TenantsManagementView: React.FC = () => {
     resetModal.onOpen();
   };
 
+  const handleOpenPaymentModal = () => {
+    if (!selectedTenant) return;
+    const today = new Date();
+    const nextMonth = new Date(today);
+    nextMonth.setDate(nextMonth.getDate() + 30);
+    setPaymentForm({
+      amount: '',
+      currency: selectedTenant.default_currency || 'MAD',
+      payment_method: 'cash',
+      period_start: today.toISOString().slice(0, 10),
+      period_end: nextMonth.toISOString().slice(0, 10),
+      notes: '',
+      activate_tenant: true,
+    });
+    paymentModal.onOpen();
+  };
+
+  const handleCreatePayment = async () => {
+    if (!selectedTenant) return;
+
+    const amountValue = Number(paymentForm.amount);
+    if (!Number.isFinite(amountValue) || amountValue <= 0) {
+      toast({ title: 'Invalid amount', description: 'Enter a payment amount greater than 0.', status: 'warning' });
+      return;
+    }
+
+    if (!paymentForm.period_start || !paymentForm.period_end) {
+      toast({ title: 'Missing billing period', description: 'Select period start and end dates.', status: 'warning' });
+      return;
+    }
+
+    try {
+      setIsSubmittingPayment(true);
+      await createTenantPayment(selectedTenant.id, {
+        amount: amountValue,
+        currency: paymentForm.currency,
+        payment_method: paymentForm.payment_method,
+        period_start: new Date(`${paymentForm.period_start}T00:00:00`).toISOString(),
+        period_end: new Date(`${paymentForm.period_end}T23:59:59`).toISOString(),
+        notes: paymentForm.notes || undefined,
+        activate_tenant: paymentForm.activate_tenant,
+      });
+
+      const refreshedTenants = await loadTenants();
+      const updatedTenant = refreshedTenants.find((t: TenantOut) => t.id === selectedTenant.id) || selectedTenant;
+      setSelectedTenant(updatedTenant);
+      const payments = await fetchTenantPayments(selectedTenant.id, 10);
+      setTenantPayments(payments);
+
+      toast({ title: 'Payment recorded', status: 'success' });
+      paymentModal.onClose();
+    } catch (err: any) {
+      toast({ title: 'Failed to record payment', description: err.response?.data?.detail || err.message, status: 'error' });
+    } finally {
+      setIsSubmittingPayment(false);
+    }
+  };
+
   const handleResetPassword = async () => {
     if (!resetUser) return;
     if (resetPasswordValue.trim().length < 8) {
@@ -290,6 +364,8 @@ const TenantsManagementView: React.FC = () => {
                   <Th>Name</Th>
                   <Th>Subdomain</Th>
                   <Th>Status</Th>
+                  <Th>Billing</Th>
+                  <Th>Next Due</Th>
                   <Th>Timezone</Th>
                   <Th>Currency</Th>
                   <Th></Th>
@@ -305,6 +381,23 @@ const TenantsManagementView: React.FC = () => {
                         {tenant.is_active ? 'Active' : 'Inactive'}
                       </Tag>
                     </Td>
+                    <Td>
+                      <Tag
+                        size="sm"
+                        colorScheme={
+                          tenant.billing_status === 'active'
+                            ? 'green'
+                            : tenant.billing_status === 'overdue'
+                              ? 'orange'
+                              : tenant.billing_status === 'suspended'
+                                ? 'red'
+                                : 'gray'
+                        }
+                      >
+                        {tenant.billing_status || 'trial'}
+                      </Tag>
+                    </Td>
+                    <Td>{tenant.next_due_at ? new Date(tenant.next_due_at).toLocaleDateString() : '-'}</Td>
                     <Td>{tenant.timezone}</Td>
                     <Td>{tenant.default_currency}</Td>
                     <Td textAlign="right">
@@ -350,9 +443,24 @@ const TenantsManagementView: React.FC = () => {
                 <Heading size="md">{selectedTenant?.name || 'Tenant'}</Heading>
                 <Text color="gray.500" fontSize="sm">{selectedTenant?.subdomain}</Text>
               </Box>
-              <Badge colorScheme={selectedTenant?.is_active ? 'green' : 'red'}>
-                {selectedTenant?.is_active ? 'Active' : 'Inactive'}
-              </Badge>
+              <HStack>
+                <Badge colorScheme={selectedTenant?.is_active ? 'green' : 'red'}>
+                  {selectedTenant?.is_active ? 'Active' : 'Inactive'}
+                </Badge>
+                <Badge
+                  colorScheme={
+                    selectedTenant?.billing_status === 'active'
+                      ? 'green'
+                      : selectedTenant?.billing_status === 'overdue'
+                        ? 'orange'
+                        : selectedTenant?.billing_status === 'suspended'
+                          ? 'red'
+                          : 'gray'
+                  }
+                >
+                  {selectedTenant?.billing_status || 'trial'}
+                </Badge>
+              </HStack>
             </Flex>
           </DrawerHeader>
           <DrawerBody>
@@ -435,17 +543,83 @@ const TenantsManagementView: React.FC = () => {
 
                 <Box mb="6">
                   <Heading as="h3" size="sm" mb="3">Billing Summary</Heading>
-                  <Text fontSize="sm" color="gray.600">Total revenue is derived from completed appointments.</Text>
+                  <Text fontSize="sm" color="gray.600">Manual cash/bank workflow for activation and renewals.</Text>
                   <Flex gap="4" flexWrap="wrap" mt="3">
                     <Box flex="1" minW="180px" bg="gray.50" p="3" borderRadius="md">
-                      <Text fontSize="xs" color="gray.500">Revenue (30 days)</Text>
-                      <Text fontSize="lg" fontWeight="bold">{tenantStats?.revenue_last_30_days?.toFixed(2) || '0.00'}</Text>
+                      <Text fontSize="xs" color="gray.500">Plan</Text>
+                      <Text fontSize="lg" fontWeight="bold">{selectedTenant.billing_plan || 'starter'}</Text>
                     </Box>
                     <Box flex="1" minW="180px" bg="gray.50" p="3" borderRadius="md">
-                      <Text fontSize="xs" color="gray.500">Revenue (All time)</Text>
-                      <Text fontSize="lg" fontWeight="bold">{tenantStats?.revenue_total?.toFixed(2) || '0.00'}</Text>
+                      <Text fontSize="xs" color="gray.500">Next Due</Text>
+                      <Text fontSize="lg" fontWeight="bold">
+                        {selectedTenant.next_due_at ? new Date(selectedTenant.next_due_at).toLocaleDateString() : '-'}
+                      </Text>
+                    </Box>
+                    <Box flex="1" minW="180px" bg="gray.50" p="3" borderRadius="md">
+                      <Text fontSize="xs" color="gray.500">Last Paid</Text>
+                      <Text fontSize="lg" fontWeight="bold">
+                        {selectedTenant.last_paid_at ? new Date(selectedTenant.last_paid_at).toLocaleDateString() : '-'}
+                      </Text>
                     </Box>
                   </Flex>
+                  <HStack mt="4" spacing="3">
+                    <ChakraButton size="sm" colorScheme="brand" onClick={handleOpenPaymentModal}>
+                      Record Payment
+                    </ChakraButton>
+                    <ChakraButton
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        if (!selectedTenant) return;
+                        try {
+                          await updateTenantById(selectedTenant.id, {
+                            billing_status: 'active',
+                            is_active: true,
+                          });
+                          toast({ title: 'Tenant activated', status: 'success' });
+                          const refreshedTenants = await loadTenants();
+                          const updatedTenant = refreshedTenants.find((t: TenantOut) => t.id === selectedTenant.id);
+                          if (updatedTenant) setSelectedTenant(updatedTenant);
+                        } catch (err: any) {
+                          toast({ title: 'Activation failed', description: err.response?.data?.detail || err.message, status: 'error' });
+                        }
+                      }}
+                    >
+                      Activate
+                    </ChakraButton>
+                  </HStack>
+
+                  <Box mt="5">
+                    <Text fontSize="xs" color="gray.500" mb="2">Recent Payments</Text>
+                    {tenantPayments.length === 0 ? (
+                      <Text fontSize="sm" color="gray.500">No payments logged yet.</Text>
+                    ) : (
+                      <TableContainer borderWidth="1px" borderColor="gray.200" borderRadius="md">
+                        <Table size="sm">
+                          <Thead bg="gray.50">
+                            <Tr>
+                              <Th>Date</Th>
+                              <Th>Amount</Th>
+                              <Th>Method</Th>
+                              <Th>Period</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {tenantPayments.map((payment) => (
+                              <Tr key={payment.id}>
+                                <Td>{new Date(payment.paid_at).toLocaleDateString()}</Td>
+                                <Td>{payment.amount.toFixed(2)} {payment.currency}</Td>
+                                <Td>{payment.payment_method}</Td>
+                                <Td>
+                                  {new Date(payment.period_start).toLocaleDateString()} - {new Date(payment.period_end).toLocaleDateString()}
+                                </Td>
+                              </Tr>
+                            ))}
+                          </Tbody>
+                        </Table>
+                      </TableContainer>
+                    )}
+                  </Box>
                 </Box>
 
                 <Divider mb="6" />
@@ -567,6 +741,88 @@ const TenantsManagementView: React.FC = () => {
           <ModalFooter>
             <ChakraButton variant="ghost" mr="3" onClick={resetModal.onClose}>Cancel</ChakraButton>
             <ChakraButton colorScheme="brand" onClick={handleResetPassword}>Reset</ChakraButton>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={paymentModal.isOpen} onClose={paymentModal.onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Record Payment</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <FormControl mb="3" isRequired>
+              <FormLabel>Amount</FormLabel>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={paymentForm.amount}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))}
+              />
+            </FormControl>
+
+            <FormControl mb="3">
+              <FormLabel>Currency</FormLabel>
+              <Input
+                value={paymentForm.currency}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentForm((prev) => ({ ...prev, currency: e.target.value.toUpperCase() }))}
+                maxLength={3}
+              />
+            </FormControl>
+
+            <FormControl mb="3">
+              <FormLabel>Payment Method</FormLabel>
+              <Select
+                value={paymentForm.payment_method}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setPaymentForm((prev) => ({ ...prev, payment_method: e.target.value }))}
+              >
+                <option value="cash">Cash</option>
+                <option value="bank">Bank Transfer</option>
+                <option value="paypal">PayPal</option>
+                <option value="other">Other</option>
+              </Select>
+            </FormControl>
+
+            <FormControl mb="3" isRequired>
+              <FormLabel>Period Start</FormLabel>
+              <Input
+                type="date"
+                value={paymentForm.period_start}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentForm((prev) => ({ ...prev, period_start: e.target.value }))}
+              />
+            </FormControl>
+
+            <FormControl mb="3" isRequired>
+              <FormLabel>Period End</FormLabel>
+              <Input
+                type="date"
+                value={paymentForm.period_end}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentForm((prev) => ({ ...prev, period_end: e.target.value }))}
+              />
+            </FormControl>
+
+            <FormControl mb="3">
+              <FormLabel>Notes</FormLabel>
+              <Input
+                value={paymentForm.notes}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentForm((prev) => ({ ...prev, notes: e.target.value }))}
+                placeholder="Receipt ref, bank slip note, etc"
+              />
+            </FormControl>
+
+            <Checkbox
+              isChecked={paymentForm.activate_tenant}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentForm((prev) => ({ ...prev, activate_tenant: e.target.checked }))}
+            >
+              Activate tenant immediately
+            </Checkbox>
+          </ModalBody>
+          <ModalFooter>
+            <ChakraButton variant="ghost" mr="3" onClick={paymentModal.onClose}>Cancel</ChakraButton>
+            <ChakraButton colorScheme="brand" onClick={handleCreatePayment} isLoading={isSubmittingPayment}>
+              Save Payment
+            </ChakraButton>
           </ModalFooter>
         </ModalContent>
       </Modal>

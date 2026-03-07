@@ -1,8 +1,9 @@
 # app/schemas/tenant.py
 # --- MODIFIED ---
 
-from pydantic import BaseModel, Field, EmailStr, HttpUrl # Added Field, EmailStr, HttpUrl
+from pydantic import BaseModel, Field, EmailStr, HttpUrl
 from typing import Optional, Dict, Any, Union # Added Dict, Any, Union for JSON fields
+from datetime import datetime
 
 # --- Base Schema ---
 # Defines all fields corresponding to the Tenant model columns
@@ -45,6 +46,13 @@ class TenantBase(BaseModel):
         None, ge=1, le=168, # Example validation: 1 hour to 1 week (168 hours)
         description="Hours before appointment to send reminder (null or 0 to disable)"
     )
+
+    # Commercial billing controls (manual cash/bank flow)
+    billing_plan: Optional[str] = Field(None, description="starter | growth | pro")
+    billing_status: Optional[str] = Field(None, description="trial | active | overdue | suspended")
+    last_paid_at: Optional[datetime] = None
+    next_due_at: Optional[datetime] = None
+    billing_notes: Optional[str] = None
 
     class Config:
         from_attributes = True 
@@ -101,3 +109,30 @@ class TenantStats(BaseModel):
     admins_total: int
     staff_total: int
     last_appointment_at: Optional[str] = None
+
+
+class TenantPaymentRecordCreate(BaseModel):
+    amount: float = Field(..., gt=0)
+    currency: str = Field(default="MAD", min_length=3, max_length=3)
+    payment_method: str = Field(default="cash")
+    paid_at: Optional[datetime] = None
+    period_start: datetime
+    period_end: datetime
+    notes: Optional[str] = None
+    activate_tenant: bool = True
+
+
+class TenantPaymentRecordOut(BaseModel):
+    id: int
+    tenant_id: int
+    created_by_user_id: int
+    amount: float
+    currency: str
+    payment_method: str
+    paid_at: datetime
+    period_start: datetime
+    period_end: datetime
+    notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True

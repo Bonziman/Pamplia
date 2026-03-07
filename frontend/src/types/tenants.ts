@@ -57,6 +57,12 @@ export interface TenantOut {
   booking_widget_config: Record<string, any> | null;
   reminder_interval_hours: number | null;
 
+  billing_plan: string | null;
+  billing_status: string | null;
+  last_paid_at: string | null;
+  next_due_at: string | null;
+  billing_notes: string | null;
+
   // Note: Relationships like users, services, etc., are usually not included
   // in the basic TenantOut schema unless specifically requested/needed.
 }
@@ -91,4 +97,34 @@ export interface TenantUpdate {
   business_hours_config?: BusinessHoursConfig | null;
   booking_widget_config?: Record<string, any> | null;
   reminder_interval_hours?: number | null;
+
+  billing_plan?: string | null;
+  billing_status?: string | null;
+  last_paid_at?: string | null;
+  next_due_at?: string | null;
+  billing_notes?: string | null;
+}
+
+export interface TenantPaymentRecord {
+  id: number;
+  tenant_id: number;
+  created_by_user_id: number;
+  amount: number;
+  currency: string;
+  payment_method: string;
+  paid_at: string;
+  period_start: string;
+  period_end: string;
+  notes: string | null;
+}
+
+export interface TenantPaymentRecordCreate {
+  amount: number;
+  currency?: string;
+  payment_method: string;
+  paid_at?: string;
+  period_start: string;
+  period_end: string;
+  notes?: string;
+  activate_tenant?: boolean;
 }

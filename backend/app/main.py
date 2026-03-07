@@ -10,7 +10,7 @@ from starlette.responses import Response as StarletteResponse # For middleware t
 
 from app.routers import tenants, appointments, services, auth, users, tags, clients, dashboard, templates, communications, staff, availability
 from app.database import Base, engine, get_db # Import get_db
-from app.models import tenant, user, service, appointment # Import models
+from app.models import tenant, user, service, appointment, finance # Import models
 from sqlalchemy.orm import Session
 
 # Import dependencies and utils needed for middleware

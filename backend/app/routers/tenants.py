@@ -13,12 +13,20 @@ from app import database, models, schemas
 from app.dependencies import get_current_user
 from app.models.tenant import Tenant as TenantModel
 from app.models.user import User as UserModel
-from app.schemas.tenant import TenantCreate, TenantOut, TenantUpdate, TenantStats
+from app.schemas.tenant import (
+    TenantCreate,
+    TenantOut,
+    TenantUpdate,
+    TenantStats,
+    TenantPaymentRecordCreate,
+    TenantPaymentRecordOut,
+)
 from app.models.appointment import Appointment as AppointmentModel
 from app.models.client import Client as ClientModel
 from app.models.service import Service as ServiceModel
 from app.models.association_tables import appointment_services_table
 from app.schemas.enums import AppointmentStatus
+from app.models.finance import TenantPaymentRecord
 import logging 
 
 # --- Setup logger ---
@@ -383,3 +391,71 @@ def get_tenant_stats(
         staff_total=staff_total,
         last_appointment_at=last_appointment_at.isoformat() if last_appointment_at else None
     )
+
+
+@router.get(
+    "/{tenant_id}/payments",
+    response_model=List[TenantPaymentRecordOut],
+    dependencies=[Depends(get_current_active_super_admin)]
+)
+def get_tenant_payments(
+    tenant_id: int,
+    limit: int = 20,
+    db: Session = Depends(database.get_db)
+):
+    tenant = db.query(TenantModel).filter(TenantModel.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Tenant with ID {tenant_id} not found.")
+
+    safe_limit = max(1, min(limit, 100))
+    return (
+        db.query(TenantPaymentRecord)
+        .filter(TenantPaymentRecord.tenant_id == tenant_id)
+        .order_by(TenantPaymentRecord.paid_at.desc())
+        .limit(safe_limit)
+        .all()
+    )
+
+
+@router.post(
+    "/{tenant_id}/payments",
+    response_model=TenantPaymentRecordOut,
+    status_code=status.HTTP_201_CREATED
+)
+def create_tenant_payment(
+    tenant_id: int,
+    payload: TenantPaymentRecordCreate,
+    db: Session = Depends(database.get_db),
+    current_user: UserModel = Depends(get_current_active_super_admin),
+):
+    tenant = db.query(TenantModel).filter(TenantModel.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Tenant with ID {tenant_id} not found.")
+
+    if payload.period_end <= payload.period_start:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="period_end must be after period_start")
+
+    payment = TenantPaymentRecord(
+        tenant_id=tenant_id,
+        created_by_user_id=current_user.id,
+        amount=payload.amount,
+        currency=payload.currency.upper(),
+        payment_method=payload.payment_method.lower(),
+        paid_at=payload.paid_at or datetime.now(timezone.utc),
+        period_start=payload.period_start,
+        period_end=payload.period_end,
+        notes=payload.notes,
+    )
+
+    db.add(payment)
+
+    # Optional fast-path: mark tenant as paid/active right after recording payment.
+    if payload.activate_tenant:
+        tenant.is_active = True
+        tenant.billing_status = "active"
+        tenant.last_paid_at = payment.paid_at
+        tenant.next_due_at = payload.period_end
+
+    db.commit()
+    db.refresh(payment)
+    return payment

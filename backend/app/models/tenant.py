@@ -1,7 +1,7 @@
 # app/models/tenant.py
 # --- MODIFIED ---
 
-from sqlalchemy import Column, Integer, String, Text, Boolean # Added Text
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime
 from sqlalchemy.dialects.postgresql import JSONB # Use JSONB for PostgreSQL JSON
 # If not using PostgreSQL, use: from sqlalchemy.types import JSON
 from sqlalchemy.orm import relationship
@@ -52,6 +52,13 @@ class Tenant(Base):
         comment="Hours before appointment to send reminder (null=disabled)"
     )
 
+    # --- Commercial / Billing ---
+    billing_plan = Column(String, nullable=False, default='starter', server_default='starter')
+    billing_status = Column(String, nullable=False, default='trial', server_default='trial')
+    last_paid_at = Column(DateTime(timezone=True), nullable=True)
+    next_due_at = Column(DateTime(timezone=True), nullable=True)
+    billing_notes = Column(Text, nullable=True)
+
     # --- Relationships  ---
     users = relationship("User", back_populates="tenant")
     services = relationship("Service", back_populates="tenant")
@@ -62,6 +69,7 @@ class Tenant(Base):
     templates = relationship("Template", back_populates="tenant", cascade="all, delete-orphan", passive_deletes=True)
     invitations = relationship("Invitation", back_populates="tenant", cascade="all, delete-orphan")
     consent_forms = relationship("ConsentForm", back_populates="tenant", cascade="all, delete-orphan")
+    payment_records = relationship("TenantPaymentRecord", back_populates="tenant", cascade="all, delete-orphan")
     
     def __repr__(self):
          return f"<Tenant(id={self.id}, name='{self.name}', subdomain='{self.subdomain}')>"

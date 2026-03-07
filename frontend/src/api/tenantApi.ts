@@ -3,7 +3,7 @@
 
 import axiosInstance from './axiosInstance'; // Use your configured axios instance
 import { buildApiUrl } from './apiBase';
-import { TenantOut, TenantUpdate } from '../types/tenants';
+import { TenantOut, TenantUpdate, TenantPaymentRecord, TenantPaymentRecordCreate } from '../types/tenants';
 
 
 /**
@@ -131,4 +131,21 @@ export const fetchTenantStats = async (tenantId: number): Promise<TenantStats> =
         console.error("Error fetching tenant stats:", error);
         throw error;
     }
+};
+
+export const fetchTenantPayments = async (tenantId: number, limit = 20): Promise<TenantPaymentRecord[]> => {
+    const apiUrl = buildApiUrl(`/tenants/${tenantId}/payments`);
+    const response = await axiosInstance.get<TenantPaymentRecord[]>(apiUrl, {
+        params: { limit }
+    });
+    return response.data;
+};
+
+export const createTenantPayment = async (
+    tenantId: number,
+    payload: TenantPaymentRecordCreate
+): Promise<TenantPaymentRecord> => {
+    const apiUrl = buildApiUrl(`/tenants/${tenantId}/payments`);
+    const response = await axiosInstance.post<TenantPaymentRecord>(apiUrl, payload);
+    return response.data;
 };
