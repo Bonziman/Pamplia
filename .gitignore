@@ -16,3 +16,6 @@ frontnd/.env
 frontnd/.env.local
 .certs
 .env
+
+# Local runtime artifacts
+backups/
