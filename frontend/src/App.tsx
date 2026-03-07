@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import DashboardRefactored from "./pages/DashboardRefactored";
 import LandingPage from "./pages/LandingPage";
+import DemoPage from "./pages/DemoPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import BookingPage from "./pages/BookingPage"; 
 import AcceptInvitationPage from "./pages/public/AcceptInvitationPage";
@@ -35,6 +36,7 @@ const App: React.FC = () => {
           <BrowserRouter>
               <Routes>
               <Route path="/" element={<LandingPage />} />
+              <Route path="/demo" element={<DemoPage />} />
               <Route path="/book" element={<BookingPage />} />
               <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
               <Route path="/login" element={<Login />} />

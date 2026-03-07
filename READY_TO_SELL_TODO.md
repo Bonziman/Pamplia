@@ -11,17 +11,17 @@ Derniere mise a jour: 2026-03-07
 - [x] Action "Run Overdue Sweep" pour suspendre automatiquement les tenants expires.
 - [x] Disponibilites reelles sur la page de reservation (plus de slots mockes).
 - [x] Landing page marketing FR sur `/` avec SEO de base (title, description, OG, Twitter).
+- [x] Funnel conversion `/demo` (WhatsApp CTA + offre Casablanca 48h).
 - [x] Toolkit ops: `ops/backup_db.sh`, `ops/restore_db.sh`, `ops/healthcheck.sh`, `ops/SETUP.md`.
 - [x] Backups locaux avec retention + checksum.
 
 ## En Cours
 
-- [ ] Funnel conversion `/demo` (WhatsApp CTA + offre Casablanca 48h).
+- [ ] Remplacer les images placeholders par des captures reelles du SaaS (booking, planning, dashboard).
 
 ## A Faire Priorite Haute (pour vendre)
 
 - [ ] Rotation des secrets exposes (mail/db) et nettoyage config pour variables d'environnement uniquement.
-- [ ] Ajouter une page `/demo` orientee conversion locale (Casablanca, salons premium, FR).
 - [ ] Remplacer les images placeholders par des captures reelles du SaaS (booking, planning, dashboard).
 - [ ] Onboarding rapide tenant (wizard: nom salon, services, staff, horaires, logo).
 - [ ] Fiabilite rappels (job monitoring + retries visibles + logs de statut).

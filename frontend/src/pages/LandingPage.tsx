@@ -33,6 +33,7 @@ const LandingPage: React.FC = () => {
           <a href="#fonctionnalites">Fonctionnalites</a>
           <a href="#resultats">Resultats</a>
           <a href="#faq">FAQ</a>
+          <Link to="/demo">Demo</Link>
           <Link to="/login" className="lp-nav-cta">Connexion</Link>
         </nav>
       </header>
@@ -50,7 +51,7 @@ const LandingPage: React.FC = () => {
               Moins de no-shows, plus de rendez-vous confirmes, plus de fidelisation.
             </p>
             <div className="lp-actions">
-              <Link to="/book" className="lp-btn lp-btn-primary">Voir la demo de reservation</Link>
+              <Link to="/demo" className="lp-btn lp-btn-primary">Demander une demo</Link>
               <Link to="/login" className="lp-btn lp-btn-ghost">Acceder au dashboard</Link>
             </div>
             <ul className="lp-proof">
@@ -152,7 +153,7 @@ const LandingPage: React.FC = () => {
           <h2>Offrez une experience premium des aujourd'hui</h2>
           <p>Testez la reservation en direct, puis activez votre espace en quelques minutes.</p>
           <div className="lp-actions">
-            <Link to="/book" className="lp-btn lp-btn-primary">Tester la reservation</Link>
+            <Link to="/demo" className="lp-btn lp-btn-primary">Voir la page demo</Link>
             <Link to="/login" className="lp-btn lp-btn-ghost">Connexion admin</Link>
           </div>
         </section>
