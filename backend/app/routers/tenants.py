@@ -256,6 +256,41 @@ def update_tenant_me(
             detail="Failed to update tenant settings due to a server error."
         )
 
+
+@router.post(
+    "/billing/expire-overdue",
+    dependencies=[Depends(get_current_active_super_admin)]
+)
+def expire_overdue_tenants(
+    db: Session = Depends(database.get_db)
+):
+    """
+    Marks overdue tenants as suspended/inactive when next_due_at is in the past.
+    Intended for manual trigger from super-admin dashboard.
+    """
+    now_utc = datetime.now(timezone.utc)
+
+    overdue_tenants = db.query(TenantModel).filter(
+        TenantModel.next_due_at.isnot(None),
+        TenantModel.next_due_at < now_utc,
+        TenantModel.is_active == True,
+    ).all()
+
+    updated_count = 0
+    for tenant in overdue_tenants:
+        tenant.billing_status = "overdue"
+        tenant.is_active = False
+        updated_count += 1
+
+    if updated_count > 0:
+        db.commit()
+
+    return {
+        "checked_at": now_utc.isoformat(),
+        "updated_count": updated_count,
+        "message": f"{updated_count} tenant(s) marked overdue and suspended."
+    }
+
 # --- GET /tenants/{tenant_id} (Get Specific Tenant - Super Admin Only) ---
 @router.get(
     "/{tenant_id}",

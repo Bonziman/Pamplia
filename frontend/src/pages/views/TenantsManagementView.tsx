@@ -42,7 +42,7 @@ import {
   Checkbox,
 } from '@chakra-ui/react';
 import { ExternalLink, Plus, MoreVertical } from 'lucide-react';
-import { createTenant, createTenantPayment, fetchTenantPayments, fetchTenantStats, fetchTenants, updateTenantById } from '../../api/tenantApi';
+import { createTenant, createTenantPayment, expireOverdueTenants, fetchTenantPayments, fetchTenantStats, fetchTenants, updateTenantById } from '../../api/tenantApi';
 import { fetchUsers, resetUserPassword, updateUser } from '../../api/userApi';
 import { TenantOut, TenantPaymentRecord } from '../../types/tenants';
 import { UserOut } from '../../types/User';
@@ -65,6 +65,7 @@ const TenantsManagementView: React.FC = () => {
   const [tenantPayments, setTenantPayments] = useState<TenantPaymentRecord[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+  const [isRunningOverdueSweep, setIsRunningOverdueSweep] = useState(false);
 
   const createModal = useDisclosure();
   const editModal = useDisclosure();
@@ -429,6 +430,27 @@ const TenantsManagementView: React.FC = () => {
     );
   };
 
+  const handleRunOverdueSweep = async () => {
+    try {
+      setIsRunningOverdueSweep(true);
+      const result = await expireOverdueTenants();
+      await loadTenants();
+      toast({
+        title: 'Overdue sweep completed',
+        description: result.message,
+        status: 'success'
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Overdue sweep failed',
+        description: err.response?.data?.detail || err.message,
+        status: 'error'
+      });
+    } finally {
+      setIsRunningOverdueSweep(false);
+    }
+  };
+
   return (
     <div className="view-section">
       <Box p={{ base: '2', md: '4' }} bg="white">
@@ -460,6 +482,14 @@ const TenantsManagementView: React.FC = () => {
             <option value="due_soon">Due in 7 days</option>
           </Select>
           <HStack spacing="2">
+            <ChakraButton
+              size="sm"
+              variant="outline"
+              isLoading={isRunningOverdueSweep}
+              onClick={handleRunOverdueSweep}
+            >
+              Run Overdue Sweep
+            </ChakraButton>
             <ChakraButton size="sm" variant="outline" isDisabled={selectedCount === 0 || isApplyingBulkAction} onClick={handleBulkActivate}>
               Bulk Activate
             </ChakraButton>
@@ -477,6 +507,9 @@ const TenantsManagementView: React.FC = () => {
             {selectedCount} tenant(s) selected
           </Text>
         )}
+        <Text fontSize="sm" color="gray.500" mb="3">
+          Tip: Recent payments appear in each tenant's details drawer.
+        </Text>
 
         {isLoading && (
           <Center h="240px">

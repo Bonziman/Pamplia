@@ -149,3 +149,15 @@ export const createTenantPayment = async (
     const response = await axiosInstance.post<TenantPaymentRecord>(apiUrl, payload);
     return response.data;
 };
+
+export type ExpireOverdueTenantsResult = {
+    checked_at: string;
+    updated_count: number;
+    message: string;
+};
+
+export const expireOverdueTenants = async (): Promise<ExpireOverdueTenantsResult> => {
+    const apiUrl = buildApiUrl('/tenants/billing/expire-overdue');
+    const response = await axiosInstance.post<ExpireOverdueTenantsResult>(apiUrl);
+    return response.data;
+};
