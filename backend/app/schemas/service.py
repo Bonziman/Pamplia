@@ -8,7 +8,7 @@ class ServiceBase(BaseModel):
     price: float
 
 class ServiceCreate(ServiceBase):
-    pass
+    tenant_id: Optional[int] = None
 
 class ServiceUpdate(ServiceBase): # Or inherit ServiceBase if needed
     name: Optional[str] = None

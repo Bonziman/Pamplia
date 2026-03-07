@@ -57,8 +57,24 @@ def create_service(
             detail="User role not authorized to create services."
         )
 
-    # --- 2. Determine tenant from JWT (user record) ---
-    target_tenant_id = current_user.tenant_id
+    # --- 2. Determine target tenant ---
+    if current_user.role == "super_admin" and service_data.tenant_id is not None:
+        target_tenant_id = service_data.tenant_id
+    else:
+        target_tenant_id = current_user.tenant_id
+
+    if target_tenant_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Target tenant is required for service creation."
+        )
+
+    tenant_exists = db.query(TenantModel.id).filter(TenantModel.id == target_tenant_id).first()
+    if not tenant_exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Target tenant not found."
+        )
 
     # --- 3. Create Service Model instance ---
     db_service = ServiceModel(

@@ -22,7 +22,7 @@ export interface ServiceCreatePayload {
     description?: string;
     duration_minutes: number;
     price: number;
-    //tenant_id: number; // Required for creation
+    tenant_id?: number;
 }
 
 // Payload for updating a service (matches backend schema ServiceUpdate)

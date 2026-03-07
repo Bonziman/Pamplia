@@ -40,10 +40,12 @@ import {
   ModalOverlay,
   Tag,
   Checkbox,
+  Textarea,
 } from '@chakra-ui/react';
 import { ExternalLink, Plus, MoreVertical } from 'lucide-react';
 import { createTenant, createTenantPayment, expireOverdueTenants, fetchTenantPayments, fetchTenantStats, fetchTenants, updateTenantById } from '../../api/tenantApi';
-import { fetchUsers, resetUserPassword, updateUser } from '../../api/userApi';
+import { createService } from '../../api/serviceApi';
+import { createUser, fetchUsers, resetUserPassword, updateUser } from '../../api/userApi';
 import { TenantOut, TenantPaymentRecord } from '../../types/tenants';
 import { UserOut } from '../../types/User';
 import { useBrandedToast } from '../../hooks/useBrandedToast';
@@ -66,6 +68,7 @@ const TenantsManagementView: React.FC = () => {
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [isRunningOverdueSweep, setIsRunningOverdueSweep] = useState(false);
+  const [isCreatingTenant, setIsCreatingTenant] = useState(false);
 
   const createModal = useDisclosure();
   const editModal = useDisclosure();
@@ -73,7 +76,30 @@ const TenantsManagementView: React.FC = () => {
   const resetModal = useDisclosure();
   const paymentModal = useDisclosure();
 
-  const [createForm, setCreateForm] = useState({ name: '', subdomain: '' });
+  const [createStep, setCreateStep] = useState(1);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    subdomain: '',
+    slogan: '',
+    logo_url: '',
+    contact_email: '',
+    contact_phone: '',
+    address_city: 'Casablanca',
+    address_country: 'Maroc',
+    timezone: 'Africa/Casablanca',
+    default_currency: 'MAD',
+    billing_plan: 'starter',
+    billing_status: 'trial',
+    reminder_interval_hours: 24,
+    workday_open: '09:00',
+    workday_close: '19:00',
+    sunday_open: false,
+    admin_name: '',
+    admin_email: '',
+    admin_password: '',
+    staff_payload: '',
+    services_payload: 'Brushing|45|180\nColoration premium|75|350\nSoin visage|60|260',
+  });
   const [editForm, setEditForm] = useState({
     name: '',
     subdomain: '',
@@ -108,6 +134,61 @@ const TenantsManagementView: React.FC = () => {
 
   const protocol = window.location.protocol;
   const baseDomain = (process.env.REACT_APP_BASE_DOMAIN || '').trim() || deriveBaseDomain(window.location.hostname);
+
+  const resetCreateWizard = () => {
+    setCreateStep(1);
+    setCreateForm({
+      name: '',
+      subdomain: '',
+      slogan: '',
+      logo_url: '',
+      contact_email: '',
+      contact_phone: '',
+      address_city: 'Casablanca',
+      address_country: 'Maroc',
+      timezone: 'Africa/Casablanca',
+      default_currency: 'MAD',
+      billing_plan: 'starter',
+      billing_status: 'trial',
+      reminder_interval_hours: 24,
+      workday_open: '09:00',
+      workday_close: '19:00',
+      sunday_open: false,
+      admin_name: '',
+      admin_email: '',
+      admin_password: '',
+      staff_payload: '',
+      services_payload: 'Brushing|45|180\nColoration premium|75|350\nSoin visage|60|260',
+    });
+  };
+
+  const parseServicesPayload = (payload: string) => payload
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name = '', duration = '', price = ''] = line.split('|').map((item) => item.trim());
+      return {
+        name,
+        duration_minutes: Number(duration),
+        price: Number(price),
+      };
+    })
+    .filter((service) => service.name && Number.isFinite(service.duration_minutes) && service.duration_minutes > 0 && Number.isFinite(service.price) && service.price >= 0);
+
+  const parseStaffPayload = (payload: string) => payload
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name = '', email = '', role = 'staff'] = line.split('|').map((item) => item.trim());
+      return {
+        name,
+        email,
+        role: role === 'admin' ? 'admin' : 'staff',
+      };
+    })
+    .filter((member) => member.name && member.email);
 
   const loadTenants = useCallback(async (): Promise<TenantOut[]> => {
     setIsLoading(true);
@@ -229,17 +310,82 @@ const TenantsManagementView: React.FC = () => {
 
   const handleCreateTenant = async () => {
     if (!createForm.name.trim() || !createForm.subdomain.trim()) {
-      toast({ title: 'Name and subdomain required', status: 'warning' });
+      toast({ title: 'Salon name and subdomain are required', status: 'warning' });
       return;
     }
+
+    if (!createForm.admin_name.trim() || !createForm.admin_email.trim() || createForm.admin_password.trim().length < 8) {
+      toast({ title: 'Primary admin account is required', description: 'Provide name, email, and a password with at least 8 characters.', status: 'warning' });
+      return;
+    }
+
+    const services = parseServicesPayload(createForm.services_payload);
+    const staffMembers = parseStaffPayload(createForm.staff_payload);
+
+    const businessHours = {
+      monday: { isOpen: true, intervals: [{ start: createForm.workday_open, end: createForm.workday_close }] },
+      tuesday: { isOpen: true, intervals: [{ start: createForm.workday_open, end: createForm.workday_close }] },
+      wednesday: { isOpen: true, intervals: [{ start: createForm.workday_open, end: createForm.workday_close }] },
+      thursday: { isOpen: true, intervals: [{ start: createForm.workday_open, end: createForm.workday_close }] },
+      friday: { isOpen: true, intervals: [{ start: createForm.workday_open, end: createForm.workday_close }] },
+      saturday: { isOpen: true, intervals: [{ start: createForm.workday_open, end: createForm.workday_close }] },
+      sunday: { isOpen: createForm.sunday_open, intervals: createForm.sunday_open ? [{ start: createForm.workday_open, end: createForm.workday_close }] : [] },
+    };
+
     try {
-      await createTenant({ name: createForm.name.trim(), subdomain: createForm.subdomain.trim() });
-      toast({ title: 'Tenant created', status: 'success' });
+      setIsCreatingTenant(true);
+      const tenant = await createTenant({ name: createForm.name.trim(), subdomain: createForm.subdomain.trim().toLowerCase() });
+
+      await updateTenantById(tenant.id, {
+        slogan: createForm.slogan.trim() || null,
+        logo_url: createForm.logo_url.trim() || null,
+        contact_email: createForm.contact_email.trim() || null,
+        contact_phone: createForm.contact_phone.trim() || null,
+        address_city: createForm.address_city.trim() || null,
+        address_country: createForm.address_country.trim() || null,
+        timezone: createForm.timezone.trim() || 'Africa/Casablanca',
+        default_currency: createForm.default_currency.trim().toUpperCase() || 'MAD',
+        billing_plan: createForm.billing_plan,
+        billing_status: createForm.billing_status,
+        reminder_interval_hours: createForm.reminder_interval_hours,
+        business_hours_config: businessHours,
+      });
+
+      await createUser({
+        name: createForm.admin_name.trim(),
+        email: createForm.admin_email.trim().toLowerCase(),
+        password: createForm.admin_password.trim(),
+        role: 'admin',
+        tenant_id: tenant.id,
+      });
+
+      for (const member of staffMembers) {
+        await createUser({
+          name: member.name,
+          email: member.email.toLowerCase(),
+          password: createForm.admin_password.trim(),
+          role: member.role,
+          tenant_id: tenant.id,
+        });
+      }
+
+      for (const service of services) {
+        await createService({
+          name: service.name,
+          duration_minutes: service.duration_minutes,
+          price: service.price,
+          tenant_id: tenant.id,
+        });
+      }
+
+      toast({ title: 'Tenant onboarded', description: 'Salon, admin account, hours, staff, and starter services are ready.', status: 'success' });
       createModal.onClose();
-      setCreateForm({ name: '', subdomain: '' });
+      resetCreateWizard();
       loadTenants();
     } catch (err: any) {
-      toast({ title: 'Failed to create tenant', description: err.response?.data?.detail || err.message, status: 'error' });
+      toast({ title: 'Onboarding failed', description: err.response?.data?.detail || err.message, status: 'error' });
+    } finally {
+      setIsCreatingTenant(false);
     }
   };
 
@@ -456,7 +602,14 @@ const TenantsManagementView: React.FC = () => {
       <Box p={{ base: '2', md: '4' }} bg="white">
         <Flex alignItems="center" justifyContent="space-between" mb="6" flexWrap="wrap" gap="3">
           <Heading as="h1" size="lg" color="gray.700">Tenants</Heading>
-          <ChakraButton colorScheme="brand" leftIcon={<Plus size={16} />} onClick={createModal.onOpen}>
+          <ChakraButton
+            colorScheme="brand"
+            leftIcon={<Plus size={16} />}
+            onClick={() => {
+              resetCreateWizard();
+              createModal.onOpen();
+            }}
+          >
             New Tenant
           </ChakraButton>
         </Flex>
@@ -856,21 +1009,163 @@ const TenantsManagementView: React.FC = () => {
       <Modal isOpen={createModal.isOpen} onClose={createModal.onClose} isCentered>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Create Tenant</ModalHeader>
+          <ModalHeader>Tenant Onboarding Wizard</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <FormControl mb="3">
-              <FormLabel>Name</FormLabel>
-              <Input value={createForm.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, name: e.target.value }))} />
-            </FormControl>
-            <FormControl>
-              <FormLabel>Subdomain</FormLabel>
-              <Input value={createForm.subdomain} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, subdomain: e.target.value }))} />
-            </FormControl>
+            <Text fontSize="sm" color="gray.500" mb="3">Step {createStep} of 4</Text>
+
+            {createStep === 1 && (
+              <>
+                <FormControl mb="3" isRequired>
+                  <FormLabel>Salon Name</FormLabel>
+                  <Input value={createForm.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, name: e.target.value }))} />
+                </FormControl>
+                <FormControl mb="3" isRequired>
+                  <FormLabel>Subdomain</FormLabel>
+                  <Input value={createForm.subdomain} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, subdomain: e.target.value.toLowerCase().replace(/\s+/g, '-') }))} placeholder="example: studio-luxe" />
+                </FormControl>
+                <FormControl mb="3">
+                  <FormLabel>Slogan</FormLabel>
+                  <Input value={createForm.slogan} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, slogan: e.target.value }))} placeholder="Experience premium beaute" />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Logo URL</FormLabel>
+                  <Input value={createForm.logo_url} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, logo_url: e.target.value }))} placeholder="https://..." />
+                </FormControl>
+              </>
+            )}
+
+            {createStep === 2 && (
+              <>
+                <FormControl mb="3">
+                  <FormLabel>Contact Email</FormLabel>
+                  <Input type="email" value={createForm.contact_email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, contact_email: e.target.value }))} />
+                </FormControl>
+                <FormControl mb="3">
+                  <FormLabel>Contact Phone</FormLabel>
+                  <Input value={createForm.contact_phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, contact_phone: e.target.value }))} />
+                </FormControl>
+                <HStack spacing="3" mb="3">
+                  <FormControl>
+                    <FormLabel>City</FormLabel>
+                    <Input value={createForm.address_city} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, address_city: e.target.value }))} />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Country</FormLabel>
+                    <Input value={createForm.address_country} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, address_country: e.target.value }))} />
+                  </FormControl>
+                </HStack>
+                <HStack spacing="3" mb="3">
+                  <FormControl>
+                    <FormLabel>Timezone</FormLabel>
+                    <Input value={createForm.timezone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, timezone: e.target.value }))} />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Currency</FormLabel>
+                    <Input value={createForm.default_currency} maxLength={3} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, default_currency: e.target.value.toUpperCase() }))} />
+                  </FormControl>
+                </HStack>
+                <HStack spacing="3" mb="3">
+                  <FormControl>
+                    <FormLabel>Open (Mon-Sat)</FormLabel>
+                    <Input type="time" value={createForm.workday_open} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, workday_open: e.target.value }))} />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Close (Mon-Sat)</FormLabel>
+                    <Input type="time" value={createForm.workday_close} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, workday_close: e.target.value }))} />
+                  </FormControl>
+                </HStack>
+                <Checkbox isChecked={createForm.sunday_open} onChange={(e) => setCreateForm((prev) => ({ ...prev, sunday_open: e.target.checked }))}>
+                  Open on Sunday
+                </Checkbox>
+              </>
+            )}
+
+            {createStep === 3 && (
+              <>
+                <FormControl mb="3">
+                  <FormLabel>Billing Plan</FormLabel>
+                  <Select value={createForm.billing_plan} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCreateForm((prev) => ({ ...prev, billing_plan: e.target.value }))}>
+                    <option value="starter">Starter</option>
+                    <option value="growth">Growth</option>
+                    <option value="pro">Pro</option>
+                  </Select>
+                </FormControl>
+                <FormControl mb="3">
+                  <FormLabel>Billing Status</FormLabel>
+                  <Select value={createForm.billing_status} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCreateForm((prev) => ({ ...prev, billing_status: e.target.value }))}>
+                    <option value="trial">Trial</option>
+                    <option value="active">Active</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="suspended">Suspended</option>
+                  </Select>
+                </FormControl>
+                <FormControl mb="3" isRequired>
+                  <FormLabel>Primary Admin Name</FormLabel>
+                  <Input value={createForm.admin_name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, admin_name: e.target.value }))} />
+                </FormControl>
+                <FormControl mb="3" isRequired>
+                  <FormLabel>Primary Admin Email</FormLabel>
+                  <Input type="email" value={createForm.admin_email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, admin_email: e.target.value }))} />
+                </FormControl>
+                <FormControl mb="3" isRequired>
+                  <FormLabel>Temporary Password (shared)</FormLabel>
+                  <Input type="password" value={createForm.admin_password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm((prev) => ({ ...prev, admin_password: e.target.value }))} placeholder="Minimum 8 characters" />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Additional Team (one per line: Name|Email|Role)</FormLabel>
+                  <Textarea
+                    value={createForm.staff_payload}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCreateForm((prev) => ({ ...prev, staff_payload: e.target.value }))}
+                    placeholder="Sara|sara@salon.ma|staff"
+                    rows={4}
+                  />
+                </FormControl>
+              </>
+            )}
+
+            {createStep === 4 && (
+              <>
+                <FormControl mb="3">
+                  <FormLabel>Starter Services (Name|Duration Minutes|Price)</FormLabel>
+                  <Textarea
+                    value={createForm.services_payload}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCreateForm((prev) => ({ ...prev, services_payload: e.target.value }))}
+                    rows={6}
+                  />
+                </FormControl>
+                <Text fontSize="sm" color="gray.500">
+                  Example: `Brushing|45|180`.
+                </Text>
+              </>
+            )}
           </ModalBody>
           <ModalFooter>
-            <ChakraButton variant="ghost" mr="3" onClick={createModal.onClose}>Cancel</ChakraButton>
-            <ChakraButton colorScheme="brand" onClick={handleCreateTenant}>Create</ChakraButton>
+            <ChakraButton
+              variant="ghost"
+              mr="3"
+              onClick={() => {
+                createModal.onClose();
+                resetCreateWizard();
+              }}
+              isDisabled={isCreatingTenant}
+            >
+              Cancel
+            </ChakraButton>
+            {createStep > 1 && (
+              <ChakraButton variant="outline" mr="3" onClick={() => setCreateStep((step) => Math.max(1, step - 1))} isDisabled={isCreatingTenant}>
+                Back
+              </ChakraButton>
+            )}
+            {createStep < 4 ? (
+              <ChakraButton colorScheme="brand" onClick={() => setCreateStep((step) => Math.min(4, step + 1))} isDisabled={isCreatingTenant}>
+                Next
+              </ChakraButton>
+            ) : (
+              <ChakraButton colorScheme="brand" onClick={handleCreateTenant} isLoading={isCreatingTenant}>
+                Provision Tenant
+              </ChakraButton>
+            )}
           </ModalFooter>
         </ModalContent>
       </Modal>

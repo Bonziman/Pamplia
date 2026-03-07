@@ -15,6 +15,7 @@ Derniere mise a jour: 2026-03-07
 - [x] Toolkit ops: `ops/backup_db.sh`, `ops/restore_db.sh`, `ops/healthcheck.sh`, `ops/SETUP.md`.
 - [x] Backups locaux avec retention + checksum.
 - [x] Remplacement des placeholders marketing par des visuels produit locaux (`/landing/*.svg`).
+- [x] Onboarding rapide tenant (wizard: nom salon, services, staff, horaires, logo).
 
 ## En Cours
 
@@ -23,7 +24,6 @@ Derniere mise a jour: 2026-03-07
 ## A Faire Priorite Haute (pour vendre)
 
 - [ ] Rotation des secrets exposes (mail/db) et nettoyage config pour variables d'environnement uniquement.
-- [ ] Onboarding rapide tenant (wizard: nom salon, services, staff, horaires, logo).
 - [ ] Fiabilite rappels (job monitoring + retries visibles + logs de statut).
 - [ ] Observabilite minimale prod (logs applicatifs, erreurs centralisees, alerte downtime).
 
