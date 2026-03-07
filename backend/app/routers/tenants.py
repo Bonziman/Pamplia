@@ -3,7 +3,8 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request # Request potentially needed for other endpoints or future logging
 from sqlalchemy.orm import Session
-from sqlalchemy import exc as SQLAlchemyExceptions, func
+from sqlalchemy import exc as SQLAlchemyExceptions, func, select
+from sqlalchemy.orm import joinedload
 from typing import List
 from datetime import datetime, timezone, timedelta
 import re
@@ -27,10 +28,15 @@ from app.models.service import Service as ServiceModel
 from app.models.association_tables import appointment_services_table
 from app.schemas.enums import AppointmentStatus
 from app.models.finance import TenantPaymentRecord
+from app.models.communications_log import CommunicationsLog, CommunicationType, CommunicationStatus
+from app.models.template import TemplateEventTrigger
+from app.services.notification_service import send_appointment_notification
 import logging 
+import asyncio
 
 # --- Setup logger ---
 logger = logging.getLogger(__name__)
+REMINDER_CHECK_BUFFER_MINUTES = 10
 
 # --- Dependency for Super Admin Check ---
 # (Ensure this exists in app/api/deps.py)
@@ -494,3 +500,159 @@ def create_tenant_payment(
     db.commit()
     db.refresh(payment)
     return payment
+
+
+@router.get(
+    "/{tenant_id}/reminders/health",
+    dependencies=[Depends(get_current_active_super_admin)]
+)
+def get_tenant_reminder_health(
+    tenant_id: int,
+    db: Session = Depends(database.get_db)
+):
+    tenant = db.query(TenantModel).filter(TenantModel.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Tenant with ID {tenant_id} not found.")
+
+    now_utc = datetime.now(timezone.utc)
+    last_24h = now_utc - timedelta(hours=24)
+
+    sent_last_24h = db.query(func.count(CommunicationsLog.id)).filter(
+        CommunicationsLog.tenant_id == tenant_id,
+        CommunicationsLog.type == CommunicationType.REMINDER,
+        CommunicationsLog.status == CommunicationStatus.SENT,
+        CommunicationsLog.timestamp >= last_24h,
+    ).scalar() or 0
+
+    failed_last_24h = db.query(func.count(CommunicationsLog.id)).filter(
+        CommunicationsLog.tenant_id == tenant_id,
+        CommunicationsLog.type == CommunicationType.REMINDER,
+        CommunicationsLog.status == CommunicationStatus.FAILED,
+        CommunicationsLog.timestamp >= last_24h,
+    ).scalar() or 0
+
+    last_failure_at = db.query(func.max(CommunicationsLog.timestamp)).filter(
+        CommunicationsLog.tenant_id == tenant_id,
+        CommunicationsLog.type == CommunicationType.REMINDER,
+        CommunicationsLog.status == CommunicationStatus.FAILED,
+    ).scalar()
+
+    interval_hours = tenant.reminder_interval_hours or 0
+    due_now_count = 0
+
+    if interval_hours > 0:
+        reminder_time_utc = now_utc + timedelta(hours=interval_hours)
+        window_start = reminder_time_utc - timedelta(minutes=REMINDER_CHECK_BUFFER_MINUTES)
+        window_end = reminder_time_utc + timedelta(minutes=REMINDER_CHECK_BUFFER_MINUTES)
+
+        recent_sent_subquery = select(CommunicationsLog.appointment_id).where(
+            CommunicationsLog.tenant_id == tenant_id,
+            CommunicationsLog.type == CommunicationType.REMINDER,
+            CommunicationsLog.status == CommunicationStatus.SENT,
+            CommunicationsLog.timestamp >= now_utc - timedelta(hours=interval_hours + 1),
+        ).distinct().subquery()
+
+        due_now_count = db.query(func.count(AppointmentModel.id)).filter(
+            AppointmentModel.tenant_id == tenant_id,
+            AppointmentModel.status.in_([AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED]),
+            AppointmentModel.appointment_time >= window_start,
+            AppointmentModel.appointment_time < window_end,
+            AppointmentModel.id.notin_(select(recent_sent_subquery.c.appointment_id)),
+        ).scalar() or 0
+
+    return {
+        "tenant_id": tenant_id,
+        "checked_at": now_utc.isoformat(),
+        "reminder_interval_hours": interval_hours,
+        "sent_last_24h": int(sent_last_24h),
+        "failed_last_24h": int(failed_last_24h),
+        "due_now_count": int(due_now_count),
+        "last_failure_at": last_failure_at.isoformat() if last_failure_at else None,
+    }
+
+
+@router.post(
+    "/reminders/run-now",
+    dependencies=[Depends(get_current_active_super_admin)]
+)
+def run_reminder_job_now():
+    from app.tasks.appointment_tasks import send_appointment_reminders
+
+    task = send_appointment_reminders.delay()
+    return {
+        "message": "Reminder job queued.",
+        "task_id": task.id,
+    }
+
+
+@router.post(
+    "/{tenant_id}/reminders/retry-failed",
+    dependencies=[Depends(get_current_active_super_admin)]
+)
+def retry_failed_reminders(
+    tenant_id: int,
+    hours_back: int = 24,
+    limit: int = 20,
+    db: Session = Depends(database.get_db)
+):
+    tenant = db.query(TenantModel).filter(TenantModel.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Tenant with ID {tenant_id} not found.")
+
+    safe_hours_back = max(1, min(hours_back, 168))
+    safe_limit = max(1, min(limit, 100))
+    window_start = datetime.now(timezone.utc) - timedelta(hours=safe_hours_back)
+
+    failed_logs = db.query(CommunicationsLog).filter(
+        CommunicationsLog.tenant_id == tenant_id,
+        CommunicationsLog.type == CommunicationType.REMINDER,
+        CommunicationsLog.status == CommunicationStatus.FAILED,
+        CommunicationsLog.timestamp >= window_start,
+        CommunicationsLog.appointment_id.isnot(None),
+    ).order_by(CommunicationsLog.timestamp.desc()).limit(safe_limit * 3).all()
+
+    retry_appointment_ids = []
+    seen = set()
+    for log in failed_logs:
+        if log.appointment_id and log.appointment_id not in seen:
+            seen.add(log.appointment_id)
+            retry_appointment_ids.append(log.appointment_id)
+        if len(retry_appointment_ids) >= safe_limit:
+            break
+
+    success_count = 0
+    failure_count = 0
+
+    for appointment_id in retry_appointment_ids:
+        appointment = db.query(AppointmentModel).filter(
+            AppointmentModel.id == appointment_id,
+            AppointmentModel.tenant_id == tenant_id,
+        ).options(
+            joinedload(AppointmentModel.client),
+            joinedload(AppointmentModel.tenant),
+            joinedload(AppointmentModel.services),
+        ).first()
+
+        if not appointment:
+            failure_count += 1
+            continue
+
+        try:
+            asyncio.run(send_appointment_notification(
+                db=db,
+                appointment=appointment,
+                event_trigger=TemplateEventTrigger.APPOINTMENT_REMINDER_CLIENT,
+            ))
+            db.commit()
+            success_count += 1
+        except Exception:
+            db.rollback()
+            failure_count += 1
+
+    return {
+        "tenant_id": tenant_id,
+        "attempted": len(retry_appointment_ids),
+        "sent": success_count,
+        "failed": failure_count,
+        "hours_back": safe_hours_back,
+    }

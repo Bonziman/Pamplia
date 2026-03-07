@@ -16,6 +16,7 @@ Derniere mise a jour: 2026-03-07
 - [x] Backups locaux avec retention + checksum.
 - [x] Remplacement des placeholders marketing par des visuels produit locaux (`/landing/*.svg`).
 - [x] Onboarding rapide tenant (wizard: nom salon, services, staff, horaires, logo).
+- [x] Fiabilite rappels baseline: monitoring (sent/failed/due), relance des echecs et trigger manuel du job.
 
 ## En Cours
 
@@ -24,7 +25,6 @@ Derniere mise a jour: 2026-03-07
 ## A Faire Priorite Haute (pour vendre)
 
 - [ ] Rotation des secrets exposes (mail/db) et nettoyage config pour variables d'environnement uniquement.
-- [ ] Fiabilite rappels (job monitoring + retries visibles + logs de statut).
 - [ ] Observabilite minimale prod (logs applicatifs, erreurs centralisees, alerte downtime).
 
 ## A Faire Priorite Moyenne (apres 1ers clients)

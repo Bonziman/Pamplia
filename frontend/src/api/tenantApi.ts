@@ -156,8 +156,55 @@ export type ExpireOverdueTenantsResult = {
     message: string;
 };
 
+export type TenantReminderHealth = {
+    tenant_id: number;
+    checked_at: string;
+    reminder_interval_hours: number;
+    sent_last_24h: number;
+    failed_last_24h: number;
+    due_now_count: number;
+    last_failure_at: string | null;
+};
+
+export type RetryFailedRemindersResult = {
+    tenant_id: number;
+    attempted: number;
+    sent: number;
+    failed: number;
+    hours_back: number;
+};
+
+export type RunReminderJobResult = {
+    message: string;
+    task_id: string;
+};
+
 export const expireOverdueTenants = async (): Promise<ExpireOverdueTenantsResult> => {
     const apiUrl = buildApiUrl('/tenants/billing/expire-overdue');
     const response = await axiosInstance.post<ExpireOverdueTenantsResult>(apiUrl);
+    return response.data;
+};
+
+export const fetchTenantReminderHealth = async (tenantId: number): Promise<TenantReminderHealth> => {
+    const apiUrl = buildApiUrl(`/tenants/${tenantId}/reminders/health`);
+    const response = await axiosInstance.get<TenantReminderHealth>(apiUrl);
+    return response.data;
+};
+
+export const retryTenantFailedReminders = async (
+    tenantId: number,
+    hoursBack = 24,
+    limit = 20
+): Promise<RetryFailedRemindersResult> => {
+    const apiUrl = buildApiUrl(`/tenants/${tenantId}/reminders/retry-failed`);
+    const response = await axiosInstance.post<RetryFailedRemindersResult>(apiUrl, null, {
+        params: { hours_back: hoursBack, limit }
+    });
+    return response.data;
+};
+
+export const runReminderJobNow = async (): Promise<RunReminderJobResult> => {
+    const apiUrl = buildApiUrl('/tenants/reminders/run-now');
+    const response = await axiosInstance.post<RunReminderJobResult>(apiUrl);
     return response.data;
 };

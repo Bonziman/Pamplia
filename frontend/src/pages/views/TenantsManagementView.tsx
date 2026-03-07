@@ -43,7 +43,18 @@ import {
   Textarea,
 } from '@chakra-ui/react';
 import { ExternalLink, Plus, MoreVertical } from 'lucide-react';
-import { createTenant, createTenantPayment, expireOverdueTenants, fetchTenantPayments, fetchTenantStats, fetchTenants, updateTenantById } from '../../api/tenantApi';
+import {
+  createTenant,
+  createTenantPayment,
+  expireOverdueTenants,
+  fetchTenantPayments,
+  fetchTenantReminderHealth,
+  fetchTenantStats,
+  fetchTenants,
+  retryTenantFailedReminders,
+  runReminderJobNow,
+  updateTenantById,
+} from '../../api/tenantApi';
 import { createService } from '../../api/serviceApi';
 import { createUser, fetchUsers, resetUserPassword, updateUser } from '../../api/userApi';
 import { TenantOut, TenantPaymentRecord } from '../../types/tenants';
@@ -65,9 +76,12 @@ const TenantsManagementView: React.FC = () => {
   const [tenantStats, setTenantStats] = useState<any>(null);
   const [tenantUsers, setTenantUsers] = useState<UserOut[]>([]);
   const [tenantPayments, setTenantPayments] = useState<TenantPaymentRecord[]>([]);
+  const [tenantReminderHealth, setTenantReminderHealth] = useState<any>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [isRunningOverdueSweep, setIsRunningOverdueSweep] = useState(false);
+  const [isRunningReminderJob, setIsRunningReminderJob] = useState(false);
+  const [isRetryingReminders, setIsRetryingReminders] = useState(false);
   const [isCreatingTenant, setIsCreatingTenant] = useState(false);
 
   const createModal = useDisclosure();
@@ -252,17 +266,20 @@ const TenantsManagementView: React.FC = () => {
     setTenantStats(null);
     setTenantUsers([]);
     setTenantPayments([]);
+    setTenantReminderHealth(null);
     setIsLoadingDetails(true);
     detailDrawer.onOpen();
     try {
-      const [statsResponse, usersResponse, paymentsResponse] = await Promise.all([
+      const [statsResponse, usersResponse, paymentsResponse, reminderHealthResponse] = await Promise.all([
         fetchTenantStats(tenant.id),
         fetchUsers({ page: 1, limit: 10, tenant_id_filter: tenant.id }),
         fetchTenantPayments(tenant.id, 10),
+        fetchTenantReminderHealth(tenant.id),
       ]);
       setTenantStats(statsResponse);
       setTenantUsers(usersResponse.items || []);
       setTenantPayments(paymentsResponse);
+      setTenantReminderHealth(reminderHealthResponse);
     } catch (err: any) {
       toast({ title: 'Failed to load tenant details', description: err.response?.data?.detail || err.message, status: 'error' });
     } finally {
@@ -597,6 +614,51 @@ const TenantsManagementView: React.FC = () => {
     }
   };
 
+  const handleRunReminderJob = async () => {
+    try {
+      setIsRunningReminderJob(true);
+      const result = await runReminderJobNow();
+      toast({
+        title: 'Reminder job queued',
+        description: `Task ${result.task_id}`,
+        status: 'success'
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Failed to queue reminder job',
+        description: err.response?.data?.detail || err.message,
+        status: 'error'
+      });
+    } finally {
+      setIsRunningReminderJob(false);
+    }
+  };
+
+  const handleRetryFailedReminders = async () => {
+    if (!selectedTenant) return;
+
+    try {
+      setIsRetryingReminders(true);
+      const result = await retryTenantFailedReminders(selectedTenant.id, 24, 20);
+      const refreshedHealth = await fetchTenantReminderHealth(selectedTenant.id);
+      setTenantReminderHealth(refreshedHealth);
+
+      toast({
+        title: 'Retry completed',
+        description: `Attempted ${result.attempted}, sent ${result.sent}, failed ${result.failed}.`,
+        status: result.failed > 0 ? 'warning' : 'success'
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Retry failed',
+        description: err.response?.data?.detail || err.message,
+        status: 'error'
+      });
+    } finally {
+      setIsRetryingReminders(false);
+    }
+  };
+
   return (
     <div className="view-section">
       <Box p={{ base: '2', md: '4' }} bg="white">
@@ -642,6 +704,14 @@ const TenantsManagementView: React.FC = () => {
               onClick={handleRunOverdueSweep}
             >
               Run Overdue Sweep
+            </ChakraButton>
+            <ChakraButton
+              size="sm"
+              variant="outline"
+              isLoading={isRunningReminderJob}
+              onClick={handleRunReminderJob}
+            >
+              Run Reminder Job
             </ChakraButton>
             <ChakraButton size="sm" variant="outline" isDisabled={selectedCount === 0 || isApplyingBulkAction} onClick={handleBulkActivate}>
               Bulk Activate
@@ -967,6 +1037,56 @@ const TenantsManagementView: React.FC = () => {
                       </TableContainer>
                     )}
                   </Box>
+                </Box>
+
+                <Divider mb="6" />
+
+                <Box mb="6">
+                  <Heading as="h3" size="sm" mb="3">Reminder Reliability</Heading>
+                  {!tenantReminderHealth ? (
+                    <Text fontSize="sm" color="gray.500">No reminder telemetry available yet.</Text>
+                  ) : (
+                    <>
+                      <Flex gap="4" flexWrap="wrap" mb="4">
+                        <Box flex="1" minW="180px" bg="gray.50" p="3" borderRadius="md">
+                          <Text fontSize="xs" color="gray.500">Sent (24h)</Text>
+                          <Text fontSize="lg" fontWeight="bold">{tenantReminderHealth.sent_last_24h}</Text>
+                        </Box>
+                        <Box flex="1" minW="180px" bg="gray.50" p="3" borderRadius="md">
+                          <Text fontSize="xs" color="gray.500">Failed (24h)</Text>
+                          <Text fontSize="lg" fontWeight="bold">{tenantReminderHealth.failed_last_24h}</Text>
+                        </Box>
+                        <Box flex="1" minW="180px" bg="gray.50" p="3" borderRadius="md">
+                          <Text fontSize="xs" color="gray.500">Due Now</Text>
+                          <Text fontSize="lg" fontWeight="bold">{tenantReminderHealth.due_now_count}</Text>
+                        </Box>
+                      </Flex>
+                      <Text fontSize="xs" color="gray.500" mb="3">
+                        Last failure: {tenantReminderHealth.last_failure_at ? new Date(tenantReminderHealth.last_failure_at).toLocaleString() : 'none'}
+                      </Text>
+                    </>
+                  )}
+                  <HStack spacing="3">
+                    <ChakraButton size="sm" variant="outline" isLoading={isRetryingReminders} onClick={handleRetryFailedReminders}>
+                      Retry Failed Reminders
+                    </ChakraButton>
+                    <ChakraButton
+                      size="sm"
+                      variant="ghost"
+                      onClick={async () => {
+                        if (!selectedTenant) return;
+                        try {
+                          const health = await fetchTenantReminderHealth(selectedTenant.id);
+                          setTenantReminderHealth(health);
+                          toast({ title: 'Reminder health refreshed', status: 'success' });
+                        } catch (err: any) {
+                          toast({ title: 'Failed to refresh reminder health', description: err.response?.data?.detail || err.message, status: 'error' });
+                        }
+                      }}
+                    >
+                      Refresh
+                    </ChakraButton>
+                  </HStack>
                 </Box>
 
                 <Divider mb="6" />
