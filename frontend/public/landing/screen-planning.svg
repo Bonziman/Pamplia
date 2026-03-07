@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Pamplia planning screen preview</title>
+  <desc id="desc">A stylized team planning board with appointment blocks by staff member.</desc>
+  <rect width="1200" height="760" fill="#f5f7fb"/>
+  <rect x="90" y="48" width="1020" height="664" rx="24" fill="#ffffff" stroke="#d7ddea" stroke-width="3"/>
+  <rect x="90" y="48" width="1020" height="60" rx="24" fill="#111827"/>
+  <text x="468" y="87" font-family="Verdana, sans-serif" font-size="22" fill="#e5e7eb">Pamplia Planning</text>
+
+  <text x="132" y="162" font-family="Verdana, sans-serif" font-size="32" fill="#111827">Planning equipe - Mardi</text>
+  <text x="132" y="194" font-family="Verdana, sans-serif" font-size="18" fill="#6b7280">Vue par collaborateur avec disponibilites et charge horaire.</text>
+
+  <rect x="132" y="230" width="948" height="434" rx="18" fill="#fbfcff" stroke="#d2dae8"/>
+  <line x1="282" y1="230" x2="282" y2="664" stroke="#dbe2ef"/>
+  <line x1="506" y1="230" x2="506" y2="664" stroke="#dbe2ef"/>
+  <line x1="730" y1="230" x2="730" y2="664" stroke="#dbe2ef"/>
+  <line x1="954" y1="230" x2="954" y2="664" stroke="#dbe2ef"/>
+
+  <text x="162" y="266" font-family="Verdana, sans-serif" font-size="19" fill="#374151">Imane</text>
+  <text x="386" y="266" font-family="Verdana, sans-serif" font-size="19" fill="#374151">Meryem</text>
+  <text x="610" y="266" font-family="Verdana, sans-serif" font-size="19" fill="#374151">Noura</text>
+  <text x="834" y="266" font-family="Verdana, sans-serif" font-size="19" fill="#374151">Yasmine</text>
+
+  <rect x="144" y="294" width="126" height="88" rx="12" fill="#dbeafe"/>
+  <text x="159" y="328" font-family="Verdana, sans-serif" font-size="16" fill="#1d4ed8">09:00</text>
+  <text x="159" y="352" font-family="Verdana, sans-serif" font-size="14" fill="#1f2937">Brushing</text>
+
+  <rect x="368" y="384" width="126" height="98" rx="12" fill="#dcfce7"/>
+  <text x="383" y="419" font-family="Verdana, sans-serif" font-size="16" fill="#15803d">11:30</text>
+  <text x="383" y="443" font-family="Verdana, sans-serif" font-size="14" fill="#1f2937">Coloration</text>
+
+  <rect x="592" y="314" width="126" height="118" rx="12" fill="#fef3c7"/>
+  <text x="607" y="350" font-family="Verdana, sans-serif" font-size="16" fill="#a16207">10:00</text>
+  <text x="607" y="374" font-family="Verdana, sans-serif" font-size="14" fill="#1f2937">Soin visage</text>
+
+  <rect x="816" y="454" width="126" height="106" rx="12" fill="#ede9fe"/>
+  <text x="831" y="490" font-family="Verdana, sans-serif" font-size="16" fill="#6d28d9">14:30</text>
+  <text x="831" y="514" font-family="Verdana, sans-serif" font-size="14" fill="#1f2937">Lissage</text>
+
+  <rect x="132" y="682" width="948" height="14" rx="7" fill="#eef2f7"/>
+</svg>

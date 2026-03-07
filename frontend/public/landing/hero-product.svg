@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" role="img" aria-labelledby="title desc">
+  <title id="title">Pamplia hero product visual</title>
+  <desc id="desc">Stylized product preview showing booking growth and live salon operations dashboard.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f6f1e8"/>
+      <stop offset="50%" stop-color="#f7f8fb"/>
+      <stop offset="100%" stop-color="#e8f2ec"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f7f8fb"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="980" fill="url(#bg)"/>
+  <circle cx="220" cy="170" r="140" fill="#eedec8" opacity="0.7"/>
+  <circle cx="1410" cy="120" r="120" fill="#d5e6d8" opacity="0.7"/>
+  <circle cx="1460" cy="880" r="180" fill="#e9ddd1" opacity="0.5"/>
+
+  <rect x="190" y="120" width="1220" height="740" rx="28" fill="url(#card)" stroke="#d8dbe3" stroke-width="3"/>
+  <rect x="190" y="120" width="1220" height="62" rx="28" fill="#1f2937"/>
+  <circle cx="230" cy="151" r="10" fill="#f87171"/>
+  <circle cx="260" cy="151" r="10" fill="#facc15"/>
+  <circle cx="290" cy="151" r="10" fill="#34d399"/>
+  <text x="610" y="157" font-family="Verdana, sans-serif" font-size="22" fill="#e5e7eb">Pamplia - Operations Hub</text>
+
+  <rect x="228" y="214" width="290" height="610" rx="20" fill="#f8f9fc" stroke="#e2e5ec"/>
+  <text x="258" y="260" font-family="Verdana, sans-serif" font-size="24" fill="#111827">Aujourd'hui</text>
+  <rect x="258" y="286" width="230" height="98" rx="14" fill="#ffffff" stroke="#dfe3ea"/>
+  <text x="280" y="325" font-family="Verdana, sans-serif" font-size="20" fill="#111827">09:30 - Coloration</text>
+  <text x="280" y="354" font-family="Verdana, sans-serif" font-size="17" fill="#4b5563">Sara Bennani</text>
+  <rect x="258" y="404" width="230" height="98" rx="14" fill="#ffffff" stroke="#dfe3ea"/>
+  <text x="280" y="443" font-family="Verdana, sans-serif" font-size="20" fill="#111827">11:00 - Brushing</text>
+  <text x="280" y="472" font-family="Verdana, sans-serif" font-size="17" fill="#4b5563">Nadia M.</text>
+  <rect x="258" y="522" width="230" height="98" rx="14" fill="#ffffff" stroke="#dfe3ea"/>
+  <text x="280" y="561" font-family="Verdana, sans-serif" font-size="20" fill="#111827">14:00 - Soin visage</text>
+  <text x="280" y="590" font-family="Verdana, sans-serif" font-size="17" fill="#4b5563">Leila K.</text>
+
+  <rect x="548" y="214" width="830" height="286" rx="20" fill="#ffffff" stroke="#e1e5ee"/>
+  <text x="584" y="262" font-family="Verdana, sans-serif" font-size="26" fill="#111827">Performance des reservations</text>
+  <polyline fill="none" stroke="#0f766e" stroke-width="8" points="600,418 690,390 780,402 870,346 960,324 1050,286 1140,258 1230,232 1320,206"/>
+  <line x1="600" y1="430" x2="1320" y2="430" stroke="#d6dae4" stroke-width="2"/>
+  <text x="605" y="462" font-family="Verdana, sans-serif" font-size="18" fill="#6b7280">Semaine 1</text>
+  <text x="1275" y="462" font-family="Verdana, sans-serif" font-size="18" fill="#6b7280">Semaine 8</text>
+
+  <rect x="548" y="534" width="260" height="290" rx="20" fill="#ffffff" stroke="#e1e5ee"/>
+  <text x="578" y="582" font-family="Verdana, sans-serif" font-size="22" fill="#374151">No-show</text>
+  <text x="578" y="640" font-family="Verdana, sans-serif" font-size="58" fill="#0f766e">-31%</text>
+  <text x="578" y="680" font-family="Verdana, sans-serif" font-size="18" fill="#6b7280">apres rappels SMS</text>
+
+  <rect x="834" y="534" width="260" height="290" rx="20" fill="#ffffff" stroke="#e1e5ee"/>
+  <text x="864" y="582" font-family="Verdana, sans-serif" font-size="22" fill="#374151">Confirmations</text>
+  <text x="864" y="640" font-family="Verdana, sans-serif" font-size="58" fill="#1d4ed8">+27%</text>
+  <text x="864" y="680" font-family="Verdana, sans-serif" font-size="18" fill="#6b7280">sur 30 jours</text>
+
+  <rect x="1120" y="534" width="258" height="290" rx="20" fill="#ffffff" stroke="#e1e5ee"/>
+  <text x="1150" y="582" font-family="Verdana, sans-serif" font-size="22" fill="#374151">Equipe active</text>
+  <text x="1150" y="640" font-family="Verdana, sans-serif" font-size="58" fill="#7c3aed">8</text>
+  <text x="1150" y="680" font-family="Verdana, sans-serif" font-size="18" fill="#6b7280">coiffeuses connectees</text>
+</svg>

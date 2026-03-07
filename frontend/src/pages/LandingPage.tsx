@@ -63,8 +63,8 @@ const LandingPage: React.FC = () => {
 
           <div className="lp-hero-visual" aria-label="Apercu du produit">
             <img
-              src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1400&q=80"
-              alt="Salon premium lumineux"
+              src="/landing/hero-product.svg"
+              alt="Apercu produit Pamplia avec planning et performance"
               loading="eager"
             />
             <div className="lp-floating-card lp-float-a">
@@ -107,24 +107,24 @@ const LandingPage: React.FC = () => {
           <div className="lp-grid lp-grid-3">
             <figure className="lp-shot stagger-1">
               <img
-                src="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&w=1200&q=80"
-                alt="Placeholder capture de l'ecran de reservation"
+                src="/landing/screen-booking.svg"
+                alt="Capture produit de l'ecran de reservation"
                 loading="lazy"
               />
               <figcaption>Ecran de reservation public</figcaption>
             </figure>
             <figure className="lp-shot stagger-2">
               <img
-                src="https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&w=1200&q=80"
-                alt="Placeholder capture du planning"
+                src="/landing/screen-planning.svg"
+                alt="Capture produit du planning equipe"
                 loading="lazy"
               />
               <figcaption>Planning et disponibilites</figcaption>
             </figure>
             <figure className="lp-shot stagger-3">
               <img
-                src="https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=1200&q=80"
-                alt="Placeholder capture dashboard admin"
+                src="/landing/screen-dashboard.svg"
+                alt="Capture produit du dashboard admin"
                 loading="lazy"
               />
               <figcaption>Dashboard admin et performance</figcaption>

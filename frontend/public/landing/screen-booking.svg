@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Pamplia booking screen preview</title>
+  <desc id="desc">A stylized booking page with service selection, team member, and available slots.</desc>
+  <rect width="1200" height="760" fill="#f6f8fb"/>
+  <rect x="96" y="54" width="1008" height="652" rx="24" fill="#ffffff" stroke="#d8deea" stroke-width="3"/>
+  <rect x="96" y="54" width="1008" height="60" rx="24" fill="#0f172a"/>
+  <text x="505" y="92" font-family="Verdana, sans-serif" font-size="22" fill="#e2e8f0">Pamplia Booking</text>
+
+  <text x="146" y="170" font-family="Verdana, sans-serif" font-size="34" fill="#111827">Reservez votre rendez-vous</text>
+  <text x="146" y="205" font-family="Verdana, sans-serif" font-size="18" fill="#6b7280">Choisissez service, specialiste et horaire en 3 etapes.</text>
+
+  <rect x="146" y="240" width="430" height="108" rx="16" fill="#ffffff" stroke="#cfd8e6"/>
+  <text x="170" y="284" font-family="Verdana, sans-serif" font-size="20" fill="#111827">Service</text>
+  <text x="170" y="320" font-family="Verdana, sans-serif" font-size="24" fill="#0f766e">Coloration premium - 75 min</text>
+
+  <rect x="146" y="370" width="430" height="108" rx="16" fill="#ffffff" stroke="#cfd8e6"/>
+  <text x="170" y="414" font-family="Verdana, sans-serif" font-size="20" fill="#111827">Specialiste</text>
+  <text x="170" y="450" font-family="Verdana, sans-serif" font-size="24" fill="#1d4ed8">Imane (Top Stylist)</text>
+
+  <rect x="146" y="500" width="430" height="142" rx="16" fill="#f8fafc" stroke="#cfd8e6"/>
+  <text x="170" y="540" font-family="Verdana, sans-serif" font-size="20" fill="#111827">Coordonnees</text>
+  <text x="170" y="575" font-family="Verdana, sans-serif" font-size="18" fill="#4b5563">Nom, telephone et email</text>
+  <rect x="170" y="594" width="180" height="34" rx="10" fill="#0f766e"/>
+  <text x="196" y="617" font-family="Verdana, sans-serif" font-size="17" fill="#ecfeff">Confirmer</text>
+
+  <rect x="620" y="240" width="434" height="402" rx="16" fill="#fbfcff" stroke="#cfd8e6"/>
+  <text x="646" y="284" font-family="Verdana, sans-serif" font-size="22" fill="#111827">Disponibilites du jour</text>
+
+  <rect x="646" y="312" width="112" height="46" rx="12" fill="#dbeafe"/>
+  <text x="680" y="343" font-family="Verdana, sans-serif" font-size="20" fill="#1d4ed8">09:00</text>
+  <rect x="772" y="312" width="112" height="46" rx="12" fill="#dcfce7"/>
+  <text x="807" y="343" font-family="Verdana, sans-serif" font-size="20" fill="#15803d">10:30</text>
+  <rect x="898" y="312" width="112" height="46" rx="12" fill="#dcfce7"/>
+  <text x="934" y="343" font-family="Verdana, sans-serif" font-size="20" fill="#15803d">12:00</text>
+
+  <rect x="646" y="376" width="112" height="46" rx="12" fill="#dcfce7"/>
+  <text x="681" y="407" font-family="Verdana, sans-serif" font-size="20" fill="#15803d">14:30</text>
+  <rect x="772" y="376" width="112" height="46" rx="12" fill="#dbeafe"/>
+  <text x="807" y="407" font-family="Verdana, sans-serif" font-size="20" fill="#1d4ed8">16:00</text>
+  <rect x="898" y="376" width="112" height="46" rx="12" fill="#e5e7eb"/>
+  <text x="935" y="407" font-family="Verdana, sans-serif" font-size="20" fill="#6b7280">18:00</text>
+
+  <text x="646" y="470" font-family="Verdana, sans-serif" font-size="18" fill="#6b7280">Slots alimentes en temps reel depuis le planning equipe.</text>
+  <rect x="646" y="503" width="260" height="72" rx="14" fill="#ffffff" stroke="#d5dbe8"/>
+  <text x="672" y="546" font-family="Verdana, sans-serif" font-size="20" fill="#111827">Taux de confirmation</text>
+  <text x="936" y="546" font-family="Verdana, sans-serif" font-size="28" fill="#0f766e">93%</text>
+</svg>

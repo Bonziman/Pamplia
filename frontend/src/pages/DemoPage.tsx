@@ -67,8 +67,8 @@ const DemoPage: React.FC = () => {
 
           <div className="demo-visual">
             <img
-              src="https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=1400&q=80"
-              alt="Placeholder demonstration salon premium"
+              src="/landing/hero-product.svg"
+              alt="Apercu produit Pamplia en situation"
               loading="eager"
             />
             <div className="demo-chip chip-a">Activation en 48h</div>
@@ -114,31 +114,31 @@ const DemoPage: React.FC = () => {
         </section>
 
         <section className="demo-section demo-shots">
-          <h2>Apercus a remplacer par vos vrais screens</h2>
+          <h2>Apercus produit Pamplia</h2>
           <div className="demo-grid demo-grid-3">
             <figure className="demo-shot stagger-1">
               <img
-                src="https://images.unsplash.com/photo-1551281044-8a4c5f6ed2a1?auto=format&fit=crop&w=1200&q=80"
-                alt="Placeholder screen booking"
+                src="/landing/screen-booking.svg"
+                alt="Capture produit booking public"
                 loading="lazy"
               />
-              <figcaption>Remplacer par: capture ecran booking public</figcaption>
+              <figcaption>Capture ecran booking public</figcaption>
             </figure>
             <figure className="demo-shot stagger-2">
               <img
-                src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80"
-                alt="Placeholder screen planning"
+                src="/landing/screen-planning.svg"
+                alt="Capture produit planning equipe"
                 loading="lazy"
               />
-              <figcaption>Remplacer par: capture ecran planning</figcaption>
+              <figcaption>Capture ecran planning equipe</figcaption>
             </figure>
             <figure className="demo-shot stagger-3">
               <img
-                src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80"
-                alt="Placeholder screen dashboard"
+                src="/landing/screen-dashboard.svg"
+                alt="Capture produit dashboard admin"
                 loading="lazy"
               />
-              <figcaption>Remplacer par: capture ecran dashboard admin</figcaption>
+              <figcaption>Capture ecran dashboard admin</figcaption>
             </figure>
           </div>
         </section>
