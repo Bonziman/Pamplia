@@ -6,7 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./auth/authContext";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
-import Dashboard from "./pages/Dashboard";
+import DashboardRefactored from "./pages/DashboardRefactored";
+import LandingPage from "./pages/LandingPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import BookingPage from "./pages/BookingPage"; 
 import AcceptInvitationPage from "./pages/public/AcceptInvitationPage";
@@ -33,14 +34,14 @@ const App: React.FC = () => {
         <AuthProvider>
           <BrowserRouter>
               <Routes>
-              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/" element={<LandingPage />} />
               <Route path="/book" element={<BookingPage />} />
               <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard/*" element={
-                <Dashboard />
+                <DashboardRefactored />
                 }/>
               </Route>
               </Routes>
