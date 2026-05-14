@@ -23,6 +23,7 @@ import {
     Alert, AlertIcon, AlertDescription, CloseButton,
 } from "@chakra-ui/react";
 import { TableSkeleton, EmptyState } from '../../components/ui';
+import { useLanguage } from '../../i18n/languageContext';
 
 interface ServicesViewProps {
     userProfile: { role: string; id: number };
@@ -43,6 +44,10 @@ const getErrorMessage = (err: any, defaultMessage: string): string => {
 
 
 const ServicesView: React.FC<ServicesViewProps> = ({ userProfile }) => {
+    const { language } = useLanguage();
+    const isFr = language === 'fr';
+    const tx = (en: string, fr: string) => (isFr ? fr : en);
+
     // Modal State
     const [isCreateServiceModalOpen, setIsCreateServiceModalOpen] = useState(false);
     const [isUpdateServiceModalOpen, setIsUpdateServiceModalOpen] = useState(false);
@@ -71,9 +76,9 @@ const ServicesView: React.FC<ServicesViewProps> = ({ userProfile }) => {
             await createMutation.mutateAsync(data);
             setIsCreateServiceModalOpen(false);
         } catch (err: any) {
-            setLocalError(getErrorMessage(err, "Failed to create service."));
+            setLocalError(getErrorMessage(err, tx("Failed to create service.", "Echec de creation du service.")));
         }
-    }, [createMutation]);
+    }, [createMutation, tx]);
 
     const handleUpdateService = useCallback(async (id: number, data: ServiceUpdatePayload) => {
         setLocalError(null);
@@ -82,9 +87,9 @@ const ServicesView: React.FC<ServicesViewProps> = ({ userProfile }) => {
             setIsUpdateServiceModalOpen(false);
             setSelectedService(null);
         } catch (err: any) {
-            setLocalError(getErrorMessage(err, "Failed to update service."));
+            setLocalError(getErrorMessage(err, tx("Failed to update service.", "Echec de mise a jour du service.")));
         }
-    }, [updateMutation]);
+    }, [updateMutation, tx]);
 
     const handleDeleteService = useCallback(async (id: number) => {
         setLocalError(null);
@@ -93,16 +98,16 @@ const ServicesView: React.FC<ServicesViewProps> = ({ userProfile }) => {
             setIsDeleteServiceModalOpen(false);
             setSelectedService(null);
         } catch (err: any) {
-            setLocalError(getErrorMessage(err, "Failed to delete service."));
+            setLocalError(getErrorMessage(err, tx("Failed to delete service.", "Echec de suppression du service.")));
         }
-    }, [deleteMutation]);
+    }, [deleteMutation, tx]);
 
     // --- Render ---
 
     if (!canManageServices) {
         return (
             <Flex align="center" justify="center" minH="300px">
-                <Text color="gray.500">You do not have permission to manage services.</Text>
+                <Text color="gray.500">{tx('You do not have permission to manage services.', "Vous n'avez pas la permission de gerer les services.")}</Text>
             </Flex>
         );
     }
@@ -127,10 +132,12 @@ const ServicesView: React.FC<ServicesViewProps> = ({ userProfile }) => {
                 >
                     <Box>
                         <Heading as="h1" size="lg" color="gray.900" fontWeight="700" letterSpacing="-0.02em">
-                            Services
+                            {tx('Services', 'Services')}
                         </Heading>
                         <Text color="gray.500" fontSize="sm" mt={1} mb={0}>
-                            {managedServices.length} service{managedServices.length !== 1 ? 's' : ''} available
+                            {isFr
+                                ? `${managedServices.length} service${managedServices.length !== 1 ? 's' : ''} disponibles`
+                                : `${managedServices.length} service${managedServices.length !== 1 ? 's' : ''} available`}
                         </Text>
                     </Box>
                     <Button
@@ -139,7 +146,7 @@ const ServicesView: React.FC<ServicesViewProps> = ({ userProfile }) => {
                         leftIcon={<Icon as={Plus} boxSize="4" />}
                         size="md"
                     >
-                        Add Service
+                        {tx('Add Service', 'Ajouter un service')}
                     </Button>
                 </Flex>
 
@@ -164,9 +171,9 @@ const ServicesView: React.FC<ServicesViewProps> = ({ userProfile }) => {
                     >
                         <EmptyState
                             icon={Settings}
-                            title="No services yet"
-                            description="Create your first service to start accepting bookings from clients."
-                            actionLabel="Add Service"
+                            title={tx('No services yet', 'Aucun service pour le moment')}
+                            description={tx('Create your first service to start accepting bookings from clients.', 'Creez votre premier service pour commencer les reservations clients.')}
+                            actionLabel={tx('Add Service', 'Ajouter un service')}
                             onAction={handleOpenCreateServiceModal}
                         />
                     </Box>
@@ -193,17 +200,17 @@ const ServicesView: React.FC<ServicesViewProps> = ({ userProfile }) => {
                                         borderColor="gray.200"
                                         py={3.5}
                                     >
-                                        Service
+                                        {tx('Service', 'Service')}
                                     </Th>
                                     <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>
-                                        Duration
+                                        {tx('Duration', 'Duree')}
                                     </Th>
                                     <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>
-                                        Price
+                                        {tx('Price', 'Prix')}
                                     </Th>
                                     {userProfile.role === 'super_admin' && (
                                         <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>
-                                            Tenant
+                                            {tx('Tenant', 'Locataire')}
                                         </Th>
                                     )}
                                     <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5} w="60px">

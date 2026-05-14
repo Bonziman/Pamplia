@@ -7,6 +7,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import MobileBottomNav from '../components/MobileBottomNav';
 import CommandPalette from '../components/CommandPalette';
+import { useLanguage } from '../i18n/languageContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -31,6 +32,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   toggleSettingsMenu,
   tenantId,
 }) => {
+  const { t } = useLanguage();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const toggleSidebar = () => setIsSidebarCollapsed((prev) => !prev);
@@ -52,16 +54,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   // Page title derived from active view
   const pageTitles: Record<string, string> = {
-    overview: 'Dashboard',
-    dashboard: 'Dashboard',
-    calendar: 'Calendar',
-    clients: 'Clients',
-    users: userRole === 'super_admin' ? 'Users' : 'Staff',
-    services: 'Services',
-    tenants: 'Tenants',
-    'settings-tags': 'Manage Tags',
-    'settings-business': 'Business Settings',
-    'settings-templates': 'Templates',
+    overview: t('nav.dashboard'),
+    dashboard: t('nav.dashboard'),
+    calendar: t('nav.calendar'),
+    clients: t('nav.clients'),
+    users: userRole === 'super_admin' ? t('nav.users') : t('nav.staff'),
+    services: t('nav.services'),
+    tenants: t('nav.tenants'),
+    'settings-tags': t('nav.manageTags'),
+    'settings-business': t('nav.businessSettings'),
+    'settings-templates': t('nav.templates'),
   };
 
   return (
@@ -95,7 +97,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           userName={userName}
           userRole={userRole}
           onLogout={onLogout}
-          pageTitle={pageTitles[activeView] || 'Dashboard'}
+          pageTitle={pageTitles[activeView] || t('nav.dashboard')}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         />
 

@@ -25,6 +25,7 @@ import {
   X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useLanguage } from '../i18n/languageContext';
 
 // ─── Tab Item ────────────────────────────────────────────────────────────────
 interface TabItemProps {
@@ -106,6 +107,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   userRole,
   onLogout,
 }) => {
+  const { t } = useLanguage();
   const { isOpen: isMoreOpen, onToggle: toggleMore, onClose: closeMore } = useDisclosure();
 
   const isSuperAdmin = userRole === 'super_admin';
@@ -157,7 +159,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {/* Close */}
           <Flex justify="space-between" align="center" px="2" mb="1">
             <Text fontSize="md" fontWeight="700" color="gray.900" mb="0">
-              More
+              {t('nav.more')}
             </Text>
             <Box
               as="button"
@@ -182,7 +184,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             {(isSuperAdmin || isAdmin) && (
               <MoreMenuItem
                 icon={UserCog}
-                label={isSuperAdmin ? 'Users' : 'Staff'}
+                label={isSuperAdmin ? t('nav.users') : t('nav.staff')}
                 onClick={() => handleNavigate('users')}
                 isActive={activeView === 'users'}
               />
@@ -191,7 +193,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             {isSuperAdmin && (
               <MoreMenuItem
                 icon={Building2}
-                label="Tenants"
+                label={t('nav.tenants')}
                 onClick={() => handleNavigate('tenants')}
                 isActive={activeView === 'tenants'}
               />
@@ -201,23 +203,23 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               <>
                 <Box h="1px" bg="gray.100" my="1.5" mx="3" />
                 <Text fontSize="2xs" fontWeight="600" color="gray.400" px="5" textTransform="uppercase" letterSpacing="wider" mb="0">
-                  Settings
+                  {t('nav.settings')}
                 </Text>
                 <MoreMenuItem
                   icon={Tags}
-                  label="Manage Tags"
+                  label={t('nav.manageTags')}
                   onClick={() => handleNavigate('settings-tags')}
                   isActive={activeView === 'settings-tags'}
                 />
                 <MoreMenuItem
                   icon={Settings}
-                  label="Business Settings"
+                  label={t('nav.businessSettings')}
                   onClick={() => handleNavigate('settings-business')}
                   isActive={activeView === 'settings-business'}
                 />
                 <MoreMenuItem
                   icon={FileText}
-                  label="Templates"
+                  label={t('nav.templates')}
                   onClick={() => handleNavigate('settings-templates')}
                   isActive={activeView === 'settings-templates'}
                 />
@@ -228,7 +230,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
             <MoreMenuItem
               icon={LogOut}
-              label="Log out"
+              label={t('nav.logOut')}
               onClick={handleLogout}
               isDanger
             />
@@ -256,7 +258,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       >
         <TabItem
           icon={LayoutDashboard}
-          label="Home"
+          label={t('nav.home')}
           isActive={activeView === 'overview' || activeView === 'dashboard'}
           onClick={() => handleNavigate('/dashboard')}
         />
@@ -264,7 +266,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         {!isSuperAdmin && (
           <TabItem
             icon={Calendar}
-            label="Calendar"
+            label={t('nav.calendar')}
             isActive={activeView === 'calendar'}
             onClick={() => handleNavigate('calendar')}
           />
@@ -273,7 +275,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         {!isSuperAdmin && canManageClients && (
           <TabItem
             icon={Users}
-            label="Clients"
+            label={t('nav.clients')}
             isActive={activeView === 'clients'}
             onClick={() => handleNavigate('clients')}
           />
@@ -282,7 +284,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         {!isSuperAdmin && isAdmin && (
           <TabItem
             icon={Briefcase}
-            label="Services"
+            label={t('nav.services')}
             isActive={activeView === 'services'}
             onClick={() => handleNavigate('services')}
           />
@@ -290,7 +292,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
         <TabItem
           icon={MoreHorizontal}
-          label="More"
+          label={t('nav.more')}
           isActive={isMoreOpen}
           onClick={toggleMore}
         />

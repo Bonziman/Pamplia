@@ -6,6 +6,7 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import './CustomCalendar.css';
 import { format, startOfDay, parse, isValid } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import {
     Box, Button as ChakraButton, FormControl, FormLabel, Input, FormErrorMessage,
     VStack, HStack, Text, Grid, GridItem, Spinner, Center,
@@ -54,13 +55,13 @@ interface TimePeriod {
 
 // --- VALIDATION SCHEMA ---
 const validationSchema = yup.object().shape({
-    client_name: yup.string().trim().required('Client name is required').min(2, 'Name is too short'),
-    client_email: yup.string().email('Invalid email format').required('Client email is required'),
-    client_phone: yup.string().trim().optional().matches(/^$|^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s./0-9]*$/, 'Invalid phone number format'),
-    selected_date: yup.date().nullable().required('Please select a date.').typeError('Invalid date selected.')
-        .min(startOfDay(new Date()), "Cannot select a past date."),
-    selected_time: yup.string().required('Please select an available time slot.'),
-    service_ids: yup.array().of(yup.number().integer()).min(1, 'Please select at least one service.').required(),
+  client_name: yup.string().trim().required('Le nom du client est requis').min(2, 'Le nom est trop court'),
+  client_email: yup.string().email('Format d’email invalide').required('L’email du client est requis'),
+  client_phone: yup.string().trim().optional().matches(/^$|^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s./0-9]*$/, 'Format de téléphone invalide'),
+  selected_date: yup.date().nullable().required('Veuillez sélectionner une date.').typeError('Date sélectionnée invalide.')
+    .min(startOfDay(new Date()), "Impossible de sélectionner une date passée."),
+  selected_time: yup.string().required('Veuillez sélectionner un créneau disponible.'),
+  service_ids: yup.array().of(yup.number().integer()).min(1, 'Veuillez sélectionner au moins un service.').required(),
 });
 
 // --- PROPS ---
@@ -176,9 +177,9 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     });
 
     return [
-      { label: 'Morning', icon: Sunrise, times: morning },
-      { label: 'Afternoon', icon: Sun, times: afternoon },
-      { label: 'Evening', icon: Sunset, times: evening },
+      { label: 'Matin', icon: Sunrise, times: morning },
+      { label: 'Après-midi', icon: Sun, times: afternoon },
+      { label: 'Soir', icon: Sunset, times: evening },
     ].filter(p => p.times.length > 0);
   }, [availableTimes]);
 
@@ -188,9 +189,9 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
       setAvailableTimes([]);
       setValue('selected_time', '');
       if (isOpen && date && serviceIds.length === 0) {
-        setAvailabilityError("Select service(s) to see times.");
+        setAvailabilityError("Sélectionnez un ou plusieurs services pour voir les créneaux.");
       } else if (isOpen && !date && serviceIds.length > 0) {
-        setAvailabilityError("Select a date to see times.");
+        setAvailabilityError("Sélectionnez une date pour voir les créneaux.");
       } else {
         setAvailabilityError(null);
       }
@@ -208,11 +209,11 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
       setAvailableTimes(sortedSlots);
 
       if (sortedSlots.length === 0) {
-        setAvailabilityError(`No available times for ${format(date, 'EEEE, MMM d')}. Try another date.`);
+        setAvailabilityError(`Aucun créneau disponible pour ${format(date, 'EEEE d MMM', { locale: fr })}. Essayez une autre date.`);
       }
     } catch (error: any) {
       console.error("Failed to fetch available times:", error);
-      const message = error.response?.data?.detail || error.message || "Could not fetch available times.";
+      const message = error.response?.data?.detail || error.message || "Impossible de récupérer les créneaux disponibles.";
       setAvailabilityError(message);
       setAvailableTimes([]);
     } finally {
@@ -256,7 +257,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
 
   const onFormSubmit: SubmitHandler<CreateAppointmentFormData> = async (data) => {
     if (!data.selected_date) {
-        toast({ title: "Validation Error", description: "Please select a date.", status: "error" });
+        toast({ title: "Erreur de validation", description: "Veuillez sélectionner une date.", status: "error" });
         return;
     }
     try {
@@ -270,7 +271,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
       );
 
       if (!isValid(appointmentDateTime)) {
-         throw new Error("Invalid date or time selected. Please re-check.");
+        throw new Error("Date ou heure sélectionnée invalide. Veuillez vérifier.");
       }
 
       const payload: AppointmentCreatePayload = {
@@ -284,8 +285,8 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
       await createPublicAppointment(payload);
 
       toast({
-          title: "Appointment Created!",
-          description: "The new appointment has been successfully booked.",
+          title: "Rendez-vous créé !",
+          description: "Le nouveau rendez-vous a été planifié avec succès.",
           status: "success",
       });
       onAppointmentCreated?.();
@@ -293,8 +294,8 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
 
     } catch (apiError: any) {
       console.error("Create appointment failed:", apiError);
-      const message = apiError.response?.data?.detail || apiError.message || "Failed to create appointment.";
-      toast({ title: "Booking Failed", description: message, status: "error" });
+      const message = apiError.response?.data?.detail || apiError.message || "Échec de la création du rendez-vous.";
+      toast({ title: "Échec de la réservation", description: message, status: "error" });
     }
   };
 
@@ -313,7 +314,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
             fontWeight="600"
             color="gray.500"
           >
-            Cancel
+            Annuler
           </ChakraButton>
           <ChakraButton
             colorScheme="brand"
@@ -325,7 +326,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
             isDisabled={!watch('client_name') || !watch('client_email') || selectedServiceIdsValue.length === 0}
             rightIcon={<ArrowRight size={16} />}
           >
-            Continue
+            Continuer
           </ChakraButton>
         </HStack>
       );
@@ -340,7 +341,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
           color="gray.500"
           leftIcon={<ArrowLeft size={16} />}
         >
-          Back
+          Retour
         </ChakraButton>
         <ChakraButton
           type="submit"
@@ -353,7 +354,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
           isLoading={isSubmitting}
           isDisabled={isLoadingTimes || !selectedDateValue || !selectedTimeValue}
         >
-          Confirm Booking
+          Confirmer la réservation
         </ChakraButton>
       </HStack>
     );
@@ -374,7 +375,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     <RightDrawerModal
       isOpen={isOpen}
       onClose={onClose}
-      title="New Booking"
+      title="Nouveau rendez-vous"
       footerContent={renderFooter()}
       size="xl"
     >
@@ -406,8 +407,8 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                     <Icon as={User} boxSize={4} color="blue.500" />
                   </Flex>
                   <Box>
-                    <Heading as="h3" size="sm" fontWeight="700" color="gray.800" lineHeight="1.2">Client Details</Heading>
-                    <Text fontSize="xs" color="gray.400">Who is this appointment for?</Text>
+                    <Heading as="h3" size="sm" fontWeight="700" color="gray.800" lineHeight="1.2">Informations client</Heading>
+                    <Text fontSize="xs" color="gray.400">Pour qui est ce rendez-vous ?</Text>
                   </Box>
                 </HStack>
 
@@ -415,10 +416,10 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                   <Grid templateColumns="1fr 1fr" gap={3} w="full">
                     <GridItem>
                       <FormControl isInvalid={!!errors.client_name} isRequired>
-                        <FormLabel fontSize="xs" fontWeight="600" color="gray.500" mb={1}>Full name</FormLabel>
+                        <FormLabel fontSize="xs" fontWeight="600" color="gray.500" mb={1}>Nom complet</FormLabel>
                         <Input
                           {...register('client_name')}
-                          placeholder="Jane Smith"
+                          placeholder="Ex: Sara Amrani"
                           isDisabled={isSubmitting || areClientFieldsDisabled}
                           {...inputStyleProps}
                         />
@@ -431,7 +432,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                         <Input
                           type="email"
                           {...register('client_email')}
-                          placeholder="jane@email.com"
+                          placeholder="sara@email.com"
                           isDisabled={isSubmitting || areClientFieldsDisabled}
                           {...inputStyleProps}
                         />
@@ -440,7 +441,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                     </GridItem>
                   </Grid>
                   <FormControl isInvalid={!!errors.client_phone}>
-                    <FormLabel fontSize="xs" fontWeight="600" color="gray.500" mb={1}>Phone (optional)</FormLabel>
+                    <FormLabel fontSize="xs" fontWeight="600" color="gray.500" mb={1}>Téléphone (optionnel)</FormLabel>
                     <Input
                       type="tel"
                       {...register('client_phone')}
@@ -463,7 +464,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                   </Flex>
                   <Box>
                     <Heading as="h3" size="sm" fontWeight="700" color="gray.800" lineHeight="1.2">Services</Heading>
-                    <Text fontSize="xs" color="gray.400">What would they like?</Text>
+                    <Text fontSize="xs" color="gray.400">Quel service souhaite le client ?</Text>
                   </Box>
                 </HStack>
 
@@ -472,7 +473,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                     <Center h="120px">
                       <VStack spacing={2}>
                         <Spinner color="brand.500" size="lg" />
-                        <Text fontSize="xs" color="gray.400">Loading services...</Text>
+                        <Text fontSize="xs" color="gray.400">Chargement des services...</Text>
                       </VStack>
                     </Center>
                   ) : tenantServices.length > 0 ? (
@@ -541,7 +542,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                     </VStack>
                   ) : (
                     <Center h="80px" bg="gray.50" borderRadius="xl">
-                      <Text color="gray.400" fontSize="sm">No services configured yet.</Text>
+                      <Text color="gray.400" fontSize="sm">Aucun service configuré pour le moment.</Text>
                     </Center>
                   )}
                   <FormErrorMessage mt={2}>{errors.service_ids?.message}</FormErrorMessage>
@@ -554,7 +555,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                   <HStack justify="space-between">
                     <Text fontSize="sm" color="gray.600">
                       <Text as="span" fontWeight="700" color="gray.800">{selectedServiceIdsValue.length}</Text>
-                      {' '}service{selectedServiceIdsValue.length !== 1 ? 's' : ''}
+                      {' '}service{selectedServiceIdsValue.length !== 1 ? 's' : ''} sélectionné{selectedServiceIdsValue.length !== 1 ? 's' : ''}
                     </Text>
                     <HStack spacing={3} divider={<Text color="gray.300" fontSize="xs">&middot;</Text>}>
                       <Text fontSize="sm" fontWeight="700" color="gray.700">{totalSelectedServiceDuration} min</Text>
@@ -580,8 +581,8 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                     <Icon as={CalendarDays} boxSize={4} color="orange.500" />
                   </Flex>
                   <Box>
-                    <Heading as="h3" size="sm" fontWeight="700" color="gray.800" lineHeight="1.2">Pick a Date</Heading>
-                    <Text fontSize="xs" color="gray.400">When should we schedule?</Text>
+                    <Heading as="h3" size="sm" fontWeight="700" color="gray.800" lineHeight="1.2">Choisir une date</Heading>
+                    <Text fontSize="xs" color="gray.400">Quand planifier le rendez-vous ?</Text>
                   </Box>
                 </HStack>
 
@@ -616,12 +617,12 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                   </Flex>
                   <Box>
                     <Heading as="h3" size="sm" fontWeight="700" color="gray.800" lineHeight="1.2">
-                      {selectedDateValue ? format(selectedDateValue, 'EEEE, MMM d') : 'Pick a Time'}
+                      {selectedDateValue ? format(selectedDateValue, 'EEEE d MMM', { locale: fr }) : 'Choisir une heure'}
                     </Heading>
                     <Text fontSize="xs" color="gray.400">
                       {availableTimes.length > 0 && !isLoadingTimes
-                        ? `${availableTimes.length} slots available`
-                        : 'Choose your preferred time'}
+                        ? `${availableTimes.length} créneaux disponibles`
+                        : 'Choisissez votre heure préférée'}
                     </Text>
                   </Box>
                 </HStack>
@@ -644,7 +645,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                       _hover={{ bg: 'brand.100', borderColor: 'brand.300' }}
                       leftIcon={<Icon as={Zap} boxSize={4} />}
                     >
-                      Quick Pick &mdash; Next at {availableTimes[0]}
+                      Prochain créneau &mdash; à {availableTimes[0]}
                     </ChakraButton>
                   )}
 
@@ -653,7 +654,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                     <Center h="120px">
                       <VStack spacing={3}>
                         <Spinner color="brand.500" size="lg" thickness="3px" />
-                        <Text fontSize="sm" color="gray.400">Finding available times...</Text>
+                        <Text fontSize="sm" color="gray.400">Recherche des créneaux disponibles...</Text>
                       </VStack>
                     </Center>
 
@@ -717,7 +718,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                   /* Empty state */
                   ) : selectedDateValue && selectedServiceIdsValue.length > 0 && !isLoadingTimes ? (
                     <Box bg="gray.50" p={6} borderRadius="xl" textAlign="center">
-                      <Text color="gray.400" fontSize="sm">No times available for this date. Try another.</Text>
+                      <Text color="gray.400" fontSize="sm">Aucun créneau disponible pour cette date. Essayez une autre date.</Text>
                     </Box>
                   ) : null}
 
@@ -736,7 +737,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                     borderColor="brand.100"
                   >
                     <Text fontSize="xs" fontWeight="700" color="brand.600" textTransform="uppercase" letterSpacing="0.06em" mb={3}>
-                      Booking Summary
+                      Récapitulatif
                     </Text>
                     <VStack spacing={2.5} align="stretch">
                       <HStack spacing={3}>
@@ -757,7 +758,7 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                         <HStack spacing={3}>
                           <Icon as={CalendarDays} boxSize={4} color="brand.400" />
                           <Text fontSize="sm" fontWeight="700" color="brand.800">
-                            {selectedDateValue && format(selectedDateValue, 'EEE, MMM d')}
+                            {selectedDateValue && format(selectedDateValue, 'EEE d MMM', { locale: fr })}
                             {' \u00B7 '}
                             {selectedTimeValue} &ndash; {formatTimeFromMinutes(parseTimeToMinutes(selectedTimeValue) + totalSelectedServiceDuration)}
                           </Text>

@@ -42,6 +42,7 @@ import { createUser, fetchUsers, resetUserPassword, updateUser } from '../../api
 import { TenantOut } from '../../types/tenants';
 import { UserOut, UserUpdatePayload } from '../../types/User';
 import { useBrandedToast } from '../../hooks/useBrandedToast';
+import { useLanguage } from '../../i18n/languageContext';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -59,6 +60,10 @@ type CreateUserState = {
 };
 
 const SuperAdminUsersView: React.FC = () => {
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
+  const tx = (en: string, fr: string) => (isFr ? fr : en);
+
   const toast = useBrandedToast();
   const [tenants, setTenants] = useState<TenantOut[]>([]);
   const [users, setUsers] = useState<UserOut[]>([]);
@@ -107,9 +112,9 @@ const SuperAdminUsersView: React.FC = () => {
       const data = await fetchTenants();
       setTenants(data);
     } catch (err: any) {
-      toast({ title: 'Failed to load tenants', description: err.response?.data?.detail || err.message, status: 'error' });
+      toast({ title: tx('Failed to load tenants', 'Echec du chargement des locataires'), description: err.response?.data?.detail || err.message, status: 'error' });
     }
-  }, [toast]);
+  }, [toast, tx]);
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true);
@@ -125,13 +130,13 @@ const SuperAdminUsersView: React.FC = () => {
       setUsers(response.items || []);
       setTotal(response.total || 0);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to load users.');
+      setError(err.response?.data?.detail || tx('Failed to load users.', 'Echec du chargement des utilisateurs.'));
       setUsers([]);
       setTotal(0);
     } finally {
       setIsLoading(false);
     }
-  }, [page, roleFilter, statusFilter, tenantFilter]);
+  }, [page, roleFilter, statusFilter, tenantFilter, tx]);
 
   useEffect(() => {
     loadTenants();
@@ -145,10 +150,10 @@ const SuperAdminUsersView: React.FC = () => {
     try {
       const payload: UserUpdatePayload = { is_active: !user.is_active };
       await updateUser(user.id, payload);
-      toast({ title: `User ${user.is_active ? 'deactivated' : 'activated'}`, status: 'success' });
+      toast({ title: isFr ? `Utilisateur ${user.is_active ? 'desactive' : 'active'}` : `User ${user.is_active ? 'deactivated' : 'activated'}`, status: 'success' });
       loadUsers();
     } catch (err: any) {
-      toast({ title: 'Failed to update user', description: err.response?.data?.detail || err.message, status: 'error' });
+      toast({ title: tx('Failed to update user', "Echec de mise a jour de l'utilisateur"), description: err.response?.data?.detail || err.message, status: 'error' });
     }
   };
 
@@ -156,10 +161,10 @@ const SuperAdminUsersView: React.FC = () => {
     if (user.role === role) return;
     try {
       await updateUser(user.id, { role });
-      toast({ title: 'Role updated', status: 'success' });
+      toast({ title: tx('Role updated', 'Role mis a jour'), status: 'success' });
       loadUsers();
     } catch (err: any) {
-      toast({ title: 'Failed to update role', description: err.response?.data?.detail || err.message, status: 'error' });
+      toast({ title: tx('Failed to update role', 'Echec de mise a jour du role'), description: err.response?.data?.detail || err.message, status: 'error' });
     }
   };
 
@@ -171,21 +176,21 @@ const SuperAdminUsersView: React.FC = () => {
   const handleResetPassword = async () => {
     if (!passwordResetState.user) return;
     if (passwordResetState.password.trim().length < 8) {
-      toast({ title: 'Password too short', description: 'Use at least 8 characters.', status: 'warning' });
+      toast({ title: tx('Password too short', 'Mot de passe trop court'), description: tx('Use at least 8 characters.', 'Utilisez au moins 8 caracteres.'), status: 'warning' });
       return;
     }
     try {
       await resetUserPassword(passwordResetState.user.id, passwordResetState.password.trim());
-      toast({ title: 'Password reset', status: 'success' });
+      toast({ title: tx('Password reset', 'Mot de passe reinitialise'), status: 'success' });
       resetModal.onClose();
     } catch (err: any) {
-      toast({ title: 'Failed to reset password', description: err.response?.data?.detail || err.message, status: 'error' });
+      toast({ title: tx('Failed to reset password', 'Echec de reinitialisation du mot de passe'), description: err.response?.data?.detail || err.message, status: 'error' });
     }
   };
 
   const handleCreateUser = async () => {
     if (!createUserState.tenant_id) {
-      toast({ title: 'Tenant required', description: 'Select a tenant for this user.', status: 'warning' });
+      toast({ title: tx('Tenant required', 'Locataire requis'), description: tx('Select a tenant for this user.', 'Selectionnez un locataire pour cet utilisateur.'), status: 'warning' });
       return;
     }
     try {
@@ -196,12 +201,12 @@ const SuperAdminUsersView: React.FC = () => {
         role: createUserState.role,
         tenant_id: Number(createUserState.tenant_id),
       });
-      toast({ title: 'User created', status: 'success' });
+      toast({ title: tx('User created', 'Utilisateur cree'), status: 'success' });
       createModal.onClose();
       setCreateUserState({ name: '', email: '', password: '', role: 'admin', tenant_id: '' });
       loadUsers();
     } catch (err: any) {
-      toast({ title: 'Failed to create user', description: err.response?.data?.detail || err.message, status: 'error' });
+      toast({ title: tx('Failed to create user', "Echec de creation de l'utilisateur"), description: err.response?.data?.detail || err.message, status: 'error' });
     }
   };
 
@@ -219,35 +224,35 @@ const SuperAdminUsersView: React.FC = () => {
     <div className="view-section">
       <Box p={{ base: '2', md: '4' }} bg="white">
         <Flex alignItems="center" justifyContent="space-between" mb="6" flexWrap="wrap" gap="3">
-          <Heading as="h1" size="lg" color="gray.700">Users</Heading>
+          <Heading as="h1" size="lg" color="gray.700">{tx('Users', 'Utilisateurs')}</Heading>
           <ChakraButton colorScheme="brand" leftIcon={<Plus size={16} />} onClick={createModal.onOpen}>
-            New User
+            {tx('New User', 'Nouvel utilisateur')}
           </ChakraButton>
         </Flex>
 
         <Flex mb="4" gap="3" flexWrap="wrap">
           <Input
-            placeholder="Search name or email"
+            placeholder={tx('Search name or email', 'Rechercher nom ou email')}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             maxW="260px"
           />
           <Select value={tenantFilter} onChange={(e) => { setTenantFilter(e.target.value); setPage(1); }} maxW="220px">
-            <option value="">All tenants</option>
+            <option value="">{tx('All tenants', 'Tous les locataires')}</option>
             {tenants.map((tenant) => (
               <option key={tenant.id} value={tenant.id}>{tenant.name}</option>
             ))}
           </Select>
           <Select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }} maxW="180px">
-            <option value="">All roles</option>
+            <option value="">{tx('All roles', 'Tous les roles')}</option>
             <option value="super_admin">Super Admin</option>
             <option value="admin">Admin</option>
             <option value="staff">Staff</option>
           </Select>
           <Select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} maxW="180px">
-            <option value="">All statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="">{tx('All statuses', 'Tous les statuts')}</option>
+            <option value="active">{tx('Active', 'Actif')}</option>
+            <option value="inactive">{tx('Inactive', 'Inactif')}</option>
           </Select>
         </Flex>
 
@@ -262,7 +267,7 @@ const SuperAdminUsersView: React.FC = () => {
         )}
 
         {!isLoading && !error && filteredUsers.length === 0 && (
-          <Text>No users found.</Text>
+          <Text>{tx('No users found.', 'Aucun utilisateur trouve.')}</Text>
         )}
 
         {!isLoading && !error && filteredUsers.length > 0 && (
@@ -270,11 +275,11 @@ const SuperAdminUsersView: React.FC = () => {
             <Table variant="simple" size="sm">
               <Thead bg="gray.50">
                 <Tr>
-                  <Th>Name</Th>
-                  <Th>Email</Th>
-                  <Th>Role</Th>
-                  <Th>Tenant</Th>
-                  <Th>Status</Th>
+                  <Th>{tx('Name', 'Nom')}</Th>
+                  <Th>{tx('Email', 'Email')}</Th>
+                  <Th>{tx('Role', 'Role')}</Th>
+                  <Th>{tx('Tenant', 'Locataire')}</Th>
+                  <Th>{tx('Status', 'Statut')}</Th>
                   <Th></Th>
                 </Tr>
               </Thead>
@@ -301,14 +306,14 @@ const SuperAdminUsersView: React.FC = () => {
                       <Td>{tenantLabel}</Td>
                       <Td>
                         <Tag colorScheme={user.is_active ? 'green' : 'red'} size="sm">
-                          {user.is_active ? 'Active' : 'Inactive'}
+                          {user.is_active ? tx('Active', 'Actif') : tx('Inactive', 'Inactif')}
                         </Tag>
                       </Td>
                       <Td textAlign="right">
                         <HStack justify="flex-end">
                           {tenant?.subdomain && baseDomain && (
                             <IconButton
-                              aria-label="Open tenant"
+                              aria-label={tx('Open tenant', 'Ouvrir locataire')}
                               size="sm"
                               variant="outline"
                               icon={<ExternalLink size={16} />}
@@ -318,15 +323,15 @@ const SuperAdminUsersView: React.FC = () => {
                           <Menu>
                             <MenuButton
                               as={IconButton}
-                              aria-label="User actions"
+                              aria-label={tx('User actions', 'Actions utilisateur')}
                               icon={<MoreVertical size={16} />}
                               size="sm"
                               variant="ghost"
                             />
                             <MenuList>
-                              <MenuItem onClick={() => handleOpenResetPassword(user)}>Reset password</MenuItem>
+                              <MenuItem onClick={() => handleOpenResetPassword(user)}>{tx('Reset password', 'Reinitialiser le mot de passe')}</MenuItem>
                               <MenuItem onClick={() => handleToggleUserStatus(user)}>
-                                {user.is_active ? 'Deactivate' : 'Activate'}
+                                {user.is_active ? tx('Deactivate', 'Desactiver') : tx('Activate', 'Activer')}
                               </MenuItem>
                             </MenuList>
                           </Menu>
@@ -344,11 +349,11 @@ const SuperAdminUsersView: React.FC = () => {
           <Flex justifyContent="center" mt="6">
             <HStack>
               <ChakraButton size="sm" variant="outline" onClick={() => setPage(Math.max(1, page - 1))} isDisabled={page === 1}>
-                Previous
+                {tx('Previous', 'Precedent')}
               </ChakraButton>
-              <Text fontSize="sm">Page {page} of {totalPages}</Text>
+              <Text fontSize="sm">{tx('Page', 'Page')} {page} {tx('of', 'sur')} {totalPages}</Text>
               <ChakraButton size="sm" variant="outline" onClick={() => setPage(Math.min(totalPages, page + 1))} isDisabled={page === totalPages}>
-                Next
+                {tx('Next', 'Suivant')}
               </ChakraButton>
             </HStack>
           </Flex>
@@ -358,12 +363,12 @@ const SuperAdminUsersView: React.FC = () => {
       <Modal isOpen={resetModal.isOpen} onClose={resetModal.onClose} isCentered>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Reset Password</ModalHeader>
+          <ModalHeader>{tx('Reset Password', 'Reinitialiser le mot de passe')}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <Text mb="3">Reset password for {passwordResetState.user?.email}</Text>
+            <Text mb="3">{tx('Reset password for', 'Reinitialiser le mot de passe de')} {passwordResetState.user?.email}</Text>
             <FormControl>
-              <FormLabel>New password</FormLabel>
+              <FormLabel>{tx('New password', 'Nouveau mot de passe')}</FormLabel>
               <Input
                 type="password"
                 value={passwordResetState.password}
@@ -372,8 +377,8 @@ const SuperAdminUsersView: React.FC = () => {
             </FormControl>
           </ModalBody>
           <ModalFooter>
-            <ChakraButton variant="ghost" mr="3" onClick={resetModal.onClose}>Cancel</ChakraButton>
-            <ChakraButton colorScheme="brand" onClick={handleResetPassword}>Reset</ChakraButton>
+            <ChakraButton variant="ghost" mr="3" onClick={resetModal.onClose}>{tx('Cancel', 'Annuler')}</ChakraButton>
+            <ChakraButton colorScheme="brand" onClick={handleResetPassword}>{tx('Reset', 'Reinitialiser')}</ChakraButton>
           </ModalFooter>
         </ModalContent>
       </Modal>
@@ -381,23 +386,23 @@ const SuperAdminUsersView: React.FC = () => {
       <Modal isOpen={createModal.isOpen} onClose={createModal.onClose} isCentered>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Create User</ModalHeader>
+          <ModalHeader>{tx('Create User', 'Creer un utilisateur')}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <FormControl mb="3">
-              <FormLabel>Name</FormLabel>
+              <FormLabel>{tx('Name', 'Nom')}</FormLabel>
               <Input value={createUserState.name} onChange={(e) => setCreateUserState((prev) => ({ ...prev, name: e.target.value }))} />
             </FormControl>
             <FormControl mb="3">
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{tx('Email', 'Email')}</FormLabel>
               <Input value={createUserState.email} onChange={(e) => setCreateUserState((prev) => ({ ...prev, email: e.target.value }))} />
             </FormControl>
             <FormControl mb="3">
-              <FormLabel>Password</FormLabel>
+              <FormLabel>{tx('Password', 'Mot de passe')}</FormLabel>
               <Input type="password" value={createUserState.password} onChange={(e) => setCreateUserState((prev) => ({ ...prev, password: e.target.value }))} />
             </FormControl>
             <FormControl mb="3">
-              <FormLabel>Role</FormLabel>
+              <FormLabel>{tx('Role', 'Role')}</FormLabel>
               <Select value={createUserState.role} onChange={(e) => setCreateUserState((prev) => ({ ...prev, role: e.target.value }))}>
                 <option value="super_admin">Super Admin</option>
                 <option value="admin">Admin</option>
@@ -405,9 +410,9 @@ const SuperAdminUsersView: React.FC = () => {
               </Select>
             </FormControl>
             <FormControl>
-              <FormLabel>Tenant</FormLabel>
+              <FormLabel>{tx('Tenant', 'Locataire')}</FormLabel>
               <Select value={createUserState.tenant_id} onChange={(e) => setCreateUserState((prev) => ({ ...prev, tenant_id: e.target.value }))}>
-                <option value="">Select tenant</option>
+                <option value="">{tx('Select tenant', 'Selectionner locataire')}</option>
                 {tenants.map((tenant) => (
                   <option key={tenant.id} value={tenant.id}>{tenant.name}</option>
                 ))}
@@ -415,8 +420,8 @@ const SuperAdminUsersView: React.FC = () => {
             </FormControl>
           </ModalBody>
           <ModalFooter>
-            <ChakraButton variant="ghost" mr="3" onClick={createModal.onClose}>Cancel</ChakraButton>
-            <ChakraButton colorScheme="brand" onClick={handleCreateUser}>Create</ChakraButton>
+            <ChakraButton variant="ghost" mr="3" onClick={createModal.onClose}>{tx('Cancel', 'Annuler')}</ChakraButton>
+            <ChakraButton colorScheme="brand" onClick={handleCreateUser}>{tx('Create', 'Creer')}</ChakraButton>
           </ModalFooter>
         </ModalContent>
       </Modal>

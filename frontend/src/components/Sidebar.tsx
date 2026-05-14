@@ -31,6 +31,7 @@ import {
   Palette,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useLanguage } from '../i18n/languageContext';
 
 // ─── NavItem ─────────────────────────────────────────────────────────────────
 interface NavItemProps {
@@ -143,6 +144,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   toggleSettingsMenu,
   onLogout,
 }) => {
+  const { t } = useLanguage();
   const settingsMenuRef = useRef<HTMLDivElement>(null);
 
   // Permissions
@@ -241,7 +243,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         <NavItem
           icon={LayoutDashboard}
-          label="Dashboard"
+          label={t('nav.dashboard')}
           isActive={activeView === 'overview' || activeView === 'dashboard'}
           isCollapsed={isCollapsed}
           onClick={() => onNavigate('/dashboard')}
@@ -250,7 +252,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {isSuperAdmin && (
           <NavItem
             icon={Building2}
-            label="Tenants"
+            label={t('nav.tenants')}
             isActive={activeView === 'tenants'}
             isCollapsed={isCollapsed}
             onClick={() => onNavigate('tenants')}
@@ -260,7 +262,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {!isSuperAdmin && (
           <NavItem
             icon={Calendar}
-            label="Calendar"
+            label={t('nav.calendar')}
             isActive={activeView === 'calendar'}
             isCollapsed={isCollapsed}
             onClick={() => onNavigate('calendar')}
@@ -270,7 +272,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {!isSuperAdmin && canManageClients && (
           <NavItem
             icon={Users}
-            label="Clients"
+            label={t('nav.clients')}
             isActive={activeView === 'clients'}
             isCollapsed={isCollapsed}
             onClick={() => onNavigate('clients')}
@@ -280,18 +282,18 @@ const Sidebar: React.FC<SidebarProps> = ({
         {canViewUsers && (
           <NavItem
             icon={UserCog}
-            label={isSuperAdmin ? 'Users' : 'Staff'}
+            label={isSuperAdmin ? t('nav.users') : t('nav.staff')}
             isActive={activeView === 'users' || activeView === 'staff'}
             isCollapsed={isCollapsed}
             onClick={() => onNavigate('users')}
-            title={isSuperAdmin ? 'User Management' : 'Staff Management'}
+            title={isSuperAdmin ? t('nav.users') : t('nav.staff')}
           />
         )}
 
         {!isSuperAdmin && canManageServices && (
           <NavItem
             icon={Briefcase}
-            label="Services"
+            label={t('nav.services')}
             isActive={activeView === 'services'}
             isCollapsed={isCollapsed}
             onClick={() => onNavigate('services')}
@@ -314,7 +316,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               {canManageTagDefinitions && (
                 <SettingsItem
                   icon={Tags}
-                  label="Manage Tags"
+                  label={t('nav.manageTags')}
                   onClick={() => onNavigate('settings-tags')}
                   isActive={activeView === 'settings-tags'}
                 />
@@ -322,7 +324,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               {canAccessTenantSettings && (
                 <SettingsItem
                   icon={Building2}
-                  label="Business Settings"
+                  label={t('nav.businessSettings')}
                   onClick={() => onNavigate('settings-business')}
                   isActive={activeView === 'settings-business'}
                 />
@@ -330,14 +332,14 @@ const Sidebar: React.FC<SidebarProps> = ({
               {canAccessTenantSettings && (
                 <SettingsItem
                   icon={FileText}
-                  label="Templates"
+                  label={t('nav.templates')}
                   onClick={() => onNavigate('settings-templates')}
                   isActive={activeView === 'settings-templates'}
                 />
               )}
               <SettingsItem
                 icon={Palette}
-                label="Appearance"
+                label={t('nav.appearance')}
                 onClick={() => {}}
               />
             </VStack>
@@ -345,7 +347,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Settings toggle */}
           {isCollapsed ? (
-            <Tooltip label="Settings" placement="right" hasArrow openDelay={200}>
+            <Tooltip label={t('nav.settings')} placement="right" hasArrow openDelay={200}>
               <Box
                 as="button"
                 display="flex"
@@ -387,7 +389,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             >
               <Flex align="center">
                 <Settings size={18} />
-                <Text ml="3" mb="0">Settings</Text>
+                <Text ml="3" mb="0">{t('nav.settings')}</Text>
               </Flex>
               {isSettingsMenuOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </Box>
@@ -396,7 +398,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Logout */}
         {isCollapsed ? (
-          <Tooltip label="Log out" placement="right" hasArrow openDelay={200}>
+          <Tooltip label={t('nav.logOut')} placement="right" hasArrow openDelay={200}>
             <Box
               as="button"
               display="flex"
@@ -438,7 +440,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             _hover={{ bg: 'red.900', color: 'red.400' }}
           >
             <LogOut size={18} />
-            <Text ml="3" mb="0">Log out</Text>
+            <Text ml="3" mb="0">{t('nav.logOut')}</Text>
           </Box>
         )}
       </Box>

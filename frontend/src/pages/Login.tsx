@@ -26,8 +26,11 @@ import {
   IconButton,
 } from '@chakra-ui/react';
 import { Eye, EyeOff } from 'lucide-react';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+import { useLanguage } from '../i18n/languageContext';
 
 const Login: React.FC = () => {
+  const { t } = useLanguage();
   const { isAuthenticated, isLoading, checkAuthStatus } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -82,12 +85,12 @@ const Login: React.FC = () => {
     } catch (err: any) {
       if (err.response) {
         const status = err.response.status;
-        const detail = err.response.data?.detail || 'An unexpected error occurred.';
-        setError(status === 401 ? 'Invalid email or password.' : `Login failed: ${detail}`);
+        const detail = err.response.data?.detail || t('login.unexpectedError');
+        setError(status === 401 ? t('login.invalidCredentials') : `${t('login.loginFailed')} ${detail}`);
       } else if (err.request) {
-        setError('Unable to reach server. Please try again.');
+        setError(t('login.serverUnreachable'));
       } else {
-        setError('Something went wrong.');
+        setError(t('login.genericError'));
       }
     } finally {
       setIsSubmitting(false);
@@ -139,6 +142,10 @@ const Login: React.FC = () => {
         justify="center"
         px={4}
       >
+        <Box position="absolute" top={{ base: 4, md: 6 }} right={{ base: 4, md: 6 }}>
+          <LanguageSwitcher size="sm" minimal />
+        </Box>
+
         <Box
           w="100%"
           maxW="420px"
@@ -167,10 +174,10 @@ const Login: React.FC = () => {
 
           <VStack spacing={1} mb={7}>
             <Heading size="lg" color="white" fontWeight="700" textAlign="center">
-              Welcome back
+              {t('login.welcomeBack')}
             </Heading>
             <Text fontSize="sm" color="whiteAlpha.700" textAlign="center">
-              Sign in to your account
+              {t('login.signInToAccount')}
             </Text>
           </VStack>
 
@@ -193,7 +200,7 @@ const Login: React.FC = () => {
             <VStack spacing={4}>
               <FormControl>
                 <FormLabel color="whiteAlpha.800" fontSize="sm" fontWeight="500" mb={1.5}>
-                  Email
+                  {t('login.email')}
                 </FormLabel>
                 <Input
                   type="email"
@@ -224,7 +231,7 @@ const Login: React.FC = () => {
 
               <FormControl>
                 <FormLabel color="whiteAlpha.800" fontSize="sm" fontWeight="500" mb={1.5}>
-                  Password
+                  {t('login.password')}
                 </FormLabel>
                 <InputGroup>
                   <Input
@@ -254,7 +261,7 @@ const Login: React.FC = () => {
                   />
                   <InputRightElement h="48px" w="48px">
                     <IconButton
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                       icon={showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       variant="unstyled"
                       color="whiteAlpha.600"
@@ -279,7 +286,7 @@ const Login: React.FC = () => {
                   _hover={{ color: 'white', textDecoration: 'none' }}
                   fontWeight="500"
                 >
-                  Forgot password?
+                  {t('login.forgotPassword')}
                 </Link>
               </Flex>
 
@@ -294,13 +301,13 @@ const Login: React.FC = () => {
                 fontSize="sm"
                 borderRadius="xl"
                 isLoading={isSubmitting}
-                loadingText="Signing in..."
+                loadingText={t('login.signingIn')}
                 _hover={{ bg: 'brand.600', transform: 'translateY(-1px)' }}
                 _active={{ bg: 'brand.700', transform: 'translateY(0)' }}
                 transition="all 0.15s ease"
                 mt={2}
               >
-                Sign in
+                {t('login.signIn')}
               </Button>
             </VStack>
           </form>

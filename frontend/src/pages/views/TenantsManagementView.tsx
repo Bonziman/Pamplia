@@ -60,8 +60,13 @@ import { createUser, fetchUsers, resetUserPassword, updateUser } from '../../api
 import { TenantOut, TenantPaymentRecord } from '../../types/tenants';
 import { UserOut } from '../../types/User';
 import { useBrandedToast } from '../../hooks/useBrandedToast';
+import { useLanguage } from '../../i18n/languageContext';
 
 const TenantsManagementView: React.FC = () => {
+  const { language, locale } = useLanguage();
+  const isFr = language === 'fr';
+  const tx = (en: string, fr: string) => (isFr ? fr : en);
+
   const toast = useBrandedToast();
   const [tenants, setTenants] = useState<TenantOut[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -663,7 +668,7 @@ const TenantsManagementView: React.FC = () => {
     <div className="view-section">
       <Box p={{ base: '2', md: '4' }} bg="white">
         <Flex alignItems="center" justifyContent="space-between" mb="6" flexWrap="wrap" gap="3">
-          <Heading as="h1" size="lg" color="gray.700">Tenants</Heading>
+          <Heading as="h1" size="lg" color="gray.700">{tx('Tenants', 'Locataires')}</Heading>
           <ChakraButton
             colorScheme="brand"
             leftIcon={<Plus size={16} />}
@@ -672,29 +677,29 @@ const TenantsManagementView: React.FC = () => {
               createModal.onOpen();
             }}
           >
-            New Tenant
+            {tx('New Tenant', 'Nouveau locataire')}
           </ChakraButton>
         </Flex>
 
         <Flex mb="4" gap="3" flexWrap="wrap">
           <Input
-            placeholder="Search name or subdomain"
+            placeholder={tx('Search name or subdomain', 'Rechercher nom ou sous-domaine')}
             value={searchQuery}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
             maxW="260px"
           />
           <Select value={statusFilter} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setStatusFilter(e.target.value)} maxW="200px">
-            <option value="">All statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="">{tx('All statuses', 'Tous les statuts')}</option>
+            <option value="active">{tx('Active', 'Actif')}</option>
+            <option value="inactive">{tx('Inactive', 'Inactif')}</option>
           </Select>
           <Select value={billingFilter} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBillingFilter(e.target.value)} maxW="220px">
-            <option value="">All billing states</option>
-            <option value="trial">Trial</option>
-            <option value="active">Active</option>
-            <option value="overdue">Overdue</option>
-            <option value="suspended">Suspended</option>
-            <option value="due_soon">Due in 7 days</option>
+            <option value="">{tx('All billing states', 'Tous les etats de facturation')}</option>
+            <option value="trial">{tx('Trial', 'Essai')}</option>
+            <option value="active">{tx('Active', 'Actif')}</option>
+            <option value="overdue">{tx('Overdue', 'En retard')}</option>
+            <option value="suspended">{tx('Suspended', 'Suspendu')}</option>
+            <option value="due_soon">{tx('Due in 7 days', 'Echeance dans 7 jours')}</option>
           </Select>
           <HStack spacing="2">
             <ChakraButton
@@ -703,7 +708,7 @@ const TenantsManagementView: React.FC = () => {
               isLoading={isRunningOverdueSweep}
               onClick={handleRunOverdueSweep}
             >
-              Run Overdue Sweep
+              {tx('Run Overdue Sweep', 'Lancer le scan des retards')}
             </ChakraButton>
             <ChakraButton
               size="sm"
@@ -711,27 +716,27 @@ const TenantsManagementView: React.FC = () => {
               isLoading={isRunningReminderJob}
               onClick={handleRunReminderJob}
             >
-              Run Reminder Job
+              {tx('Run Reminder Job', 'Lancer la tache de rappel')}
             </ChakraButton>
             <ChakraButton size="sm" variant="outline" isDisabled={selectedCount === 0 || isApplyingBulkAction} onClick={handleBulkActivate}>
-              Bulk Activate
+              {tx('Bulk Activate', 'Activation en masse')}
             </ChakraButton>
             <ChakraButton size="sm" variant="outline" colorScheme="orange" isDisabled={selectedCount === 0 || isApplyingBulkAction} onClick={handleBulkMarkOverdue}>
-              Mark Overdue
+              {tx('Mark Overdue', 'Marquer en retard')}
             </ChakraButton>
             <ChakraButton size="sm" colorScheme="red" isDisabled={selectedCount === 0 || isApplyingBulkAction} onClick={handleBulkSuspend}>
-              Suspend Selected
+              {tx('Suspend Selected', 'Suspendre la selection')}
             </ChakraButton>
           </HStack>
         </Flex>
 
         {selectedCount > 0 && (
           <Text fontSize="sm" color="gray.500" mb="3">
-            {selectedCount} tenant(s) selected
+            {isFr ? `${selectedCount} locataire(s) selectionne(s)` : `${selectedCount} tenant(s) selected`}
           </Text>
         )}
         <Text fontSize="sm" color="gray.500" mb="3">
-          Tip: Recent payments appear in each tenant's details drawer.
+          {tx("Tip: Recent payments appear in each tenant's details drawer.", 'Astuce: les paiements recents apparaissent dans le panneau de details de chaque locataire.')}
         </Text>
 
         {isLoading && (
@@ -745,7 +750,7 @@ const TenantsManagementView: React.FC = () => {
         )}
 
         {!isLoading && !error && filteredTenants.length === 0 && (
-          <Text>No tenants found.</Text>
+          <Text>{tx('No tenants found.', 'Aucun locataire trouve.')}</Text>
         )}
 
         {!isLoading && !error && filteredTenants.length > 0 && (
@@ -760,13 +765,13 @@ const TenantsManagementView: React.FC = () => {
                       aria-label="Select all visible tenants"
                     />
                   </Th>
-                  <Th>Name</Th>
-                  <Th>Subdomain</Th>
-                  <Th>Status</Th>
-                  <Th>Billing</Th>
-                  <Th>Next Due</Th>
-                  <Th>Timezone</Th>
-                  <Th>Currency</Th>
+                  <Th>{tx('Name', 'Nom')}</Th>
+                  <Th>{tx('Subdomain', 'Sous-domaine')}</Th>
+                  <Th>{tx('Status', 'Statut')}</Th>
+                  <Th>{tx('Billing', 'Facturation')}</Th>
+                  <Th>{tx('Next Due', 'Prochaine echeance')}</Th>
+                  <Th>{tx('Timezone', 'Fuseau')}</Th>
+                  <Th>{tx('Currency', 'Devise')}</Th>
                   <Th></Th>
                 </Tr>
               </Thead>
@@ -789,7 +794,7 @@ const TenantsManagementView: React.FC = () => {
                     <Td>{tenant.subdomain}</Td>
                     <Td>
                       <Tag size="sm" colorScheme={tenant.is_active ? 'green' : 'red'}>
-                        {tenant.is_active ? 'Active' : 'Inactive'}
+                        {tenant.is_active ? tx('Active', 'Actif') : tx('Inactive', 'Inactif')}
                       </Tag>
                     </Td>
                     <Td>
@@ -805,14 +810,14 @@ const TenantsManagementView: React.FC = () => {
                                 : 'gray'
                         }
                       >
-                        {tenant.billing_status || 'trial'}
+                        {tenant.billing_status || tx('trial', 'essai')}
                       </Tag>
                     </Td>
                     <Td>
                       <HStack spacing="2">
-                        <Text>{tenant.next_due_at ? new Date(tenant.next_due_at).toLocaleDateString() : '-'}</Text>
-                        {isOverdue && <Tag size="sm" colorScheme="red">Overdue</Tag>}
-                        {!isOverdue && isDueSoon && <Tag size="sm" colorScheme="orange">Due Soon</Tag>}
+                        <Text>{tenant.next_due_at ? new Date(tenant.next_due_at).toLocaleDateString(locale) : '-'}</Text>
+                        {isOverdue && <Tag size="sm" colorScheme="red">{tx('Overdue', 'En retard')}</Tag>}
+                        {!isOverdue && isDueSoon && <Tag size="sm" colorScheme="orange">{tx('Due Soon', 'Bientot du')}</Tag>}
                       </HStack>
                     </Td>
                     <Td>{tenant.timezone}</Td>
@@ -836,10 +841,10 @@ const TenantsManagementView: React.FC = () => {
                           onClick={() => handleOpenDetails(tenant)}
                         />
                         <ChakraButton size="sm" variant="outline" colorScheme="brand" onClick={() => handleOpenEdit(tenant)}>
-                          Edit
+                          {tx('Edit', 'Modifier')}
                         </ChakraButton>
                         <ChakraButton size="sm" variant="outline" colorScheme={tenant.is_active ? 'red' : 'green'} onClick={() => handleToggleTenantStatus(tenant)}>
-                          {tenant.is_active ? 'Suspend' : 'Activate'}
+                          {tenant.is_active ? tx('Suspend', 'Suspendre') : tx('Activate', 'Activer')}
                         </ChakraButton>
                       </HStack>
                     </Td>
@@ -857,12 +862,12 @@ const TenantsManagementView: React.FC = () => {
           <DrawerHeader>
             <Flex alignItems="center" justifyContent="space-between" gap="4">
               <Box>
-                <Heading size="md">{selectedTenant?.name || 'Tenant'}</Heading>
+                <Heading size="md">{selectedTenant?.name || tx('Tenant', 'Locataire')}</Heading>
                 <Text color="gray.500" fontSize="sm">{selectedTenant?.subdomain}</Text>
               </Box>
               <HStack>
                 <Badge colorScheme={selectedTenant?.is_active ? 'green' : 'red'}>
-                  {selectedTenant?.is_active ? 'Active' : 'Inactive'}
+                  {selectedTenant?.is_active ? tx('Active', 'Actif') : tx('Inactive', 'Inactif')}
                 </Badge>
                 <Badge
                   colorScheme={
@@ -890,7 +895,7 @@ const TenantsManagementView: React.FC = () => {
             {!isLoadingDetails && selectedTenant && (
               <>
                 <Box mb="6">
-                  <Heading as="h3" size="sm" mb="3">Overview</Heading>
+                  <Heading as="h3" size="sm" mb="3">{tx('Overview', 'Apercu')}</Heading>
                   <Flex gap="4" flexWrap="wrap">
                     <Box flex="1" minW="180px" bg="gray.50" p="3" borderRadius="md">
                       <Text fontSize="xs" color="gray.500">Revenue (30 days)</Text>
@@ -914,7 +919,7 @@ const TenantsManagementView: React.FC = () => {
                 <Divider mb="6" />
 
                 <Box mb="6">
-                  <Heading as="h3" size="sm" mb="3">Users & Roles</Heading>
+                  <Heading as="h3" size="sm" mb="3">{tx('Users & Roles', 'Utilisateurs et roles')}</Heading>
                   {tenantUsers.length === 0 ? (
                     <Text color="gray.500">No users found for this tenant.</Text>
                   ) : (
@@ -959,7 +964,7 @@ const TenantsManagementView: React.FC = () => {
                 <Divider mb="6" />
 
                 <Box mb="6">
-                  <Heading as="h3" size="sm" mb="3">Billing Summary</Heading>
+                  <Heading as="h3" size="sm" mb="3">{tx('Billing Summary', 'Resume de facturation')}</Heading>
                   <Text fontSize="sm" color="gray.600">Manual cash/bank workflow for activation and renewals.</Text>
                   <Flex gap="4" flexWrap="wrap" mt="3">
                     <Box flex="1" minW="180px" bg="gray.50" p="3" borderRadius="md">
@@ -981,7 +986,7 @@ const TenantsManagementView: React.FC = () => {
                   </Flex>
                   <HStack mt="4" spacing="3">
                     <ChakraButton size="sm" colorScheme="brand" onClick={handleOpenPaymentModal}>
-                      Record Payment
+                      {tx('Record Payment', 'Enregistrer un paiement')}
                     </ChakraButton>
                     <ChakraButton
                       size="sm"
@@ -1002,7 +1007,7 @@ const TenantsManagementView: React.FC = () => {
                         }
                       }}
                     >
-                      Activate
+                      {tx('Activate', 'Activer')}
                     </ChakraButton>
                   </HStack>
 
@@ -1042,7 +1047,7 @@ const TenantsManagementView: React.FC = () => {
                 <Divider mb="6" />
 
                 <Box mb="6">
-                  <Heading as="h3" size="sm" mb="3">Reminder Reliability</Heading>
+                  <Heading as="h3" size="sm" mb="3">{tx('Reminder Reliability', 'Fiabilite des rappels')}</Heading>
                   {!tenantReminderHealth ? (
                     <Text fontSize="sm" color="gray.500">No reminder telemetry available yet.</Text>
                   ) : (
@@ -1068,7 +1073,7 @@ const TenantsManagementView: React.FC = () => {
                   )}
                   <HStack spacing="3">
                     <ChakraButton size="sm" variant="outline" isLoading={isRetryingReminders} onClick={handleRetryFailedReminders}>
-                      Retry Failed Reminders
+                      {tx('Retry Failed Reminders', 'Relancer les rappels en echec')}
                     </ChakraButton>
                     <ChakraButton
                       size="sm"
@@ -1084,7 +1089,7 @@ const TenantsManagementView: React.FC = () => {
                         }
                       }}
                     >
-                      Refresh
+                      {tx('Refresh', 'Actualiser')}
                     </ChakraButton>
                   </HStack>
                 </Box>
@@ -1092,7 +1097,7 @@ const TenantsManagementView: React.FC = () => {
                 <Divider mb="6" />
 
                 <Box>
-                  <Heading as="h3" size="sm" mb="3">Data Export</Heading>
+                  <Heading as="h3" size="sm" mb="3">{tx('Data Export', 'Export de donnees')}</Heading>
                   <Text fontSize="sm" color="gray.600" mb="3">Download a summary snapshot of this tenant.</Text>
                   <ChakraButton
                     size="sm"
@@ -1109,17 +1114,17 @@ const TenantsManagementView: React.FC = () => {
                       URL.revokeObjectURL(url);
                     }}
                   >
-                    Export Summary JSON
+                    {tx('Export Summary JSON', 'Exporter le resume JSON')}
                   </ChakraButton>
                 </Box>
               </>
             )}
           </DrawerBody>
           <DrawerFooter>
-            <ChakraButton variant="ghost" mr="3" onClick={detailDrawer.onClose}>Close</ChakraButton>
+            <ChakraButton variant="ghost" mr="3" onClick={detailDrawer.onClose}>{tx('Close', 'Fermer')}</ChakraButton>
             {selectedTenant && baseDomain && (
               <ChakraButton colorScheme="brand" onClick={() => window.open(`${protocol}//${selectedTenant.subdomain}.${baseDomain}/dashboard`, '_blank')}>
-                Open Tenant
+                {tx('Open Tenant', 'Ouvrir le locataire')}
               </ChakraButton>
             )}
           </DrawerFooter>
@@ -1129,10 +1134,10 @@ const TenantsManagementView: React.FC = () => {
       <Modal isOpen={createModal.isOpen} onClose={createModal.onClose} isCentered>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Tenant Onboarding Wizard</ModalHeader>
+          <ModalHeader>{tx('Tenant Onboarding Wizard', 'Assistant d\'onboarding locataire')}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <Text fontSize="sm" color="gray.500" mb="3">Step {createStep} of 4</Text>
+            <Text fontSize="sm" color="gray.500" mb="3">{tx('Step', 'Etape')} {createStep} {tx('of', 'sur')} 4</Text>
 
             {createStep === 1 && (
               <>
@@ -1270,20 +1275,20 @@ const TenantsManagementView: React.FC = () => {
               }}
               isDisabled={isCreatingTenant}
             >
-              Cancel
+              {tx('Cancel', 'Annuler')}
             </ChakraButton>
             {createStep > 1 && (
               <ChakraButton variant="outline" mr="3" onClick={() => setCreateStep((step) => Math.max(1, step - 1))} isDisabled={isCreatingTenant}>
-                Back
+                {tx('Back', 'Retour')}
               </ChakraButton>
             )}
             {createStep < 4 ? (
               <ChakraButton colorScheme="brand" onClick={() => setCreateStep((step) => Math.min(4, step + 1))} isDisabled={isCreatingTenant}>
-                Next
+                {tx('Next', 'Suivant')}
               </ChakraButton>
             ) : (
               <ChakraButton colorScheme="brand" onClick={handleCreateTenant} isLoading={isCreatingTenant}>
-                Provision Tenant
+                {tx('Provision Tenant', 'Provisionner le locataire')}
               </ChakraButton>
             )}
           </ModalFooter>
@@ -1293,7 +1298,7 @@ const TenantsManagementView: React.FC = () => {
       <Modal isOpen={editModal.isOpen} onClose={editModal.onClose} isCentered>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Edit Tenant</ModalHeader>
+          <ModalHeader>{tx('Edit Tenant', 'Modifier locataire')}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <FormControl mb="3">
@@ -1329,8 +1334,8 @@ const TenantsManagementView: React.FC = () => {
             </FormControl>
           </ModalBody>
           <ModalFooter>
-            <ChakraButton variant="ghost" mr="3" onClick={editModal.onClose}>Cancel</ChakraButton>
-            <ChakraButton colorScheme="brand" onClick={handleSaveTenant}>Save</ChakraButton>
+            <ChakraButton variant="ghost" mr="3" onClick={editModal.onClose}>{tx('Cancel', 'Annuler')}</ChakraButton>
+            <ChakraButton colorScheme="brand" onClick={handleSaveTenant}>{tx('Save', 'Enregistrer')}</ChakraButton>
           </ModalFooter>
         </ModalContent>
       </Modal>
@@ -1338,18 +1343,18 @@ const TenantsManagementView: React.FC = () => {
       <Modal isOpen={resetModal.isOpen} onClose={resetModal.onClose} isCentered>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Reset Password</ModalHeader>
+          <ModalHeader>{tx('Reset Password', 'Reinitialiser le mot de passe')}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <Text mb="3">Reset password for {resetUser?.email}</Text>
+            <Text mb="3">{tx('Reset password for', 'Reinitialiser le mot de passe de')} {resetUser?.email}</Text>
             <FormControl>
               <FormLabel>New password</FormLabel>
               <Input type="password" value={resetPasswordValue} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setResetPasswordValue(e.target.value)} />
             </FormControl>
           </ModalBody>
           <ModalFooter>
-            <ChakraButton variant="ghost" mr="3" onClick={resetModal.onClose}>Cancel</ChakraButton>
-            <ChakraButton colorScheme="brand" onClick={handleResetPassword}>Reset</ChakraButton>
+            <ChakraButton variant="ghost" mr="3" onClick={resetModal.onClose}>{tx('Cancel', 'Annuler')}</ChakraButton>
+            <ChakraButton colorScheme="brand" onClick={handleResetPassword}>{tx('Reset', 'Reinitialiser')}</ChakraButton>
           </ModalFooter>
         </ModalContent>
       </Modal>
@@ -1357,7 +1362,7 @@ const TenantsManagementView: React.FC = () => {
       <Modal isOpen={paymentModal.isOpen} onClose={paymentModal.onClose} isCentered>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Record Payment</ModalHeader>
+          <ModalHeader>{tx('Record Payment', 'Enregistrer un paiement')}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <FormControl mb="3" isRequired>
@@ -1428,9 +1433,9 @@ const TenantsManagementView: React.FC = () => {
             </Checkbox>
           </ModalBody>
           <ModalFooter>
-            <ChakraButton variant="ghost" mr="3" onClick={paymentModal.onClose}>Cancel</ChakraButton>
+            <ChakraButton variant="ghost" mr="3" onClick={paymentModal.onClose}>{tx('Cancel', 'Annuler')}</ChakraButton>
             <ChakraButton colorScheme="brand" onClick={handleCreatePayment} isLoading={isSubmittingPayment}>
-              Save Payment
+              {tx('Save Payment', 'Enregistrer le paiement')}
             </ChakraButton>
           </ModalFooter>
         </ModalContent>

@@ -44,7 +44,7 @@ export const fetchAppointments = async (): Promise<FetchedAppointment[]> => {
     try {
         const apiUrl = buildApiUrl("/appointments/");
         const response = await axiosInstance.get<FetchedAppointment[]>(apiUrl);
-        return response.data;
+        return Array.isArray(response.data) ? response.data : [];
     } catch (error) {
         console.error("Error fetching appointments:", error);
         if (axios.isAxiosError(error)) { /* ... error logging ... */ }

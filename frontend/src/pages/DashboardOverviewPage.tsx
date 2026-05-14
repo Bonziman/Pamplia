@@ -41,6 +41,7 @@ import {
 } from '@chakra-ui/react';
 import { XAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { DataCard, StatsGridSkeleton, ChartSkeleton } from '../components/ui';
+import { useLanguage } from '../i18n/languageContext';
 
 type DashboardOverviewPageProps = {
   userName?: string;
@@ -59,7 +60,11 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   loadingAppointments = false,
   onAppointmentClick,
 }) => {
-  const UI_LOCALE = 'fr-MA';
+  const { language, locale } = useLanguage();
+  const isFr = language === 'fr';
+  const tx = (en: string, fr: string) => (isFr ? fr : en);
+
+  const UI_LOCALE = locale;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedPeriod, setSelectedPeriod] = useState<StatsPeriod>('last_7_days');
@@ -68,8 +73,8 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   const { data: stats, isLoading: isLoadingStats, error: statsError } = useDashboardStats(selectedPeriod);
   const { data: chartDataResponse, isLoading: isLoadingChart, error: chartQueryError } = useRevenueChart();
 
-  const error = statsError ? (statsError as any)?.response?.data?.detail || 'Failed to load dashboard data.' : null;
-  const chartError = chartQueryError ? 'Chart data is unavailable.' : null;
+  const error = statsError ? (statsError as any)?.response?.data?.detail || tx('Failed to load dashboard data.', 'Echec du chargement des donnees du tableau de bord.') : null;
+  const chartError = chartQueryError ? tx('Chart data is unavailable.', 'Les donnees du graphique ne sont pas disponibles.') : null;
 
   const revenueChartData = chartDataResponse?.trend
     ? chartDataResponse.trend.map((item: DailyRevenueData) => ({
@@ -94,11 +99,11 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
 
   const getStatusLabel = (status: string | undefined | null) => {
     const normalized = normalizeStatus(status);
-    if (normalized === 'done') return 'Completed';
-    if (normalized === 'pending') return 'Pending';
-    if (normalized === 'confirmed') return 'Confirmed';
-    if (normalized === 'cancelled') return 'Cancelled';
-    return 'Unknown';
+    if (normalized === 'done') return tx('Completed', 'Termine');
+    if (normalized === 'pending') return tx('Pending', 'En attente');
+    if (normalized === 'confirmed') return tx('Confirmed', 'Confirme');
+    if (normalized === 'cancelled') return tx('Cancelled', 'Annule');
+    return tx('Unknown', 'Inconnu');
   };
 
   const getStatusColor = (status: string) => {
@@ -228,7 +233,7 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
 
     todaysAppointments.forEach((appt) => {
       (appt.services || []).forEach((service) => {
-        const key = service.name || 'Service';
+        const key = service.name || tx('Service', 'Service');
         serviceCount.set(key, (serviceCount.get(key) || 0) + 1);
       });
     });
@@ -239,14 +244,14 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   }, [todaysAppointments]);
 
   const nextAppointmentLabel = useMemo(() => {
-    if (!nextUpcomingAppointment) return 'No upcoming slot';
+    if (!nextUpcomingAppointment) return tx('No upcoming slot', 'Aucun prochain creneau');
     const diffMs = new Date(nextUpcomingAppointment.appointment_time).getTime() - now.getTime();
     const diffMins = Math.max(0, Math.round(diffMs / 60000));
-    if (diffMins < 60) return `in ${diffMins} min`;
+    if (diffMins < 60) return isFr ? `dans ${diffMins} min` : `in ${diffMins} min`;
     const hours = Math.floor(diffMins / 60);
     const mins = diffMins % 60;
-    return `in ${hours}h ${mins}m`;
-  }, [nextUpcomingAppointment, now]);
+    return isFr ? `dans ${hours}h ${mins}m` : `in ${hours}h ${mins}m`;
+  }, [nextUpcomingAppointment, now, isFr, tx]);
 
   const isSuperAdmin = userRole === 'super_admin';
 
@@ -261,20 +266,20 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
       >
         <Box>
           <Heading as="h1" size="xl" color="gray.900" fontWeight="700" letterSpacing="-0.02em">
-            Hello, {userName ? userName.split(' ')[0] : 'there'}
+            {tx('Hello,', 'Bonjour,')} {userName ? userName.split(' ')[0] : tx('there', 'vous')}
           </Heading>
           <Text color="gray.500" fontSize="sm" mt={1} mb={0}>
-            Decision-first overview: what needs action now, what drives revenue, and what is at risk.
+            {tx('Decision-first overview: what needs action now, what drives revenue, and what is at risk.', 'Vue operationnelle: actions immediates, moteurs de revenu et points a risque.')}
           </Text>
         </Box>
 
         {isSuperAdmin ? (
           <Flex gap="3" flexWrap="wrap">
             <ChakraButton colorScheme="brand" onClick={() => navigate('/dashboard/tenants')} size="md">
-              Manage Tenants
+              {tx('Manage Tenants', 'Gerer les locataires')}
             </ChakraButton>
             <ChakraButton variant="outline" colorScheme="brand" onClick={() => navigate('/dashboard/users')} size="md">
-              Manage Users
+              {tx('Manage Users', 'Gerer les utilisateurs')}
             </ChakraButton>
           </Flex>
         ) : (
@@ -284,17 +289,17 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
             leftIcon={<Plus size={16} />}
             size="md"
           >
-            New Appointment
+            {tx('New Appointment', 'Nouveau rendez-vous')}
           </ChakraButton>
         )}
       </Flex>
 
       {error && !isLoadingStats && (
         <Box p={5} bg="red.50" color="red.700" borderRadius="xl" border="1px solid" borderColor="red.200" mb={6}>
-          <Text fontWeight="600" mb={1}>Failed to load dashboard data</Text>
+          <Text fontWeight="600" mb={1}>{tx('Failed to load dashboard data', 'Echec du chargement des donnees du tableau de bord')}</Text>
           <Text fontSize="sm" color="red.600">{error}</Text>
           <ChakraButton colorScheme="red" variant="link" size="sm" mt={2} onClick={handleRetry}>
-            Try Again
+            {tx('Try Again', 'Reessayer')}
           </ChakraButton>
         </Box>
       )}
@@ -305,17 +310,17 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
             <Flex align="center" gap={2} mb={4}>
               <Icon as={Building2} boxSize="5" color="gray.500" strokeWidth={1.5} />
               <Heading as="h2" size="md" color="gray.700" fontWeight="600">
-                Platform Control Center
+                {tx('Platform Control Center', 'Centre de controle plateforme')}
               </Heading>
             </Flex>
             {isLoadingStats ? (
               <StatsGridSkeleton count={4} />
             ) : stats && (
               <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} gap={5}>
-                <DataCard label="Tenants" value={stats.tenants_total ?? 0} icon={Building2} iconColor="purple.500" iconBg="purple.50" />
-                <DataCard label="Appointments (total)" value={stats.appointments_total ?? 0} icon={CalendarCheck} iconColor="orange.500" iconBg="orange.50" />
-                <DataCard label="Clients (total)" value={stats.clients_total ?? 0} icon={Users} iconColor="green.500" iconBg="green.50" />
-                <DataCard label="Pending appointments" value={stats.pending_appointments_total ?? 0} icon={AlertTriangle} iconColor="yellow.600" iconBg="yellow.50" />
+                <DataCard label={tx('Tenants', 'Locataires')} value={stats.tenants_total ?? 0} icon={Building2} iconColor="purple.500" iconBg="purple.50" />
+                <DataCard label={tx('Appointments (total)', 'Rendez-vous (total)')} value={stats.appointments_total ?? 0} icon={CalendarCheck} iconColor="orange.500" iconBg="orange.50" />
+                <DataCard label={tx('Clients (total)', 'Clients (total)')} value={stats.clients_total ?? 0} icon={Users} iconColor="green.500" iconBg="green.50" />
+                <DataCard label={tx('Pending appointments', 'Rendez-vous en attente')} value={stats.pending_appointments_total ?? 0} icon={AlertTriangle} iconColor="yellow.600" iconBg="yellow.50" />
               </SimpleGrid>
             )}
           </Box>
@@ -324,28 +329,28 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
             <Box bg="white" p={5} borderRadius="xl" border="1px solid" borderColor="gray.200">
               <HStack spacing={2} mb={3}>
                 <Icon as={ListChecks} boxSize={4} color="brand.500" />
-                <Text fontSize="sm" fontWeight="700" color="gray.700">Immediate Follow-ups</Text>
+                <Text fontSize="sm" fontWeight="700" color="gray.700">{tx('Immediate Follow-ups', 'Suivis immediats')}</Text>
               </HStack>
               <VStack spacing={2} align="stretch">
                 <HStack justify="space-between" p={2.5} borderRadius="lg" bg="gray.50" borderWidth="1px" borderColor="gray.100">
                   <Box>
-                    <Text fontSize="xs" color="gray.500">Pending Appointments</Text>
+                    <Text fontSize="xs" color="gray.500">{tx('Pending Appointments', 'Rendez-vous en attente')}</Text>
                     <Text fontSize="md" fontWeight="700" color="gray.800">{stats?.pending_appointments_total ?? 0}</Text>
                   </Box>
-                  <ChakraButton size="xs" variant="outline" onClick={() => navigate('/dashboard/tenants')}>Open</ChakraButton>
+                  <ChakraButton size="xs" variant="outline" onClick={() => navigate('/dashboard/tenants')}>{tx('Open', 'Ouvrir')}</ChakraButton>
                 </HStack>
                 <HStack justify="space-between" p={2.5} borderRadius="lg" bg="gray.50" borderWidth="1px" borderColor="gray.100">
                   <Box>
-                    <Text fontSize="xs" color="gray.500">Unconfirmed Clients</Text>
+                    <Text fontSize="xs" color="gray.500">{tx('Unconfirmed Clients', 'Clients non confirmes')}</Text>
                     <Text fontSize="md" fontWeight="700" color="gray.800">{stats?.unconfirmed_clients_total ?? 0}</Text>
                   </Box>
-                  <ChakraButton size="xs" variant="outline" onClick={() => navigate('/dashboard/users')}>Review</ChakraButton>
+                  <ChakraButton size="xs" variant="outline" onClick={() => navigate('/dashboard/users')}>{tx('Review', 'Verifier')}</ChakraButton>
                 </HStack>
               </VStack>
             </Box>
 
             <Box bg="white" p={5} borderRadius="xl" border="1px solid" borderColor="gray.200" gridColumn={{ base: 'auto', lg: 'span 2' }}>
-              <Heading as="h2" size="sm" color="gray.700" fontWeight="700" mb={3}>Revenue Trend</Heading>
+              <Heading as="h2" size="sm" color="gray.700" fontWeight="700" mb={3}>{tx('Revenue Trend', 'Tendance du revenu')}</Heading>
               {isLoadingChart ? (
                 <ChartSkeleton height="260px" />
               ) : (
@@ -375,13 +380,13 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                           formatter={(value: number, name: string) => [formatCurrencyForChartTooltip(value), name]}
                         />
                         <Legend verticalAlign="top" align="right" height={36} iconSize={8} iconType="circle" wrapperStyle={{ fontSize: '12px', color: theme.colors.gray[500] }} />
-                        <Area type="monotone" dataKey="revenue" name="Revenue (MAD)" stroke={theme.colors.brand[500]} strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" dot={false} />
+                        <Area type="monotone" dataKey="revenue" name={tx('Revenue (MAD)', 'Revenu (MAD)')} stroke={theme.colors.brand[500]} strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" dot={false} />
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
                     <Center h="100%" flexDirection="column" gap={2}>
                       <Icon as={TrendingUp} boxSize="8" color="gray.300" strokeWidth={1.5} />
-                      <Text color="gray.400" fontSize="sm">No revenue data for the past 7 days</Text>
+                      <Text color="gray.400" fontSize="sm">{tx('No revenue data for the past 7 days', 'Aucune donnee de revenu sur les 7 derniers jours')}</Text>
                     </Center>
                   )}
                 </Box>
@@ -395,7 +400,7 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
             <Flex align="center" gap={2} mb={4}>
               <Icon as={Timer} boxSize="5" color="brand.500" strokeWidth={1.5} />
               <Heading as="h2" size="md" color="gray.700" fontWeight="600">
-                Today Control Center
+                {tx('Today Control Center', 'Centre de pilotage du jour')}
               </Heading>
             </Flex>
             {isLoadingStats ? (
@@ -403,7 +408,7 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
             ) : (
               <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} gap={5}>
                 <DataCard
-                  label="Next Appointment"
+                  label={tx('Next Appointment', 'Prochain rendez-vous')}
                   value={nextUpcomingAppointment ? formatTime(nextUpcomingAppointment.appointment_time) : '—'}
                   subtitle={nextAppointmentLabel}
                   icon={CalendarDays}
@@ -412,26 +417,26 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                   onClick={() => navigate('/dashboard/calendar')}
                 />
                 <DataCard
-                  label="Confirmation Rate"
+                  label={tx('Confirmation Rate', 'Taux de confirmation')}
                   value={todaysAppointments.length > 0 ? `${confirmationRateToday.toFixed(0)}%` : '—'}
-                  subtitle={`${confirmedToday}/${todaysAppointments.length || 0} appointments confirmed`}
+                  subtitle={tx(`${confirmedToday}/${todaysAppointments.length || 0} appointments confirmed`, `${confirmedToday}/${todaysAppointments.length || 0} rendez-vous confirmes`)}
                   icon={CheckCircle2}
                   iconColor="green.500"
                   iconBg="green.50"
                 />
                 <DataCard
-                  label="Booked Value Today"
+                  label={tx('Booked Value Today', 'Valeur reservee aujourd\'hui')}
                   value={formatCurrency(bookedValueToday)}
                   unit="DH"
-                  subtitle="Estimated from scheduled services"
+                  subtitle={tx('Estimated from scheduled services', 'Estimation basee sur les services planifies')}
                   icon={DollarSign}
                   iconColor="blue.500"
                   iconBg="blue.50"
                 />
                 <DataCard
-                  label="Pending Next 24h"
+                  label={tx('Pending Next 24h', 'En attente prochaines 24h')}
                   value={pendingNext24h.length}
-                  subtitle={atRiskNext6h.length > 0 ? `${atRiskNext6h.length} in next 6h` : 'No immediate risk'}
+                  subtitle={atRiskNext6h.length > 0 ? tx(`${atRiskNext6h.length} in next 6h`, `${atRiskNext6h.length} dans les 6h`) : tx('No immediate risk', 'Aucun risque immediat')}
                   icon={AlertTriangle}
                   iconColor="yellow.600"
                   iconBg="yellow.50"
@@ -444,7 +449,7 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           <SimpleGrid columns={{ base: 1, xl: 3 }} gap={6} mb={8} alignItems="start">
             <Box gridColumn={{ xl: 'span 2' }}>
               <Flex align="center" justify="space-between" mb={3}>
-                <Heading as="h2" size="sm" color="gray.700" fontWeight="700">Today's Timeline</Heading>
+                <Heading as="h2" size="sm" color="gray.700" fontWeight="700">{tx("Today's Timeline", 'Timeline du jour')}</Heading>
                 <Badge colorScheme="brand" borderRadius="full" px={2}>{todaysAppointments.length}</Badge>
               </Flex>
 
@@ -457,9 +462,9 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
               ) : todaysAppointments.length === 0 ? (
                 <Box bg="white" p={6} borderRadius="xl" border="1px solid" borderColor="gray.200" textAlign="center">
                   <Icon as={Sparkles} boxSize="7" color="gray.300" strokeWidth={1.5} mb={2} />
-                  <Text color="gray.500" fontSize="sm" fontWeight="500">No appointments today</Text>
+                  <Text color="gray.500" fontSize="sm" fontWeight="500">{tx('No appointments today', "Aucun rendez-vous aujourd'hui")}</Text>
                   <ChakraButton size="sm" variant="outline" mt={3} onClick={() => navigate('/dashboard/calendar')}>
-                    Open Calendar
+                    {tx('Open Calendar', 'Ouvrir le calendrier')}
                   </ChakraButton>
                 </Box>
               ) : (
@@ -482,8 +487,8 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                           <Text fontSize="2xs" color="gray.400" mb={0}>#{appt.id}</Text>
                         </Box>
                         <Box flex={1} minW={0}>
-                          <Text fontSize="sm" fontWeight="600" color="gray.800" noOfLines={1}>{appt.client_name || 'Walk-in'}</Text>
-                          <Text fontSize="xs" color="gray.500" noOfLines={1}>{appt.services?.map((s: any) => s.name).join(', ') || 'No service linked'}</Text>
+                          <Text fontSize="sm" fontWeight="600" color="gray.800" noOfLines={1}>{appt.client_name || tx('Walk-in', 'Sans reservation')}</Text>
+                          <Text fontSize="xs" color="gray.500" noOfLines={1}>{appt.services?.map((s: any) => s.name).join(', ') || tx('No service linked', 'Aucun service lie')}</Text>
                         </Box>
                         <VStack spacing={1} align="end">
                           <Badge colorScheme={getStatusColor(appt.status)} borderRadius="full" px={2} fontSize="2xs" textTransform="none">
@@ -502,20 +507,20 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
               <Box bg="white" p={4} borderRadius="xl" border="1px solid" borderColor="gray.200">
                 <HStack spacing={2} mb={3}>
                   <Icon as={ListChecks} boxSize={4} color="orange.500" />
-                  <Text fontSize="sm" fontWeight="700" color="gray.700">Action Queue</Text>
+                  <Text fontSize="sm" fontWeight="700" color="gray.700">{tx('Action Queue', "File d'action")}</Text>
                 </HStack>
                 {pendingNext24h.length === 0 ? (
-                  <Text fontSize="sm" color="gray.500">No pending confirmations in the next 24h.</Text>
+                  <Text fontSize="sm" color="gray.500">{tx('No pending confirmations in the next 24h.', 'Aucune confirmation en attente dans les prochaines 24h.')}</Text>
                 ) : (
                   <VStack spacing={2} align="stretch">
                     {pendingNext24h.slice(0, 5).map((appt) => (
                       <HStack key={appt.id} justify="space-between" p={2.5} borderRadius="lg" bg="gray.50" borderWidth="1px" borderColor="gray.100">
                         <Box>
                           <Text fontSize="xs" color="gray.500">{formatTime(appt.appointment_time)}</Text>
-                          <Text fontSize="sm" fontWeight="600" color="gray.800" noOfLines={1}>{appt.client_name || 'Walk-in'}</Text>
+                          <Text fontSize="sm" fontWeight="600" color="gray.800" noOfLines={1}>{appt.client_name || tx('Walk-in', 'Sans reservation')}</Text>
                         </Box>
                         <ChakraButton size="xs" variant="outline" onClick={() => navigate('/dashboard/calendar')}>
-                          Confirm
+                          {tx('Confirm', 'Confirmer')}
                         </ChakraButton>
                       </HStack>
                     ))}
@@ -526,12 +531,12 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
               <Box bg="white" p={4} borderRadius="xl" border="1px solid" borderColor="gray.200">
                 <HStack spacing={2} mb={3}>
                   <Icon as={CalendarCheck} boxSize={4} color="brand.500" />
-                  <Text fontSize="sm" fontWeight="700" color="gray.700">Capacity By Daypart</Text>
+                  <Text fontSize="sm" fontWeight="700" color="gray.700">{tx('Capacity By Daypart', 'Capacite par tranche horaire')}</Text>
                 </HStack>
                 {(['morning', 'afternoon', 'evening'] as const).map((slot) => {
                   const count = daypartCounts[slot];
                   const pct = todaysAppointments.length > 0 ? Math.round((count / todaysAppointments.length) * 100) : 0;
-                  const label = slot.charAt(0).toUpperCase() + slot.slice(1);
+                  const label = slot === 'morning' ? tx('Morning', 'Matin') : slot === 'afternoon' ? tx('Afternoon', 'Apres-midi') : tx('Evening', 'Soir');
                   return (
                     <Box key={slot} mb={2.5}>
                       <HStack justify="space-between" mb={1}>
@@ -545,17 +550,17 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                   );
                 })}
                 <Text fontSize="xs" color="gray.500" mt={2}>
-                  Peak: {peakDaypart.slot} ({peakDaypart.count} appointments)
+                  {tx('Peak', 'Pic')}: {peakDaypart.slot === 'morning' ? tx('Morning', 'Matin') : peakDaypart.slot === 'afternoon' ? tx('Afternoon', 'Apres-midi') : tx('Evening', 'Soir')} ({peakDaypart.count} {tx('appointments', 'rendez-vous')})
                 </Text>
               </Box>
 
               <Box bg="white" p={4} borderRadius="xl" border="1px solid" borderColor="gray.200">
                 <HStack spacing={2} mb={3}>
                   <Icon as={Briefcase} boxSize={4} color="blue.500" />
-                  <Text fontSize="sm" fontWeight="700" color="gray.700">Top Services Today</Text>
+                  <Text fontSize="sm" fontWeight="700" color="gray.700">{tx('Top Services Today', "Top services d'aujourd'hui")}</Text>
                 </HStack>
                 {topServicesToday.length === 0 ? (
-                  <Text fontSize="sm" color="gray.500">No service data yet for today.</Text>
+                  <Text fontSize="sm" color="gray.500">{tx('No service data yet for today.', "Aucune donnee service pour aujourd'hui.")}</Text>
                 ) : (
                   <VStack spacing={2} align="stretch">
                     {topServicesToday.map(([service, count]) => (
@@ -575,7 +580,7 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
       <SimpleGrid columns={{ base: 1, xl: 3 }} gap={6} mb={8}>
         <Box gridColumn={{ xl: 'span 2' }}>
           <Heading as="h2" size="md" color="gray.700" fontWeight="600" mb={4}>
-            Revenue Trend
+            {tx('Revenue Trend', 'Tendance du revenu')}
           </Heading>
           {isLoadingChart ? (
             <ChartSkeleton height="280px" />
@@ -636,7 +641,7 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                     <Area
                       type="monotone"
                       dataKey="revenue"
-                      name="Revenue (MAD)"
+                      name={tx('Revenue (MAD)', 'Revenu (MAD)')}
                       stroke={theme.colors.brand[500]}
                       strokeWidth={2.5}
                       fillOpacity={1}
@@ -649,7 +654,7 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
               ) : (
                 <Center h="100%" flexDirection="column" gap={2}>
                   <Icon as={TrendingUp} boxSize="8" color="gray.300" strokeWidth={1.5} />
-                  <Text color="gray.400" fontSize="sm">No revenue data for the past 7 days</Text>
+                  <Text color="gray.400" fontSize="sm">{tx('No revenue data for the past 7 days', 'Aucune donnee de revenu sur les 7 derniers jours')}</Text>
                 </Center>
               )}
             </Box>
@@ -660,7 +665,7 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           <Box bg="white" p={4} borderRadius="xl" border="1px solid" borderColor="gray.200">
             <Flex align="center" gap={2} mb={3}>
               <Icon as={CalendarDays} boxSize="4" color="gray.500" strokeWidth={1.5} />
-              <Text fontSize="sm" fontWeight="700" color="gray.700">Period Activity</Text>
+              <Text fontSize="sm" fontWeight="700" color="gray.700">{tx('Period Activity', 'Activite de periode')}</Text>
             </Flex>
             <Select
               value={selectedPeriod}
@@ -682,19 +687,19 @@ const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
 
             <VStack spacing={2.5} align="stretch">
               <HStack justify="space-between" p={2.5} borderRadius="lg" bg="gray.50" borderWidth="1px" borderColor="gray.100">
-                <Text fontSize="sm" color="gray.700">Completed</Text>
+                <Text fontSize="sm" color="gray.700">{tx('Completed', 'Termine')}</Text>
                 <Text fontSize="sm" fontWeight="700" color="gray.800">{stats.completed_appointments_period ?? '—'}</Text>
               </HStack>
               <HStack justify="space-between" p={2.5} borderRadius="lg" bg="gray.50" borderWidth="1px" borderColor="gray.100">
-                <Text fontSize="sm" color="gray.700">Revenue</Text>
+                <Text fontSize="sm" color="gray.700">{tx('Revenue', 'Revenu')}</Text>
                 <Text fontSize="sm" fontWeight="700" color="gray.800">{formatCurrency(stats.revenue_period)} DH</Text>
               </HStack>
               <HStack justify="space-between" p={2.5} borderRadius="lg" bg="gray.50" borderWidth="1px" borderColor="gray.100">
-                <Text fontSize="sm" color="gray.700">New Clients</Text>
+                <Text fontSize="sm" color="gray.700">{tx('New Clients', 'Nouveaux clients')}</Text>
                 <Text fontSize="sm" fontWeight="700" color="gray.800">{stats.new_clients_period ?? '—'}</Text>
               </HStack>
               <HStack justify="space-between" p={2.5} borderRadius="lg" bg="gray.50" borderWidth="1px" borderColor="gray.100">
-                <Text fontSize="sm" color="gray.700">Upcoming (7d)</Text>
+                <Text fontSize="sm" color="gray.700">{tx('Upcoming (7d)', 'A venir (7j)')}</Text>
                 <Text fontSize="sm" fontWeight="700" color="gray.800">{stats.upcoming_appointments_next_7_days ?? '—'}</Text>
               </HStack>
             </VStack>

@@ -35,32 +35,37 @@ interface AppointmentCalendarProps {
 
 type StatusKey = 'pending' | 'confirmed' | 'cancelled' | 'done';
 
-const UI_LOCALE = 'fr-MA';
+const getLanguage = (): 'en' | 'fr' => (localStorage.getItem('pamplia.language') === 'fr' ? 'fr' : 'en');
+const getUiLocale = (): string => (getLanguage() === 'fr' ? 'fr-FR' : 'en-US');
 
-const statusMeta: Record<StatusKey, { label: string; colorScheme: string; borderColor: string; bg: string; textColor: string }> = {
+const statusMeta: Record<StatusKey, { labelFr: string; labelEn: string; colorScheme: string; borderColor: string; bg: string; textColor: string }> = {
   pending: {
-    label: 'En attente',
+    labelFr: 'En attente',
+    labelEn: 'Pending',
     colorScheme: 'yellow',
     borderColor: 'yellow.200',
     bg: 'yellow.50',
     textColor: 'yellow.800',
   },
   confirmed: {
-    label: 'Confirmé',
+    labelFr: 'Confirme',
+    labelEn: 'Confirmed',
     colorScheme: 'green',
     borderColor: 'green.200',
     bg: 'green.50',
     textColor: 'green.800',
   },
   cancelled: {
-    label: 'Annulé',
+    labelFr: 'Annule',
+    labelEn: 'Cancelled',
     colorScheme: 'red',
     borderColor: 'red.200',
     bg: 'red.50',
     textColor: 'red.800',
   },
   done: {
-    label: 'Terminé',
+    labelFr: 'Termine',
+    labelEn: 'Done',
     colorScheme: 'gray',
     borderColor: 'gray.200',
     bg: 'gray.50',
@@ -116,14 +121,15 @@ const getMonthGridStart = (date: Date): Date => {
 };
 
 const formatRangeLabel = (start: Date, end: Date): string => {
-  const startLabel = start.toLocaleDateString(UI_LOCALE, { day: 'numeric', month: 'long' });
-  const endLabel = end.toLocaleDateString(UI_LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
+  const locale = getUiLocale();
+  const startLabel = start.toLocaleDateString(locale, { day: 'numeric', month: 'long' });
+  const endLabel = end.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
   return `${startLabel} - ${endLabel}`;
 };
 
 const formatTime = (dateString: string): string => {
   try {
-    return new Date(dateString).toLocaleTimeString(UI_LOCALE, {
+    return new Date(dateString).toLocaleTimeString(getUiLocale(), {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
@@ -134,13 +140,15 @@ const formatTime = (dateString: string): string => {
 };
 
 const formatDayShort = (date: Date): string =>
-  date.toLocaleDateString(UI_LOCALE, { weekday: 'short' }).replace('.', '').toUpperCase();
+  date.toLocaleDateString(getUiLocale(), { weekday: 'short' }).replace('.', '').toUpperCase();
 
 const AppointmentCalendar = ({
   appointments,
   onAppointmentClick,
   onDayClick,
 }: AppointmentCalendarProps) => {
+  const isFr = getLanguage() === 'fr';
+  const uiLocale = getUiLocale();
   const allStatuses = useMemo<StatusKey[]>(() => Object.keys(statusMeta) as StatusKey[], []);
   const [anchorDate, setAnchorDate] = useState<Date>(new Date());
   const [selectedDayKey, setSelectedDayKey] = useState<string>(toDayKey(new Date()));
@@ -295,7 +303,7 @@ const AppointmentCalendar = ({
       >
         <Flex align="center" justify="space-between" mb={3}>
           <Text fontSize="sm" fontWeight="700" color="gray.800" textTransform="capitalize">
-            {anchorDate.toLocaleDateString(UI_LOCALE, { month: 'long', year: 'numeric' })}
+            {anchorDate.toLocaleDateString(uiLocale, { month: 'long', year: 'numeric' })}
           </Text>
           <HStack spacing={1}>
             <IconButton
@@ -464,7 +472,7 @@ const AppointmentCalendar = ({
                   fontWeight="600"
                   aria-pressed={isActive}
                 >
-                  {meta.label} ({statusCounts[status]})
+                  {(isFr ? meta.labelFr : meta.labelEn)} ({statusCounts[status]})
                 </Button>
               );
             })}
@@ -575,7 +583,7 @@ const AppointmentCalendar = ({
                                   fontSize="2xs"
                                   textTransform="none"
                                 >
-                                  {meta.label}
+                                  {isFr ? meta.labelFr : meta.labelEn}
                                 </Badge>
                               </HStack>
                               <HStack spacing={1.5} mb={1}>
@@ -623,7 +631,7 @@ const AppointmentCalendar = ({
               </Flex>
               <Box>
                 <Text fontSize="sm" fontWeight="700" color="gray.800">
-                  {selectedDay.toLocaleDateString(UI_LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })}
+                  {selectedDay.toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long' })}
                 </Text>
                 <Text fontSize="xs" color="gray.500">
                   {selectedDayAppointments.length} rendez-vous
@@ -664,7 +672,7 @@ const AppointmentCalendar = ({
                           {formatTime(appointment.appointment_time)}
                         </Text>
                         <Badge colorScheme={meta.colorScheme as any} borderRadius="full" textTransform="none" fontSize="2xs">
-                          {meta.label}
+                          {isFr ? meta.labelFr : meta.labelEn}
                         </Badge>
                       </HStack>
                       <Text fontSize="sm" fontWeight="600" color="gray.700" mb={0.5} noOfLines={1}>

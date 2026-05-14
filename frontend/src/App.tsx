@@ -16,6 +16,7 @@ import ClientProfilePage from "./pages/ClientProfilePage";
 import { ChakraProvider } from '@chakra-ui/react';
 import theme from './theme';
 import '@fontsource/inter/index.css';
+import { LanguageProvider } from './i18n/languageContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,23 +33,25 @@ const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ChakraProvider theme={theme}>
-        <AuthProvider>
-          <BrowserRouter>
-              <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/demo" element={<DemoPage />} />
-              <Route path="/book" element={<BookingPage />} />
-              <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route element={<ProtectedRoute />}>
-                <Route path="/dashboard/*" element={
-                <DashboardRefactored />
-                }/>
-              </Route>
-              </Routes>
-          </BrowserRouter>
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <BrowserRouter>
+                <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/demo" element={<DemoPage />} />
+                <Route path="/book" element={<BookingPage />} />
+                <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/dashboard/*" element={
+                  <DashboardRefactored />
+                  }/>
+                </Route>
+                </Routes>
+            </BrowserRouter>
+          </AuthProvider>
+        </LanguageProvider>
       </ChakraProvider>
     </QueryClientProvider>
   );

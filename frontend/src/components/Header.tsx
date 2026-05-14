@@ -21,6 +21,8 @@ import {
   BreadcrumbLink,
 } from '@chakra-ui/react';
 import NotificationsPopover from './NotificationsPopover';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useLanguage } from '../i18n/languageContext';
 import {
   ChevronDown,
   ChevronRight,
@@ -50,8 +52,11 @@ const Header: React.FC<HeaderProps> = ({
   pageTitle,
   onOpenCommandPalette,
 }) => {
+  const { t } = useLanguage();
+
   // Derive breadcrumb from pageTitle
-  const isSubPage = pageTitle && pageTitle !== 'Dashboard';
+  const dashboardLabel = t('nav.dashboard');
+  const isSubPage = pageTitle && pageTitle !== dashboardLabel;
 
   return (
     <Flex
@@ -102,7 +107,7 @@ const Header: React.FC<HeaderProps> = ({
               transition="color 0.15s ease"
             >
               <Icon as={LayoutDashboard} boxSize="3.5" />
-              Dashboard
+              {dashboardLabel}
             </BreadcrumbLink>
           </BreadcrumbItem>
           {isSubPage && (
@@ -143,13 +148,16 @@ const Header: React.FC<HeaderProps> = ({
         >
           <Search size={14} color="var(--chakra-colors-gray-400)" />
           <Text fontSize="xs" color="gray.400" mb="0" fontWeight="500">
-            Search...
+            {t('header.search')}
           </Text>
           <Flex gap="0.5" ml="1">
             <Kbd fontSize="2xs" bg="white" borderColor="gray.200" color="gray.400" borderRadius="md" px={1} minW="auto" lineHeight="1.4">⌘</Kbd>
             <Kbd fontSize="2xs" bg="white" borderColor="gray.200" color="gray.400" borderRadius="md" px={1} minW="auto" lineHeight="1.4">K</Kbd>
           </Flex>
         </Flex>
+        <Box display="block">
+          <LanguageSwitcher size="sm" minimal />
+        </Box>
         {/* Notifications */}
         <NotificationsPopover />
 
@@ -207,7 +215,7 @@ const Header: React.FC<HeaderProps> = ({
               _hover={{ bg: 'gray.50' }}
               icon={<User size={15} />}
             >
-              Profile
+              {t('header.profile')}
             </MenuItem>
             <MenuItem
               fontSize="sm"
@@ -218,7 +226,7 @@ const Header: React.FC<HeaderProps> = ({
               _hover={{ bg: 'gray.50' }}
               icon={<Settings size={15} />}
             >
-              Account Settings
+              {t('header.accountSettings')}
             </MenuItem>
             <MenuDivider my="1.5" />
             <MenuItem
@@ -233,7 +241,7 @@ const Header: React.FC<HeaderProps> = ({
               icon={<LogOut size={15} />}
               onClick={onLogout}
             >
-              Log out
+              {t('nav.logOut')}
             </MenuItem>
           </MenuList>
         </Menu>

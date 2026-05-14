@@ -27,6 +27,7 @@ import {
     useToast,
 } from '@chakra-ui/react';
 import { Button } from '@chakra-ui/react';
+import { useLanguage } from '../../i18n/languageContext';
 
 const getErrorMessage = (err: any, defaultMessage: string): string => {
     console.error("API Error:", err);
@@ -42,10 +43,14 @@ const getErrorMessage = (err: any, defaultMessage: string): string => {
 
 
 const TemplatesView: React.FC = () => {
+    const { language } = useLanguage();
+    const isFr = language === 'fr';
+    const tx = (en: string, fr: string) => (isFr ? fr : en);
+
     const queryClient = useQueryClient();
     const toast = useToast();
     const { data: templates = [], isLoading, error: queryError } = useTemplates();
-    const [error, setError] = useState<string | null>(queryError ? 'Failed to load templates.' : null);
+    const [error, setError] = useState<string | null>(queryError ? tx('Failed to load templates.', 'Echec du chargement des modeles.') : null);
 
     // Modal State
     const [isCreateUpdateModalOpen, setIsCreateUpdateModalOpen] = useState(false);
@@ -118,7 +123,7 @@ const TemplatesView: React.FC = () => {
          try {
              await updateTemplate(template.id, { is_active: newStatus });
          } catch (err: any) {
-             setError(getErrorMessage(err, "Failed to update template status."));
+             setError(getErrorMessage(err, tx("Failed to update template status.", "Echec de mise a jour du statut du modele.")));
              // Revert optimistic update on error
              queryClient.invalidateQueries({ queryKey: queryKeys.templates });
          }
@@ -129,8 +134,8 @@ const TemplatesView: React.FC = () => {
     const copyPlaceholder = (placeholder: string) => {
          navigator.clipboard.writeText(placeholder).then(() => {
              toast({
-                 title: 'Copied!',
-                 description: `${placeholder} copied to clipboard`,
+                 title: tx('Copied!', 'Copie!'),
+                 description: isFr ? `${placeholder} copie dans le presse-papiers` : `${placeholder} copied to clipboard`,
                  status: 'success',
                  duration: 1500,
                  isClosable: true,
@@ -152,10 +157,10 @@ const TemplatesView: React.FC = () => {
             >
                 <Box>
                     <Heading as="h1" size="lg" color="gray.900" fontWeight="700" letterSpacing="-0.02em">
-                        Email Templates
+                        {tx('Email Templates', 'Modeles email')}
                     </Heading>
                     <Text color="gray.500" fontSize="sm" mt={1} mb={0}>
-                        Manage automated email communications
+                        {tx('Manage automated email communications', 'Gerez les communications email automatisees')}
                     </Text>
                 </Box>
                 <Button
@@ -164,7 +169,7 @@ const TemplatesView: React.FC = () => {
                     leftIcon={<Icon as={Plus} boxSize="4" />}
                     size="md"
                 >
-                    Add Template
+                    {tx('Add Template', 'Ajouter un modele')}
                 </Button>
             </Flex>
 
@@ -189,10 +194,10 @@ const TemplatesView: React.FC = () => {
                 <Flex align="center" gap={2} mb={3}>
                     <Icon as={Info} boxSize="4" color="blue.500" />
                     <Text fontSize="sm" fontWeight="600" color="blue.700" mb={0}>
-                        Available Placeholders
+                        {tx('Available Placeholders', 'Variables disponibles')}
                     </Text>
                     <Text fontSize="xs" color="blue.500" mb={0}>
-                        — Click to copy
+                        {tx('- Click to copy', '- Cliquer pour copier')}
                     </Text>
                 </Flex>
                 <Wrap spacing={2}>
@@ -229,9 +234,9 @@ const TemplatesView: React.FC = () => {
                 <Box bg="white" borderRadius="xl" border="1px solid" borderColor="gray.200">
                     <EmptyState
                         icon={Mail}
-                        title="No templates yet"
-                        description="Create email templates to automate your communications."
-                        actionLabel="Add Template"
+                        title={tx('No templates yet', 'Aucun modele pour le moment')}
+                        description={tx('Create email templates to automate your communications.', 'Creez des modeles email pour automatiser vos communications.')}
+                        actionLabel={tx('Add Template', 'Ajouter un modele')}
                         onAction={handleOpenCreateModal}
                         colorScheme="blue"
                     />
@@ -249,16 +254,16 @@ const TemplatesView: React.FC = () => {
                         <Thead>
                             <Tr>
                                 <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>
-                                    Template
+                                    {tx('Template', 'Modele')}
                                 </Th>
                                 <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>
-                                    Trigger
+                                    {tx('Trigger', 'Declencheur')}
                                 </Th>
                                 <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5}>
-                                    Subject
+                                    {tx('Subject', 'Sujet')}
                                 </Th>
                                 <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5} textAlign="center">
-                                    Active
+                                    {tx('Active', 'Actif')}
                                 </Th>
                                 <Th bg="gray.50" color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="0.05em" borderBottom="1px solid" borderColor="gray.200" py={3.5} w="60px">
                                 </Th>

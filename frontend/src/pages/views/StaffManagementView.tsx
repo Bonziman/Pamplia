@@ -23,10 +23,15 @@ import ConfirmationModal from '../../components/modals/ConfirmationModal';
 import InviteStaffForm from '../../components/staff/InviteStaffForm';
 import EditStaffForm from '../../components/staff/EditStaffForm';
 import { useBrandedToast } from '../../hooks/useBrandedToast';
+import { useLanguage } from '../../i18n/languageContext';
 
 const ITEMS_PER_PAGE = 10;
 
 const StaffManagementView: React.FC = () => {
+    const { language } = useLanguage();
+    const isFr = language === 'fr';
+    const tx = (en: string, fr: string) => (isFr ? fr : en);
+
     const { userProfile } = useAuth();
     const toast = useBrandedToast();
 
@@ -240,7 +245,7 @@ const StaffManagementView: React.FC = () => {
 
 
     if (!userProfile || !canManageStaff) { // Added check for userProfile
-        return <Box p="6"><Text>You do not have permission to manage staff.</Text></Box>;
+        return <Box p="6"><Text>{tx('You do not have permission to manage staff.', "Vous n'avez pas la permission de gerer l'equipe.")}</Text></Box>;
     }
 
     // Helper for rendering pagination
@@ -296,21 +301,23 @@ const StaffManagementView: React.FC = () => {
             >
                 <Box>
                     <Heading as="h1" size="lg" color="gray.900" fontWeight="700" letterSpacing="-0.02em">
-                        Staff Management
+                        {tx('Staff Management', "Gestion de l'equipe")}
                     </Heading>
                     <Text color="gray.500" fontSize="sm" mt={1} mb={0}>
-                        {staffTotal} member{staffTotal !== 1 ? 's' : ''} · {invitationsTotal} invitation{invitationsTotal !== 1 ? 's' : ''}
+                        {isFr
+                            ? `${staffTotal} membre${staffTotal !== 1 ? 's' : ''} · ${invitationsTotal} invitation${invitationsTotal !== 1 ? 's' : ''}`
+                            : `${staffTotal} member${staffTotal !== 1 ? 's' : ''} · ${invitationsTotal} invitation${invitationsTotal !== 1 ? 's' : ''}`}
                     </Text>
                 </Box>
                 <ChakraButton colorScheme="brand" leftIcon={<Plus size={16} />} onClick={onOpenInviteDrawer} size="md">
-                    Invite Staff
+                    {tx('Invite Staff', "Inviter l'equipe")}
                 </ChakraButton>
             </Flex>
 
             <Tabs variant="soft-rounded" colorScheme="brand" isLazy>
                 <TabList mb="5" gap={2}>
-                    <Tab fontSize="sm" fontWeight="500">Staff Members ({staffTotal})</Tab>
-                    <Tab fontSize="sm" fontWeight="500">Invitations ({invitationsTotal})</Tab>
+                    <Tab fontSize="sm" fontWeight="500">{tx('Staff Members', 'Membres equipe')} ({staffTotal})</Tab>
+                    <Tab fontSize="sm" fontWeight="500">{tx('Invitations', 'Invitations')} ({invitationsTotal})</Tab>
                 </TabList>
                 <TabPanels>
                     <TabPanel p="0">
